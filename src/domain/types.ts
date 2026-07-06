@@ -45,10 +45,41 @@ export const CATEGORIAS_PRATO: { valor: CategoriaPrato; nome: string }[] = [
   { valor: 'outro', nome: 'Outro' },
 ];
 
+/** Unidade de medida de um insumo. */
+export type UnidadeMedida = 'kg' | 'g' | 'l' | 'ml' | 'un' | 'dz' | 'pct';
+
+export const UNIDADES_MEDIDA: { valor: UnidadeMedida; nome: string; sigla: string }[] = [
+  { valor: 'kg', nome: 'Quilograma', sigla: 'kg' },
+  { valor: 'g', nome: 'Grama', sigla: 'g' },
+  { valor: 'l', nome: 'Litro', sigla: 'L' },
+  { valor: 'ml', nome: 'Mililitro', sigla: 'ml' },
+  { valor: 'un', nome: 'Unidade', sigla: 'un' },
+  { valor: 'dz', nome: 'Dúzia', sigla: 'dz' },
+  { valor: 'pct', nome: 'Pacote', sigla: 'pct' },
+];
+
+/** Insumo (matéria-prima) cadastrado com preço, usado para custear receitas. */
+export interface Insumo {
+  id: string;
+  nome: string;
+  unidade: UnidadeMedida;
+  /** Preço por 1 unidade de `unidade` (ex.: preço por kg). */
+  precoUnitario: number;
+  ativo: boolean;
+}
+
+/** Um insumo e a quantidade usada dentro de uma receita, para cálculo de custo. */
+export interface ItemReceita {
+  insumoId: string;
+  quantidade: number;
+}
+
 /** Ficha técnica de preparo de um prato. */
 export interface Receita {
-  /** Um ingrediente por item (ex.: "500g de peito de frango"). */
+  /** Um ingrediente por item (ex.: "500g de peito de frango") — texto livre, para exibição/impressão. */
   ingredientes: string[];
+  /** Insumos e quantidades usadas, para cálculo automático do custo da receita. */
+  insumosUsados: ItemReceita[];
   /** Modo de preparo; passos separados por linha. */
   modoPreparo: string;
   /** Ex.: "10 porções". */

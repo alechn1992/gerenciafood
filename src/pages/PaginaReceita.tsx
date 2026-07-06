@@ -2,22 +2,30 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import { rotuloCategoria } from '../domain/gerador';
-import type { Receita } from '../domain/types';
+import { UNIDADES_MEDIDA, type ItemReceita, type Receita } from '../domain/types';
 import { RESTRICOES_DISPONIVEIS } from '../data/seed';
+import { formatarMoeda } from '../lib/moeda';
 
 function receitaVazia(): Receita {
-  return { ingredientes: [], modoPreparo: '', rendimento: '', tempoPreparo: '' };
+  return { ingredientes: [], insumosUsados: [], modoPreparo: '', rendimento: '', tempoPreparo: '' };
+}
+
+/** Extrai o primeiro número inteiro de um texto (ex.: "10 porções" → 10). */
+function extrairNumero(texto: string): number | null {
+  const m = texto.match(/\d+/);
+  return m ? Number(m[0]) : null;
 }
 
 export function PaginaReceita() {
   const { id } = useParams();
-  const { pratos, salvarPrato } = useData();
+  const { pratos, insumos, salvarPrato } = useData();
   const prato = pratos.find((p) => p.id === id);
 
   const [ingredientesTexto, setIngredientesTexto] = useState('');
   const [modoPreparo, setModoPreparo] = useState('');
   const [rendimento, setRendimento] = useState('');
   const [tempoPreparo, setTempoPreparo] = useState('');
+  const [insumosUsados, setInsumosUsados] = useState<ItemReceita[]>([]);
   const [salvo, setSalvo] = useState(false);
 
   useEffect(() => {
@@ -26,6 +34,7 @@ export function PaginaReceita() {
     setModoPreparo(r.modoPreparo);
     setRendimento(r.rendimento ?? '');
     setTempoPreparo(r.tempoPreparo ?? '');
+    setInsumosUsados(r.insumosUsados ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prato?.id]);
 
@@ -47,9 +56,21 @@ export function PaginaReceita() {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  const linhasCusto = insumosUsados
+    .map((item) => ({ item, insumo: insumos.find((i) => i.id === item.insumoId) }))
+    .filter((l) => l.insumo);
+
+  const custoTotal = linhasCusto.reduce(
+    (soma, l) => soma + l.item.quantidade * (l.insumo?.precoUnitario ?? 0),
+    0,
+  );
+  const porcoes = extrairNumero(rendimento ?? '');
+  const custoPorPorcao = porcoes && porcoes > 0 ? custoTotal / porcoes : null;
+
   const salvarReceita = async () => {
     const receita: Receita = {
       ingredientes: ingredientesLista,
+      insumosUsados: insumosUsados.filter((i) => i.insumoId),
       modoPreparo,
       rendimento: rendimento.trim() || undefined,
       tempoPreparo: tempoPreparo.trim() || undefined,
@@ -57,6 +78,28 @@ export function PaginaReceita() {
     await salvarPrato({ ...prato, receita });
     setSalvo(true);
     setTimeout(() => setSalvo(false), 2000);
+  };
+
+  const adicionarLinhaCusto = () => {
+    if (insumos.length === 0) return;
+    setInsumosUsados((p) => [...p, { insumoId: insumos[0].id, quantidade: 0 }]);
+  };
+
+  const atualizarLinhaCusto = (idx: number, campo: keyof ItemReceita, valor: string) => {
+    setInsumosUsados((p) =>
+      p.map((it, i) =>
+        i !== idx
+          ? it
+          : {
+              ...it,
+              [campo]: campo === 'quantidade' ? Number(valor.replace(',', '.')) || 0 : valor,
+            },
+      ),
+    );
+  };
+
+  const removerLinhaCusto = (idx: number) => {
+    setInsumosUsados((p) => p.filter((_, i) => i !== idx));
   };
 
   return (
@@ -121,6 +164,76 @@ export function PaginaReceita() {
         </button>
       </div>
 
+      <div className="card no-print">
+        <h3 style={{ marginTop: 0 }}>Custo da receita</h3>
+        {insumos.length === 0 ? (
+          <p className="subtitulo" style={{ margin: 0 }}>
+            Nenhum insumo cadastrado ainda. <Link to="/insumos">Cadastre insumos</Link> para
+            vincular quantidades e calcular o custo automaticamente.
+          </p>
+        ) : (
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>Insumo</th>
+                  <th style={{ width: 140 }}>Quantidade</th>
+                  <th style={{ width: 130 }}>Preço unitário</th>
+                  <th style={{ width: 110 }}>Subtotal</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {insumosUsados.map((item, idx) => {
+                  const insumo = insumos.find((i) => i.id === item.insumoId);
+                  const sigla =
+                    UNIDADES_MEDIDA.find((u) => u.valor === insumo?.unidade)?.sigla ?? '';
+                  const subtotal = item.quantidade * (insumo?.precoUnitario ?? 0);
+                  return (
+                    <tr key={idx}>
+                      <td>
+                        <select
+                          value={item.insumoId}
+                          onChange={(e) => atualizarLinhaCusto(idx, 'insumoId', e.target.value)}
+                        >
+                          {insumos.map((i) => (
+                            <option key={i.id} value={i.id}>
+                              {i.nome}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <input
+                          key={idx}
+                          defaultValue={item.quantidade || ''}
+                          onChange={(e) => atualizarLinhaCusto(idx, 'quantidade', e.target.value)}
+                          inputMode="decimal"
+                          placeholder={`Qtd. em ${sigla}`}
+                        />
+                      </td>
+                      <td>{insumo ? formatarMoeda(insumo.precoUnitario) : '—'}</td>
+                      <td>{formatarMoeda(subtotal)}</td>
+                      <td>
+                        <button
+                          className="btn pequeno perigo"
+                          onClick={() => removerLinhaCusto(idx)}
+                        >
+                          Remover
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <button className="btn secundario" style={{ marginTop: 12 }} onClick={adicionarLinhaCusto}>
+              + Adicionar insumo à receita
+            </button>
+          </>
+        )}
+      </div>
+
       <div className="card">
         <div className="grid cols-2">
           <div>
@@ -141,6 +254,49 @@ export function PaginaReceita() {
             {tempoPreparo && <div>Tempo de preparo: {tempoPreparo}</div>}
           </div>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="linha">
+          <h3 style={{ margin: 0 }}>Custo estimado</h3>
+        </div>
+        {linhasCusto.length === 0 ? (
+          <p className="subtitulo" style={{ margin: '12px 0 0' }}>
+            Custo não calculado — nenhum insumo vinculado a esta receita.
+          </p>
+        ) : (
+          <>
+            <table style={{ marginTop: 12 }}>
+              <thead>
+                <tr>
+                  <th>Insumo</th>
+                  <th>Quantidade</th>
+                  <th>Preço unitário</th>
+                  <th>Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {linhasCusto.map(({ item, insumo }, idx) => (
+                  <tr key={idx}>
+                    <td>{insumo?.nome}</td>
+                    <td>
+                      {item.quantidade}{' '}
+                      {UNIDADES_MEDIDA.find((u) => u.valor === insumo?.unidade)?.sigla}
+                    </td>
+                    <td>{formatarMoeda(insumo?.precoUnitario ?? 0)}</td>
+                    <td>{formatarMoeda(item.quantidade * (insumo?.precoUnitario ?? 0))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="grid cols-2" style={{ marginTop: 16 }}>
+              <Indicador titulo="Custo total da receita" valor={formatarMoeda(custoTotal)} destaque />
+              {custoPorPorcao !== null && (
+                <Indicador titulo={`Custo por porção (${porcoes})`} valor={formatarMoeda(custoPorPorcao)} />
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="card">
@@ -174,6 +330,25 @@ export function PaginaReceita() {
           </ol>
         )}
       </div>
+    </div>
+  );
+}
+
+function Indicador({ titulo, valor, destaque }: { titulo: string; valor: string; destaque?: boolean }) {
+  return (
+    <div
+      style={{
+        border: '1px solid var(--borda)',
+        borderRadius: 10,
+        padding: 16,
+        textAlign: 'center',
+        background: destaque ? 'var(--verde-claro)' : 'var(--branco)',
+      }}
+    >
+      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--verde-escuro)' }}>
+        {valor}
+      </div>
+      <div style={{ color: 'var(--cinza)', fontSize: '0.85rem' }}>{titulo}</div>
     </div>
   );
 }

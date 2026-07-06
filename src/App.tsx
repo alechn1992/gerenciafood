@@ -6,6 +6,7 @@ import { PaginaPratos } from './pages/PaginaPratos';
 import { PaginaCardapio } from './pages/PaginaCardapio';
 import { PaginaRelatorio } from './pages/PaginaRelatorio';
 import { PaginaReceita } from './pages/PaginaReceita';
+import { PaginaInsumos } from './pages/PaginaInsumos';
 
 export function App() {
   const { repo } = useData();
@@ -19,6 +20,9 @@ export function App() {
           </NavLink>
           <NavLink to="/pratos" className={({ isActive }) => (isActive ? 'ativo' : '')}>
             Banco de pratos
+          </NavLink>
+          <NavLink to="/insumos" className={({ isActive }) => (isActive ? 'ativo' : '')}>
+            Insumos
           </NavLink>
         </nav>
         <div className="modo">
@@ -36,6 +40,7 @@ export function App() {
           <Route path="/clientes/:id/relatorio" element={<PaginaRelatorio />} />
           <Route path="/pratos" element={<PaginaPratos />} />
           <Route path="/pratos/:id/receita" element={<PaginaReceita />} />
+          <Route path="/insumos" element={<PaginaInsumos />} />
           <Route path="*" element={<Navigate to="/clientes" replace />} />
         </Routes>
       </main>

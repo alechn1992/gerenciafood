@@ -5,8 +5,8 @@
 // Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY), os dados passam a ser
 // persistidos no Postgres do Supabase.
 
-import type { Cardapio, Cliente, Prato, TipoRefeicao } from '../domain/types';
-import { PRATOS_PADRAO, TIPOS_REFEICAO_PADRAO } from './seed';
+import type { Cardapio, Cliente, Insumo, Prato, TipoRefeicao } from '../domain/types';
+import { INSUMOS_PADRAO, PRATOS_PADRAO, TIPOS_REFEICAO_PADRAO } from './seed';
 import { supabase } from '../lib/supabase';
 import { SupabaseRepository } from './supabaseRepo';
 
@@ -21,6 +21,9 @@ export interface Repository {
   listarTiposRefeicao(): Promise<TipoRefeicao[]>;
   listarCardapios(clienteId?: string): Promise<Cardapio[]>;
   salvarCardapio(cardapio: Cardapio): Promise<void>;
+  listarInsumos(): Promise<Insumo[]>;
+  salvarInsumo(insumo: Insumo): Promise<void>;
+  removerInsumo(id: string): Promise<void>;
 }
 
 const KEYS = {
@@ -28,6 +31,7 @@ const KEYS = {
   pratos: 'gf.pratos',
   tipos: 'gf.tipos',
   cardapios: 'gf.cardapios',
+  insumos: 'gf.insumos',
 };
 
 function ler<T>(key: string, fallback: T): T {
@@ -53,6 +57,9 @@ export class LocalRepository implements Repository {
     }
     if (localStorage.getItem(KEYS.tipos) === null) {
       escrever(KEYS.tipos, TIPOS_REFEICAO_PADRAO);
+    }
+    if (localStorage.getItem(KEYS.insumos) === null) {
+      escrever(KEYS.insumos, INSUMOS_PADRAO);
     }
   }
 
@@ -113,6 +120,25 @@ export class LocalRepository implements Repository {
     if (idx >= 0) cardapios[idx] = cardapio;
     else cardapios.push(cardapio);
     escrever(KEYS.cardapios, cardapios);
+  }
+
+  async listarInsumos() {
+    return ler<Insumo[]>(KEYS.insumos, INSUMOS_PADRAO);
+  }
+
+  async salvarInsumo(insumo: Insumo) {
+    const insumos = await this.listarInsumos();
+    const idx = insumos.findIndex((i) => i.id === insumo.id);
+    if (idx >= 0) insumos[idx] = insumo;
+    else insumos.push(insumo);
+    escrever(KEYS.insumos, insumos);
+  }
+
+  async removerInsumo(id: string) {
+    escrever(
+      KEYS.insumos,
+      (await this.listarInsumos()).filter((i) => i.id !== id),
+    );
   }
 }
 
