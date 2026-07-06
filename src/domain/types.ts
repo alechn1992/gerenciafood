@@ -45,6 +45,18 @@ export const CATEGORIAS_PRATO: { valor: CategoriaPrato; nome: string }[] = [
   { valor: 'outro', nome: 'Outro' },
 ];
 
+/** Ficha técnica de preparo de um prato. */
+export interface Receita {
+  /** Um ingrediente por item (ex.: "500g de peito de frango"). */
+  ingredientes: string[];
+  /** Modo de preparo; passos separados por linha. */
+  modoPreparo: string;
+  /** Ex.: "10 porções". */
+  rendimento?: string;
+  /** Ex.: "40 min". */
+  tempoPreparo?: string;
+}
+
 /** Prato do banco de dados de receitas. */
 export interface Prato {
   id: string;
@@ -55,6 +67,8 @@ export interface Prato {
   /** Tags livres para casar com preferências do cliente (ex.: 'regional'). */
   tags: string[];
   ativo: boolean;
+  /** Ficha técnica (ingredientes e modo de preparo), opcional. */
+  receita?: Receita;
 }
 
 /**

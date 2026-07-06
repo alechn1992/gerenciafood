@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import {
   CATEGORIAS_PRATO,
@@ -136,6 +137,9 @@ export function PaginaPratos() {
                     >
                       {p.ativo ? 'Desativar' : 'Ativar'}
                     </button>
+                    <Link className="btn pequeno secundario" to={`/pratos/${p.id}/receita`}>
+                      {p.receita ? 'Receita' : '+ Receita'}
+                    </Link>
                     <button
                       className="btn pequeno perigo"
                       onClick={() => {

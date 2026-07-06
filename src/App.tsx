@@ -5,6 +5,7 @@ import { PaginaClienteForm } from './pages/PaginaClienteForm';
 import { PaginaPratos } from './pages/PaginaPratos';
 import { PaginaCardapio } from './pages/PaginaCardapio';
 import { PaginaRelatorio } from './pages/PaginaRelatorio';
+import { PaginaReceita } from './pages/PaginaReceita';
 
 export function App() {
   const { repo } = useData();
@@ -34,6 +35,7 @@ export function App() {
           <Route path="/clientes/:id/cardapio" element={<PaginaCardapio />} />
           <Route path="/clientes/:id/relatorio" element={<PaginaRelatorio />} />
           <Route path="/pratos" element={<PaginaPratos />} />
+          <Route path="/pratos/:id/receita" element={<PaginaReceita />} />
           <Route path="*" element={<Navigate to="/clientes" replace />} />
         </Routes>
       </main>

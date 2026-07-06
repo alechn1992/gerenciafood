@@ -127,6 +127,7 @@ function mapPratoFromRow(r: any): Prato {
     restricoes: r.restricoes ?? [],
     tags: r.tags ?? [],
     ativo: r.ativo ?? true,
+    receita: r.receita ?? undefined,
   };
 }
 
@@ -138,6 +139,7 @@ function mapPratoToRow(p: Prato) {
     restricoes: p.restricoes,
     tags: p.tags,
     ativo: p.ativo,
+    receita: p.receita ?? null,
   };
 }
 
