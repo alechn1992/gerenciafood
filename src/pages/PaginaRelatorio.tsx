@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import {
   CHECKLIST_BOAS_PRATICAS,
+  CHECKLIST_CEI_SESA_162,
   POPS_OBRIGATORIOS,
   REFERENCIAS_NORMATIVAS,
 } from '../domain/legislacao';
@@ -19,6 +20,7 @@ export function PaginaRelatorio() {
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
   const [avaliador, setAvaliador] = useState('');
   const [dataAval, setDataAval] = useState(new Date().toISOString().slice(0, 10));
+  const [ehCei, setEhCei] = useState(false);
 
   if (!cliente) {
     return (
@@ -28,7 +30,11 @@ export function PaginaRelatorio() {
     );
   }
 
-  const itensTotais = CHECKLIST_BOAS_PRATICAS.flatMap((b) => b.itens);
+  const blocosAtivos = ehCei
+    ? [...CHECKLIST_BOAS_PRATICAS, ...CHECKLIST_CEI_SESA_162]
+    : CHECKLIST_BOAS_PRATICAS;
+
+  const itensTotais = blocosAtivos.flatMap((b) => b.itens);
   const respondidos = itensTotais.filter((i) => respostas[i.id] && respostas[i.id] !== '');
   const conformes = itensTotais.filter((i) => respostas[i.id] === 'conforme');
   const naoConformes = itensTotais.filter((i) => respostas[i.id] === 'nao_conforme');
@@ -54,6 +60,26 @@ export function PaginaRelatorio() {
           <button className="btn" onClick={() => window.print()}>
             🖨️ Imprimir / PDF
           </button>
+        </div>
+      </div>
+
+      <div className="card no-print">
+        <div className="linha">
+          <div>
+            <strong>Tipo de estabelecimento</strong>
+            <p className="subtitulo" style={{ margin: '4px 0 0' }}>
+              Ative para incluir o checklist da{' '}
+              <strong>Resolução SESA-PR nº 0162/2005</strong> (norma sanitária
+              específica para Centros de Educação Infantil — CEI).
+            </p>
+          </div>
+          <span
+            className={`chip ${ehCei ? 'on' : ''}`}
+            style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+            onClick={() => setEhCei((v) => !v)}
+          >
+            {ehCei ? '✓ ' : ''}Centro de Educação Infantil (CEI)
+          </span>
         </div>
       </div>
 
@@ -99,7 +125,7 @@ export function PaginaRelatorio() {
         </p>
       </div>
 
-      {CHECKLIST_BOAS_PRATICAS.map((bloco) => (
+      {blocosAtivos.map((bloco) => (
         <div key={bloco.titulo} className="card">
           <h3 style={{ marginTop: 0 }}>{bloco.titulo}</h3>
           <table>

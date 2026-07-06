@@ -3,9 +3,13 @@
 // Referências:
 //  - RDC ANVISA nº 216/2004 — Regulamento Técnico de Boas Práticas para
 //    Serviços de Alimentação (norma federal base em todo o território nacional).
-//  - Estado do Paraná: a RDC 216 é complementada pelas Resoluções da SESA-PR
-//    (ex.: Resolução SESA nº 465/2013 — transporte de alimentos) e pelo Código
-//    de Saúde do Paraná (Lei Estadual nº 13.331/2001 e Decreto nº 5.711/2002).
+//  - Estado do Paraná: a RDC 216 é complementada pelas Resoluções da SESA-PR:
+//      • Resolução SESA nº 0162/2005 (DOE 14/02/2005) — Norma Técnica Sanitária
+//        para Centros de Educação Infantil (CEI) no Paraná. Estabelece requisitos
+//        de instalações (copa, lactário, refeitório), higienização, manipulação de
+//        alimentos, controle de pragas e documentação específicos para CEIs.
+//      • Resolução SESA nº 465/2013 — Boas práticas no transporte de alimentos.
+//      • Código de Saúde do Paraná (Lei Estadual nº 13.331/2001).
 //
 // Aviso: este conteúdo é um apoio operacional/educativo e não substitui a
 // consulta à íntegra das normas nem a fiscalização da vigilância sanitária.
@@ -35,6 +39,13 @@ export const REFERENCIAS_NORMATIVAS: ReferenciaNormativa[] = [
       'ANVISA — Regulamento Técnico de Boas Práticas para Serviços de Alimentação',
     ambito: 'Federal',
     url: 'https://bvsms.saude.gov.br/bvs/saudelegis/anvisa/2004/res0216_15_09_2004.html',
+  },
+  {
+    sigla: 'Resolução SESA nº 0162/2005',
+    titulo:
+      'SESA-PR — Norma Técnica Sanitária para Centros de Educação Infantil (CEI) do Estado do Paraná',
+    ambito: 'Estadual (PR)',
+    url: 'https://www.saude.pr.gov.br/Pagina/Legislacao-Sanitaria-de-Alimentos',
   },
   {
     sigla: 'Resolução SESA nº 465/2013',
@@ -207,6 +218,156 @@ export const CHECKLIST_BOAS_PRATICAS: BlocoChecklist[] = [
         texto:
           'Licença/alvará sanitário vigente junto à vigilância sanitária municipal (Código de Saúde do PR).',
         referencia: 'Lei Estadual PR nº 13.331/2001',
+      },
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Checklist específico para Centros de Educação Infantil (CEI) — Paraná
+// Resolução SESA-PR nº 0162/2005 (DOE 14/02/2005)
+//
+// Aplicável quando o cliente é um CEI (creche, pré-escola) no Paraná.
+// Complementa o checklist geral da RDC 216/2004.
+// ---------------------------------------------------------------------------
+
+export const CHECKLIST_CEI_SESA_162: BlocoChecklist[] = [
+  {
+    titulo: 'Instalações físicas — CEI (SESA-PR 0162/2005)',
+    itens: [
+      {
+        id: 'cei-inst-1',
+        texto:
+          'Área de preparo/copa com dimensões adequadas ao número de crianças atendidas, revestida de material liso, impermeável e lavável.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+      {
+        id: 'cei-inst-2',
+        texto:
+          'Lactário (quando existente) separado fisicamente da copa/cozinha, com bancada exclusiva para preparo de mamadeiras e utensílios próprios.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+      {
+        id: 'cei-inst-3',
+        texto:
+          'Refeitório/local de refeição das crianças com mesas e cadeiras adequadas à faixa etária, de fácil higienização.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+      {
+        id: 'cei-inst-4',
+        texto:
+          'Lavatório de mãos com torneira sem acionamento manual (cotovelo/pedal/sensor) disponível na área de preparo e no lactário.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+      {
+        id: 'cei-inst-5',
+        texto:
+          'Ventilação/exaustão adequada nas áreas de preparo para evitar condensação e acúmulo de calor.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+    ],
+  },
+  {
+    titulo: 'Lactário e preparo de fórmulas infantis — CEI (SESA-PR 0162/2005)',
+    itens: [
+      {
+        id: 'cei-lac-1',
+        texto:
+          'Mamadeiras, chupetas e utensílios do lactário higienizados com escova própria, lavados com água e detergente e fervidos ou esterilizados conforme protocolo.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+      {
+        id: 'cei-lac-2',
+        texto:
+          'Fórmulas infantis preparadas com água potável (filtrada ou fervida) na temperatura correta; prazo de uso respeitado após abertura da embalagem.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+      {
+        id: 'cei-lac-3',
+        texto:
+          'Mamadeiras preparadas identificadas com nome da criança, data e hora do preparo; conservadas sob refrigeração até o momento do uso.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+      {
+        id: 'cei-lac-4',
+        texto:
+          'Leite e fórmulas com validade vigente; embalagens íntegras e armazenadas em local adequado (temperatura de rotulagem).',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+    ],
+  },
+  {
+    titulo: 'Manipulação de alimentos para crianças — CEI (SESA-PR 0162/2005)',
+    itens: [
+      {
+        id: 'cei-manip-1',
+        texto:
+          'Cardápio elaborado ou supervisionado por nutricionista; adequado à faixa etária (lactentes, crianças de 1 a 3 anos, pré-escolares).',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+      {
+        id: 'cei-manip-2',
+        texto:
+          'Alimentos preparados no dia do consumo; sobras não devolvidas ao refeitório; descarte correto de restos.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+      {
+        id: 'cei-manip-3',
+        texto:
+          'Frutas, legumes e verduras higienizados com solução clorada (100–200 ppm/15 min ou produto equivalente regularizado).',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+      {
+        id: 'cei-manip-4',
+        texto:
+          'Ausência de alimentos potencialmente alergênicos não comunicados aos responsáveis das crianças; cardápio afixado e comunicado.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+    ],
+  },
+  {
+    titulo: 'Higienização e controle de pragas — CEI (SESA-PR 0162/2005)',
+    itens: [
+      {
+        id: 'cei-hig-1',
+        texto:
+          'Higienização das áreas de preparo, utensílios e superfícies realizada antes e após cada uso; registros mantidos.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+      {
+        id: 'cei-hig-2',
+        texto:
+          'Lixo acondicionado em recipientes com tampa e saco plástico; retirado das áreas de preparo frequentemente e destinado adequadamente.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+      {
+        id: 'cei-hig-3',
+        texto:
+          'Controle integrado de pragas nos espaços do CEI (área externa, depósito, cozinha, lactário) executado por empresa habilitada.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+    ],
+  },
+  {
+    titulo: 'Documentação e vigilância sanitária — CEI (SESA-PR 0162/2005)',
+    itens: [
+      {
+        id: 'cei-doc-1',
+        texto:
+          'Alvará/licença sanitária do CEI expedido pela vigilância sanitária municipal, vigente e afixado em local visível.',
+        referencia: 'Resolução SESA-PR nº 0162/2005 / Lei PR nº 13.331/2001',
+      },
+      {
+        id: 'cei-doc-2',
+        texto:
+          'Manual de Boas Práticas específico para CEI elaborado e atualizado; disponível para consulta da equipe e fiscalização.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
+      },
+      {
+        id: 'cei-doc-3',
+        texto:
+          'Responsável técnico pela alimentação (nutricionista) com registro ativo no CRN; documentação acessível.',
+        referencia: 'Resolução SESA-PR nº 0162/2005',
       },
     ],
   },
