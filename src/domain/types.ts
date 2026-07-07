@@ -117,6 +117,20 @@ export interface RefeicaoConfig {
   composicao: ComposicaoRefeicao[];
 }
 
+/**
+ * Turma/faixa etária dentro de um cliente (ex.: um CEI com "Baby 1 (4-6 meses)",
+ * "Baby 2 (6 meses)", ..., "Infantis"). Cada turma tem suas próprias refeições
+ * e restrições; os dias de operação são os do cliente.
+ */
+export interface Turma {
+  id: string;
+  clienteId: string;
+  nome: string;
+  ordem: number;
+  refeicoes: RefeicaoConfig[];
+  restricoes: string[];
+}
+
 /** Cliente e suas particularidades. */
 export interface Cliente {
   id: string;
@@ -144,10 +158,12 @@ export interface ItemCardapio {
   pratoNome: string;
 }
 
-/** Cardápio gerado para um cliente numa semana. */
+/** Cardápio gerado para um cliente (ou uma turma do cliente) numa semana. */
 export interface Cardapio {
   id: string;
   clienteId: string;
+  /** Presente quando o cardápio é de uma turma específica do cliente. */
+  turmaId?: string;
   /** Data (ISO) da segunda-feira de referência da semana. */
   semanaInicio: string;
   itens: ItemCardapio[];

@@ -296,4 +296,10 @@ th {
     border: 1px solid #ccc;
     break-inside: avoid;
   }
+  .semana-print-quebra {
+    break-before: page;
+  }
+  .semana-print-quebra:first-of-type {
+    break-before: auto;
+  }
 }

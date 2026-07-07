@@ -10,6 +10,7 @@ import type {
   Prato,
   RefeicaoConfig,
   TipoRefeicao,
+  Turma,
 } from '../domain/types';
 import type { Repository } from './repo';
 
@@ -78,6 +79,7 @@ export class SupabaseRepository implements Repository {
     const { error } = await this.db.from('cardapios').upsert({
       id: cardapio.id,
       cliente_id: cardapio.clienteId,
+      turma_id: cardapio.turmaId ?? null,
       semana_inicio: cardapio.semanaInicio,
       itens: cardapio.itens,
       gerado_em: cardapio.geradoEm,
@@ -98,6 +100,24 @@ export class SupabaseRepository implements Repository {
 
   async removerInsumo(id: string): Promise<void> {
     const { error } = await this.db.from('insumos').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async listarTurmas(clienteId?: string): Promise<Turma[]> {
+    let query = this.db.from('turmas').select('*').order('ordem');
+    if (clienteId) query = query.eq('cliente_id', clienteId);
+    const { data, error } = await query;
+    const rows = this.assert(data, error);
+    return rows.map(mapTurmaFromRow);
+  }
+
+  async salvarTurma(turma: Turma): Promise<void> {
+    const { error } = await this.db.from('turmas').upsert(mapTurmaToRow(turma));
+    if (error) throw error;
+  }
+
+  async removerTurma(id: string): Promise<void> {
+    const { error } = await this.db.from('turmas').delete().eq('id', id);
     if (error) throw error;
   }
 }
@@ -184,8 +204,31 @@ function mapCardapioFromRow(r: any): Cardapio {
   return {
     id: r.id,
     clienteId: r.cliente_id,
+    turmaId: r.turma_id ?? undefined,
     semanaInicio: r.semana_inicio,
     itens: r.itens ?? [],
     geradoEm: r.gerado_em,
+  };
+}
+
+function mapTurmaFromRow(r: any): Turma {
+  return {
+    id: r.id,
+    clienteId: r.cliente_id,
+    nome: r.nome,
+    ordem: r.ordem ?? 0,
+    refeicoes: (r.refeicoes ?? []) as RefeicaoConfig[],
+    restricoes: r.restricoes ?? [],
+  };
+}
+
+function mapTurmaToRow(t: Turma) {
+  return {
+    id: t.id,
+    cliente_id: t.clienteId,
+    nome: t.nome,
+    ordem: t.ordem,
+    refeicoes: t.refeicoes,
+    restricoes: t.restricoes,
   };
 }

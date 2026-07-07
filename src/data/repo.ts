@@ -5,7 +5,7 @@
 // Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY), os dados passam a ser
 // persistidos no Postgres do Supabase.
 
-import type { Cardapio, Cliente, Insumo, Prato, TipoRefeicao } from '../domain/types';
+import type { Cardapio, Cliente, Insumo, Prato, TipoRefeicao, Turma } from '../domain/types';
 import { INSUMOS_PADRAO, PRATOS_PADRAO, TIPOS_REFEICAO_PADRAO } from './seed';
 import { supabase } from '../lib/supabase';
 import { SupabaseRepository } from './supabaseRepo';
@@ -24,6 +24,9 @@ export interface Repository {
   listarInsumos(): Promise<Insumo[]>;
   salvarInsumo(insumo: Insumo): Promise<void>;
   removerInsumo(id: string): Promise<void>;
+  listarTurmas(clienteId?: string): Promise<Turma[]>;
+  salvarTurma(turma: Turma): Promise<void>;
+  removerTurma(id: string): Promise<void>;
 }
 
 const KEYS = {
@@ -32,6 +35,7 @@ const KEYS = {
   tipos: 'gf.tipos',
   cardapios: 'gf.cardapios',
   insumos: 'gf.insumos',
+  turmas: 'gf.turmas',
 };
 
 function ler<T>(key: string, fallback: T): T {
@@ -83,6 +87,10 @@ export class LocalRepository implements Repository {
     escrever(
       KEYS.cardapios,
       (await this.listarCardapios()).filter((c) => c.clienteId !== id),
+    );
+    escrever(
+      KEYS.turmas,
+      (await this.listarTurmas()).filter((t) => t.clienteId !== id),
     );
   }
 
@@ -138,6 +146,30 @@ export class LocalRepository implements Repository {
     escrever(
       KEYS.insumos,
       (await this.listarInsumos()).filter((i) => i.id !== id),
+    );
+  }
+
+  async listarTurmas(clienteId?: string) {
+    const todas = ler<Turma[]>(KEYS.turmas, []);
+    return clienteId ? todas.filter((t) => t.clienteId === clienteId) : todas;
+  }
+
+  async salvarTurma(turma: Turma) {
+    const turmas = await this.listarTurmas();
+    const idx = turmas.findIndex((t) => t.id === turma.id);
+    if (idx >= 0) turmas[idx] = turma;
+    else turmas.push(turma);
+    escrever(KEYS.turmas, turmas);
+  }
+
+  async removerTurma(id: string) {
+    escrever(
+      KEYS.turmas,
+      (await this.listarTurmas()).filter((t) => t.id !== id),
+    );
+    escrever(
+      KEYS.cardapios,
+      (await this.listarCardapios()).filter((c) => c.turmaId !== id),
     );
   }
 }

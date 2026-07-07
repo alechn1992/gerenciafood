@@ -16,6 +16,7 @@ import type {
   ItemCardapio,
   Prato,
   RefeicaoConfig,
+  Turma,
 } from './types';
 import { DIAS_SEMANA } from './types';
 
@@ -54,6 +55,11 @@ export interface ResultadoGeracao {
 
 export interface OpcoesGeracao {
   cliente: Cliente;
+  /**
+   * Quando informada, gera o cardápio da turma (refeições e restrições
+   * próprias); os dias de operação continuam vindo do cliente.
+   */
+  turma?: Turma;
   pratos: Prato[];
   semanaInicio: string; // ISO date da segunda-feira
   seed?: number;
@@ -95,9 +101,12 @@ function distribuir(
 }
 
 export function gerarCardapio(opcoes: OpcoesGeracao): ResultadoGeracao {
-  const { cliente, pratos, semanaInicio } = opcoes;
+  const { cliente, turma, pratos, semanaInicio } = opcoes;
   const rng = criarRng(opcoes.seed ?? Date.now());
   const avisos: string[] = [];
+
+  const refeicoes = turma?.refeicoes ?? cliente.refeicoes;
+  const restricoes = turma?.restricoes ?? cliente.restricoes;
 
   const diasOrdenados = DIAS_SEMANA.map((d) => d.valor).filter((d) =>
     cliente.diasOperacao.includes(d),
@@ -105,16 +114,14 @@ export function gerarCardapio(opcoes: OpcoesGeracao): ResultadoGeracao {
 
   const pratosAtivos = pratos.filter((p) => p.ativo);
   const refeicoesPorId = new Map<string, RefeicaoConfig>();
-  cliente.refeicoes.forEach((r) => refeicoesPorId.set(r.tipoRefeicaoId, r));
+  refeicoes.forEach((r) => refeicoesPorId.set(r.tipoRefeicaoId, r));
 
   const itens: ItemCardapio[] = [];
 
-  for (const refeicao of cliente.refeicoes) {
+  for (const refeicao of refeicoes) {
     for (const comp of refeicao.composicao) {
       const candidatos = pratosAtivos.filter(
-        (p) =>
-          p.categoria === comp.categoria &&
-          atendeRestricoes(p, cliente.restricoes),
+        (p) => p.categoria === comp.categoria && atendeRestricoes(p, restricoes),
       );
 
       if (candidatos.length === 0) {
@@ -146,6 +153,7 @@ export function gerarCardapio(opcoes: OpcoesGeracao): ResultadoGeracao {
   const cardapio: Cardapio = {
     id: opcoes.id ?? crypto.randomUUID(),
     clienteId: cliente.id,
+    turmaId: turma?.id,
     semanaInicio,
     itens,
     geradoEm: opcoes.geradoEm ?? new Date().toISOString(),
