@@ -4,6 +4,7 @@ import { PaginaClientes } from './pages/PaginaClientes';
 import { PaginaClienteForm } from './pages/PaginaClienteForm';
 import { PaginaPratos } from './pages/PaginaPratos';
 import { PaginaCardapio } from './pages/PaginaCardapio';
+import { PaginaMontagemCardapio } from './pages/PaginaMontagemCardapio';
 import { PaginaRelatorio } from './pages/PaginaRelatorio';
 import { PaginaReceita } from './pages/PaginaReceita';
 import { PaginaInsumos } from './pages/PaginaInsumos';
@@ -17,6 +18,9 @@ export function App() {
         <nav>
           <NavLink to="/clientes" className={({ isActive }) => (isActive ? 'ativo' : '')}>
             Clientes
+          </NavLink>
+          <NavLink to="/cardapio" className={({ isActive }) => (isActive ? 'ativo' : '')}>
+            Cardápio
           </NavLink>
           <NavLink to="/pratos" className={({ isActive }) => (isActive ? 'ativo' : '')}>
             Banco de pratos
@@ -37,6 +41,7 @@ export function App() {
           <Route path="/clientes/novo" element={<PaginaClienteForm />} />
           <Route path="/clientes/:id/editar" element={<PaginaClienteForm />} />
           <Route path="/clientes/:id/cardapio" element={<PaginaCardapio />} />
+          <Route path="/cardapio" element={<PaginaMontagemCardapio />} />
           <Route path="/clientes/:id/relatorio" element={<PaginaRelatorio />} />
           <Route path="/pratos" element={<PaginaPratos />} />
           <Route path="/pratos/:id/receita" element={<PaginaReceita />} />
