@@ -6,6 +6,7 @@ import type {
   Cardapio,
   Cliente,
   DiaSemana,
+  Insumo,
   Prato,
   RefeicaoConfig,
   TipoRefeicao,
@@ -83,6 +84,22 @@ export class SupabaseRepository implements Repository {
     });
     if (error) throw error;
   }
+
+  async listarInsumos(): Promise<Insumo[]> {
+    const { data, error } = await this.db.from('insumos').select('*').order('nome');
+    const rows = this.assert(data, error);
+    return rows.map(mapInsumoFromRow);
+  }
+
+  async salvarInsumo(insumo: Insumo): Promise<void> {
+    const { error } = await this.db.from('insumos').upsert(mapInsumoToRow(insumo));
+    if (error) throw error;
+  }
+
+  async removerInsumo(id: string): Promise<void> {
+    const { error } = await this.db.from('insumos').delete().eq('id', id);
+    if (error) throw error;
+  }
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -127,6 +144,7 @@ function mapPratoFromRow(r: any): Prato {
     restricoes: r.restricoes ?? [],
     tags: r.tags ?? [],
     ativo: r.ativo ?? true,
+    receita: r.receita ?? undefined,
   };
 }
 
@@ -138,6 +156,27 @@ function mapPratoToRow(p: Prato) {
     restricoes: p.restricoes,
     tags: p.tags,
     ativo: p.ativo,
+    receita: p.receita ?? null,
+  };
+}
+
+function mapInsumoFromRow(r: any): Insumo {
+  return {
+    id: r.id,
+    nome: r.nome,
+    unidade: r.unidade,
+    precoUnitario: Number(r.preco_unitario ?? 0),
+    ativo: r.ativo ?? true,
+  };
+}
+
+function mapInsumoToRow(i: Insumo) {
+  return {
+    id: i.id,
+    nome: i.nome,
+    unidade: i.unidade,
+    preco_unitario: i.precoUnitario,
+    ativo: i.ativo,
   };
 }
 
