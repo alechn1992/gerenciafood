@@ -14,16 +14,8 @@ import { formatarData, segundaFeiraDaSemana } from '../lib/datas';
 
 export function PaginaCardapio() {
   const { id } = useParams();
-  const { clientes, turmas } = useData();
+  const { clientes } = useData();
   const cliente = clientes.find((c) => c.id === id);
-
-  const turmasDoCliente = useMemo(
-    () =>
-      turmas
-        .filter((t) => t.clienteId === cliente?.id)
-        .sort((a, b) => a.ordem - b.ordem),
-    [turmas, cliente?.id],
-  );
 
   if (!cliente) {
     return (
@@ -32,6 +24,25 @@ export function PaginaCardapio() {
       </div>
     );
   }
+
+  return <MontagemCardapio cliente={cliente} />;
+}
+
+/**
+ * Monta o cardápio (semanal ou mensal) de um cliente já escolhido, aplicando
+ * automaticamente as particularidades cadastradas (dias de operação, refeições,
+ * restrições e, quando houver, as turmas/faixas etárias do cliente).
+ */
+export function MontagemCardapio({ cliente }: { cliente: Cliente }) {
+  const { turmas } = useData();
+
+  const turmasDoCliente = useMemo(
+    () =>
+      turmas
+        .filter((t) => t.clienteId === cliente.id)
+        .sort((a, b) => a.ordem - b.ordem),
+    [turmas, cliente.id],
+  );
 
   return turmasDoCliente.length > 0 ? (
     <CardapioPorTurmas cliente={cliente} turmasDoCliente={turmasDoCliente} />
