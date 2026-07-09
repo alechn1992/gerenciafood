@@ -142,23 +142,31 @@ export function PaginaClienteForm() {
       observacoes: observacoes.trim() || undefined,
       criadoEm: existente?.criadoEm ?? new Date().toISOString(),
     };
-    await salvarCliente(cliente);
 
-    // Gravações sequenciais: o repositório local faz leitura-modificação-escrita
-    // sobre um único array no localStorage, então chamadas concorrentes (Promise.all)
-    // fariam uma sobrescrever o resultado da outra.
-    const idsFinais = new Set(usaTurmas ? turmasEdit.map((t) => t.id) : []);
-    const paraRemover = [...idsOriginais.current].filter((tid) => !idsFinais.has(tid));
-    for (const tid of paraRemover) {
-      await removerTurma(tid);
-    }
-    if (usaTurmas) {
-      for (const [idx, t] of turmasEdit.entries()) {
-        await salvarTurma({ ...t, clienteId: cliente.id, nome: t.nome.trim(), ordem: idx });
+    try {
+      await salvarCliente(cliente);
+
+      // Gravações sequenciais: o repositório local faz leitura-modificação-escrita
+      // sobre um único array no localStorage, então chamadas concorrentes (Promise.all)
+      // fariam uma sobrescrever o resultado da outra.
+      const idsFinais = new Set(usaTurmas ? turmasEdit.map((t) => t.id) : []);
+      const paraRemover = [...idsOriginais.current].filter((tid) => !idsFinais.has(tid));
+      for (const tid of paraRemover) {
+        await removerTurma(tid);
       }
-    }
+      if (usaTurmas) {
+        for (const [idx, t] of turmasEdit.entries()) {
+          await salvarTurma({ ...t, clienteId: cliente.id, nome: t.nome.trim(), ordem: idx });
+        }
+      }
 
-    navigate('/clientes');
+      navigate('/clientes');
+    } catch (err) {
+      console.error('[GerenciaFood] Erro ao salvar cliente:', err);
+      alert(
+        'Não foi possível salvar o cliente. Verifique a conexão com o banco de dados e tente novamente.',
+      );
+    }
   };
 
   return (

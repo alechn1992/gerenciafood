@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Cardapio, Cliente, Insumo, Prato, TipoRefeicao, Turma } from '../domain/types';
 import { getRepository, type Repository } from '../data/repo';
+import { TIPOS_REFEICAO_PADRAO } from '../data/seed';
 
 interface DataState {
   repo: Repository;
@@ -44,19 +45,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const [c, p, t, i, tu] = await Promise.all([
-        repo.listarClientes(),
-        repo.listarPratos(),
-        repo.listarTiposRefeicao(),
-        repo.listarInsumos(),
-        repo.listarTurmas(),
-      ]);
-      setClientes(c);
-      setPratos(p);
-      setTipos(t);
-      setInsumos(i);
-      setTurmas(tu);
-      setCarregando(false);
+      try {
+        const [c, p, t, i, tu] = await Promise.all([
+          repo.listarClientes(),
+          repo.listarPratos(),
+          repo.listarTiposRefeicao(),
+          repo.listarInsumos(),
+          repo.listarTurmas(),
+        ]);
+        setClientes(c);
+        setPratos(p);
+        setTipos(t.length > 0 ? t : TIPOS_REFEICAO_PADRAO);
+        setInsumos(i);
+        setTurmas(tu);
+      } catch (err) {
+        console.error('[GerenciaFood] Erro ao carregar dados:', err);
+        setTipos(TIPOS_REFEICAO_PADRAO);
+      } finally {
+        setCarregando(false);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
