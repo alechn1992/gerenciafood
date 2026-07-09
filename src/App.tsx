@@ -33,11 +33,18 @@ function RotaProtegida({ children }: { children: React.ReactNode }) {
 
 export function App() {
   const { repo } = useData();
-  const { user, sair } = useAuth();
+  const { user, session, carregando: carregandoAuth, sair } = useAuth();
 
   return (
     <Routes>
-      <Route path="/login" element={<PaginaLogin />} />
+      <Route
+        path="/login"
+        element={
+          supabase && !carregandoAuth && session
+            ? <Navigate to="/" replace />
+            : <PaginaLogin />
+        }
+      />
       <Route
         path="/*"
         element={
