@@ -124,7 +124,7 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
         situacao: respostas[item.id] ?? '',
         observacao: observacoes[item.id] ?? '',
       }));
-      const { error } = await supabase.functions.invoke('enviar-relatorio', {
+      const { data, error } = await supabase.functions.invoke('enviar-relatorio', {
         body: {
           destinatario: emailDest.trim(),
           clienteNome: cliente.nome,
@@ -137,12 +137,29 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
           itens,
         },
       });
-      if (error) throw error;
+      if (error) {
+        // Tenta extrair a mensagem real retornada pela Edge Function
+        let msg = 'Falha ao enviar.';
+        try {
+          const body = typeof error.context?.json === 'function'
+            ? await error.context.json()
+            : null;
+          if (body?.error) msg = body.error;
+          else if (error.message) msg = error.message;
+        } catch { /* ignora */ }
+        setMsgEmail({ tipo: 'erro', texto: msg });
+        return;
+      }
+      if (data?.error) {
+        setMsgEmail({ tipo: 'erro', texto: data.error });
+        return;
+      }
       setMsgEmail({ tipo: 'ok', texto: `E-mail enviado para ${emailDest}.` });
       setEmailDest('');
       setTimeout(() => { setModalEmail(false); setMsgEmail(null); }, 3000);
-    } catch {
-      setMsgEmail({ tipo: 'erro', texto: 'Falha ao enviar. Verifique a API key do Resend.' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro inesperado.';
+      setMsgEmail({ tipo: 'erro', texto: msg });
     } finally {
       setEnviando(false);
     }
