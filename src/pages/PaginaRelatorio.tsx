@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
-import type { Cliente } from '../domain/types';
+import type { Cliente, Relatorio } from '../domain/types';
 import {
   CHECKLIST_BOAS_PRATICAS,
   CHECKLIST_CEI_SESA_162,
@@ -9,6 +9,7 @@ import {
   REFERENCIAS_NORMATIVAS,
 } from '../domain/legislacao';
 import { formatarData } from '../lib/datas';
+import { supabase } from '../lib/supabase';
 
 type Situacao = 'conforme' | 'nao_conforme' | 'na' | '';
 
@@ -21,6 +22,7 @@ function lerImagemComoDataURL(file: File): Promise<string> {
 }
 
 export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
+  const { repo } = useData();
   const [respostas, setRespostas] = useState<Record<string, Situacao>>({});
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
   const [fotos, setFotos] = useState<Record<string, string>>({});
@@ -29,6 +31,30 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
   const [ehCei, setEhCei] = useState(false);
   const [logo, setLogo] = useState('');
   const [registroCRN, setRegistroCRN] = useState('');
+  const relatorioIdRef = useRef<string>(crypto.randomUUID());
+
+  // estado de UI
+  const [salvando, setSalvando] = useState(false);
+  const [msgSalvar, setMsgSalvar] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  const [modalEmail, setModalEmail] = useState(false);
+  const [emailDest, setEmailDest] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [msgEmail, setMsgEmail] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+
+  // Carrega o último relatório salvo para este cliente
+  useEffect(() => {
+    repo.carregarRelatorio(cliente.id).then((rel) => {
+      if (!rel) return;
+      relatorioIdRef.current = rel.id;
+      setAvaliador(rel.avaliador);
+      setRegistroCRN(rel.registroCRN);
+      setEhCei(rel.ehCei);
+      setDataAval(rel.dataAvaliacao);
+      setRespostas(rel.respostas as Record<string, Situacao>);
+      setObservacoes(rel.observacoes);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cliente.id]);
 
   const blocosAtivos = ehCei
     ? [...CHECKLIST_BOAS_PRATICAS, ...CHECKLIST_CEI_SESA_162]
@@ -57,8 +83,140 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
     e.target.value = '';
   }
 
+  async function handleSalvar() {
+    setSalvando(true);
+    setMsgSalvar(null);
+    try {
+      const rel: Relatorio = {
+        id: relatorioIdRef.current,
+        clienteId: cliente.id,
+        avaliador,
+        registroCRN,
+        ehCei,
+        dataAvaliacao: dataAval,
+        respostas,
+        observacoes,
+        geradoEm: new Date().toISOString(),
+        atualizadoEm: new Date().toISOString(),
+      };
+      await repo.salvarRelatorio(rel);
+      setMsgSalvar({ tipo: 'ok', texto: 'Relatório salvo com sucesso.' });
+    } catch {
+      setMsgSalvar({ tipo: 'erro', texto: 'Erro ao salvar. Tente novamente.' });
+    } finally {
+      setSalvando(false);
+      setTimeout(() => setMsgSalvar(null), 4000);
+    }
+  }
+
+  async function handleEnviarEmail() {
+    if (!emailDest.trim()) return;
+    if (!supabase) {
+      setMsgEmail({ tipo: 'erro', texto: 'Envio por e-mail requer modo Supabase.' });
+      return;
+    }
+    setEnviando(true);
+    setMsgEmail(null);
+    try {
+      const itens = itensTotais.map((item) => ({
+        texto: item.texto,
+        referencia: item.referencia ?? '',
+        situacao: respostas[item.id] ?? '',
+        observacao: observacoes[item.id] ?? '',
+      }));
+      const { error } = await supabase.functions.invoke('enviar-relatorio', {
+        body: {
+          destinatario: emailDest.trim(),
+          clienteNome: cliente.nome,
+          avaliador,
+          registroCRN,
+          dataAvaliacao: formatarData(dataAval),
+          indice,
+          conformes: conformes.length,
+          naoConformes: naoConformes.length,
+          itens,
+        },
+      });
+      if (error) throw error;
+      setMsgEmail({ tipo: 'ok', texto: `E-mail enviado para ${emailDest}.` });
+      setEmailDest('');
+      setTimeout(() => { setModalEmail(false); setMsgEmail(null); }, 3000);
+    } catch {
+      setMsgEmail({ tipo: 'erro', texto: 'Falha ao enviar. Verifique a API key do Resend.' });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   return (
     <>
+      {/* Barra de ações */}
+      <div className="linha no-print" style={{ marginBottom: 16 }}>
+        <div>
+          {msgSalvar && (
+            <span
+              className={msgSalvar.tipo === 'ok' ? 'login-aviso sucesso' : 'login-aviso erro'}
+              style={{ display: 'inline-block', margin: 0, padding: '6px 14px' }}
+            >
+              {msgSalvar.texto}
+            </span>
+          )}
+        </div>
+        <div className="acoes">
+          <button className="btn secundario" onClick={handleSalvar} disabled={salvando}>
+            {salvando ? 'Salvando…' : '💾 Salvar rascunho'}
+          </button>
+          <button className="btn secundario" onClick={() => { setModalEmail(true); setMsgEmail(null); }}>
+            ✉️ Enviar por e-mail
+          </button>
+        </div>
+      </div>
+
+      {/* Modal de envio por e-mail */}
+      {modalEmail && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setModalEmail(false); }}
+        >
+          <div className="card" style={{ width: 420, margin: 0 }}>
+            <div className="linha" style={{ marginBottom: 16 }}>
+              <h3 style={{ margin: 0 }}>Enviar relatório por e-mail</h3>
+              <button
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}
+                onClick={() => setModalEmail(false)}
+              >✕</button>
+            </div>
+            <label>E-mail do destinatário</label>
+            <input
+              type="email"
+              placeholder="nutricionista@empresa.com"
+              value={emailDest}
+              onChange={(e) => setEmailDest(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleEnviarEmail()}
+              style={{ marginBottom: 12 }}
+            />
+            {msgEmail && (
+              <div
+                className={msgEmail.tipo === 'ok' ? 'login-aviso sucesso' : 'login-aviso erro'}
+                style={{ marginBottom: 12 }}
+              >
+                {msgEmail.texto}
+              </div>
+            )}
+            <div className="acoes" style={{ justifyContent: 'flex-end' }}>
+              <button className="btn secundario" onClick={() => setModalEmail(false)}>Cancelar</button>
+              <button className="btn" onClick={handleEnviarEmail} disabled={enviando || !emailDest.trim()}>
+                {enviando ? 'Enviando…' : 'Enviar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tipo de estabelecimento */}
       <div className="card no-print">
         <div className="linha">

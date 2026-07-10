@@ -9,6 +9,7 @@ import type {
   Insumo,
   Prato,
   RefeicaoConfig,
+  Relatorio,
   TipoRefeicao,
   Turma,
 } from '../domain/types';
@@ -119,6 +120,34 @@ export class SupabaseRepository implements Repository {
   async removerTurma(id: string): Promise<void> {
     const { error } = await this.db.from('turmas').delete().eq('id', id);
     if (error) throw error;
+  }
+
+  async salvarRelatorio(r: Relatorio): Promise<void> {
+    const { error } = await this.db.from('relatorios').upsert({
+      id: r.id,
+      cliente_id: r.clienteId,
+      avaliador: r.avaliador,
+      registro_crn: r.registroCRN,
+      eh_cei: r.ehCei,
+      data_avaliacao: r.dataAvaliacao,
+      respostas: r.respostas,
+      observacoes: r.observacoes,
+      gerado_em: r.geradoEm,
+      atualizado_em: new Date().toISOString(),
+    });
+    if (error) throw error;
+  }
+
+  async carregarRelatorio(clienteId: string): Promise<Relatorio | null> {
+    const { data, error } = await this.db
+      .from('relatorios')
+      .select('*')
+      .eq('cliente_id', clienteId)
+      .order('atualizado_em', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? mapRelatorioFromRow(data) : null;
   }
 }
 
@@ -236,5 +265,20 @@ function mapTurmaToRow(t: Turma) {
     ordem: t.ordem,
     refeicoes: t.refeicoes,
     restricoes: t.restricoes,
+  };
+}
+
+function mapRelatorioFromRow(r: any): Relatorio {
+  return {
+    id: r.id,
+    clienteId: r.cliente_id,
+    avaliador: r.avaliador ?? '',
+    registroCRN: r.registro_crn ?? '',
+    ehCei: r.eh_cei ?? false,
+    dataAvaliacao: r.data_avaliacao,
+    respostas: r.respostas ?? {},
+    observacoes: r.observacoes ?? {},
+    geradoEm: r.gerado_em,
+    atualizadoEm: r.atualizado_em,
   };
 }

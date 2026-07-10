@@ -173,3 +173,20 @@ export interface Cardapio {
   itens: ItemCardapio[];
   geradoEm: string;
 }
+
+/** Relatório de segurança dos alimentos salvo para um cliente. */
+export interface Relatorio {
+  id: string;
+  clienteId: string;
+  avaliador: string;
+  registroCRN: string;
+  ehCei: boolean;
+  /** Data ISO (YYYY-MM-DD) da avaliação. */
+  dataAvaliacao: string;
+  /** Mapa itemId → situação ('conforme' | 'nao_conforme' | 'na' | ''). */
+  respostas: Record<string, string>;
+  /** Mapa itemId → texto de observação. */
+  observacoes: Record<string, string>;
+  geradoEm: string;
+  atualizadoEm: string;
+}

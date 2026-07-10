@@ -5,7 +5,7 @@
 // Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY), os dados passam a ser
 // persistidos no Postgres do Supabase.
 
-import type { Cardapio, Cliente, Insumo, Prato, TipoRefeicao, Turma } from '../domain/types';
+import type { Cardapio, Cliente, Insumo, Prato, Relatorio, TipoRefeicao, Turma } from '../domain/types';
 import { INSUMOS_PADRAO, PRATOS_PADRAO, TIPOS_REFEICAO_PADRAO } from './seed';
 import { supabase } from '../lib/supabase';
 import { SupabaseRepository } from './supabaseRepo';
@@ -27,6 +27,8 @@ export interface Repository {
   listarTurmas(clienteId?: string): Promise<Turma[]>;
   salvarTurma(turma: Turma): Promise<void>;
   removerTurma(id: string): Promise<void>;
+  salvarRelatorio(r: Relatorio): Promise<void>;
+  carregarRelatorio(clienteId: string): Promise<Relatorio | null>;
 }
 
 const KEYS = {
@@ -36,6 +38,7 @@ const KEYS = {
   cardapios: 'gf.cardapios',
   insumos: 'gf.insumos',
   turmas: 'gf.turmas',
+  relatorios: 'gf.relatorios',
 };
 
 function ler<T>(key: string, fallback: T): T {
@@ -171,6 +174,21 @@ export class LocalRepository implements Repository {
       KEYS.cardapios,
       (await this.listarCardapios()).filter((c) => c.turmaId !== id),
     );
+  }
+
+  async salvarRelatorio(r: Relatorio): Promise<void> {
+    const todos = ler<Relatorio[]>(KEYS.relatorios, []);
+    const idx = todos.findIndex((x) => x.id === r.id);
+    if (idx >= 0) todos[idx] = r; else todos.push(r);
+    escrever(KEYS.relatorios, todos);
+  }
+
+  async carregarRelatorio(clienteId: string): Promise<Relatorio | null> {
+    const todos = ler<Relatorio[]>(KEYS.relatorios, []);
+    const doCliente = todos
+      .filter((r) => r.clienteId === clienteId)
+      .sort((a, b) => b.atualizadoEm.localeCompare(a.atualizadoEm));
+    return doCliente[0] ?? null;
   }
 }
 
