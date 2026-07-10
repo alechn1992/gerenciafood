@@ -1,5 +1,4 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
-import { useData } from './state/DataContext';
 import { useAuth } from './auth/AuthContext';
 import { supabase } from './lib/supabase';
 import { PaginaLogin } from './pages/PaginaLogin';
@@ -33,7 +32,6 @@ function RotaProtegida({ children }: { children: React.ReactNode }) {
 }
 
 export function App() {
-  const { repo } = useData();
   const { user, session, carregando: carregandoAuth, sair } = useAuth();
 
   return (
