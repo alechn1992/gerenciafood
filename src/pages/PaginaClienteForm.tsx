@@ -1,4 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+
+function lerImagemComoDataURL(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.readAsDataURL(file);
+  });
+}
 import { useNavigate, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import {
@@ -59,6 +67,8 @@ export function PaginaClienteForm() {
   const [nome, setNome] = useState(existente?.nome ?? '');
   const [cnpj, setCnpj] = useState(existente?.cnpj ?? '');
   const [responsavel, setResponsavel] = useState(existente?.responsavel ?? '');
+  const [registroProfissional, setRegistroProfissional] = useState(existente?.registroProfissional ?? '');
+  const [logo, setLogo] = useState(existente?.logo ?? '');
   const [cidade, setCidade] = useState(existente?.cidade ?? '');
   const [uf, setUf] = useState(existente?.uf ?? 'PR');
   const [observacoes, setObservacoes] = useState(existente?.observacoes ?? '');
@@ -115,6 +125,12 @@ export function PaginaClienteForm() {
       ),
     );
 
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) setLogo(await lerImagemComoDataURL(file));
+    e.target.value = '';
+  }
+
   const salvar = async () => {
     if (!nome.trim()) {
       alert('Informe o nome do cliente.');
@@ -134,6 +150,8 @@ export function PaginaClienteForm() {
       nome: nome.trim(),
       cnpj: cnpj.trim() || undefined,
       responsavel: responsavel.trim() || undefined,
+      registroProfissional: registroProfissional.trim() || undefined,
+      logo: logo || undefined,
       cidade: cidade.trim() || undefined,
       uf: uf.trim() || 'PR',
       diasOperacao,
@@ -177,6 +195,31 @@ export function PaginaClienteForm() {
       </p>
 
       <div className="card">
+        <div style={{ marginBottom: 20 }}>
+          <label>Logo do estabelecimento</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8 }}>
+            {logo ? (
+              <>
+                <img
+                  src={logo}
+                  alt="Logo"
+                  style={{ height: 64, objectFit: 'contain', border: '1px solid var(--borda)', borderRadius: 6, padding: 4 }}
+                />
+                <button className="btn pequeno secundario" type="button" onClick={() => setLogo('')}>
+                  Remover
+                </button>
+              </>
+            ) : (
+              <label style={{ cursor: 'pointer', border: '2px dashed var(--borda)', borderRadius: 8, padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--cinza)' }}>
+                <span style={{ fontSize: '1.3rem' }}>🏢</span>
+                <span>Selecionar imagem</span>
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoUpload} />
+              </label>
+            )}
+          </div>
+          <p className="subtitulo" style={{ marginTop: 6 }}>Usada automaticamente no cabeçalho do relatório.</p>
+        </div>
+
         <div className="grid cols-2">
           <div>
             <label>Nome / Razão social *</label>
@@ -187,8 +230,16 @@ export function PaginaClienteForm() {
             <input value={cnpj} onChange={(e) => setCnpj(e.target.value)} />
           </div>
           <div>
-            <label>Responsável técnico</label>
+            <label>Responsável / Nutricionista</label>
             <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} />
+          </div>
+          <div>
+            <label>Registro profissional (CRN / CFTA)</label>
+            <input
+              value={registroProfissional}
+              onChange={(e) => setRegistroProfissional(e.target.value)}
+              placeholder="Ex.: CRN-8 1234"
+            />
           </div>
           <div className="grid cols-2">
             <div>

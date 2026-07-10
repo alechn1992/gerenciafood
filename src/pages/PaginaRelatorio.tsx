@@ -26,11 +26,11 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
   const [respostas, setRespostas] = useState<Record<string, Situacao>>({});
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
   const [fotos, setFotos] = useState<Record<string, string>>({});
-  const [avaliador, setAvaliador] = useState('');
+  const [avaliador, setAvaliador] = useState(cliente.responsavel ?? '');
   const [dataAval, setDataAval] = useState(new Date().toISOString().slice(0, 10));
   const [ehCei, setEhCei] = useState(false);
-  const [logo, setLogo] = useState('');
-  const [registroCRN, setRegistroCRN] = useState('');
+  const [logo, setLogo] = useState(cliente.logo ?? '');
+  const [registroCRN, setRegistroCRN] = useState(cliente.registroProfissional ?? '');
   const relatorioIdRef = useRef<string>(crypto.randomUUID());
 
   // estado de UI

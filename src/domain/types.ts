@@ -141,6 +141,8 @@ export interface Cliente {
   nome: string;
   cnpj?: string;
   responsavel?: string;
+  registroProfissional?: string;
+  logo?: string;
   cidade?: string;
   uf: string; // padrão 'PR'
   /** Dias em que há operação (ex.: [1,2,3,4,5] = seg a sex). */
