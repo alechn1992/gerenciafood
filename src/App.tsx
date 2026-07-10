@@ -9,6 +9,7 @@ import { PaginaPratos } from './pages/PaginaPratos';
 import { PaginaCardapio } from './pages/PaginaCardapio';
 import { PaginaMontagemCardapio } from './pages/PaginaMontagemCardapio';
 import { PaginaRelatorio } from './pages/PaginaRelatorio';
+import { PaginaRelatorioMenu } from './pages/PaginaRelatorioMenu';
 import { PaginaReceita } from './pages/PaginaReceita';
 import { PaginaInsumos } from './pages/PaginaInsumos';
 
@@ -65,6 +66,9 @@ export function App() {
                   <NavLink to="/insumos" className={({ isActive }) => (isActive ? 'ativo' : '')}>
                     Insumos
                   </NavLink>
+                  <NavLink to="/relatorio" className={({ isActive }) => (isActive ? 'ativo' : '')}>
+                    Relatório
+                  </NavLink>
                 </nav>
 
                 <div className="sidebar-rodape">
@@ -92,6 +96,7 @@ export function App() {
                   <Route path="/clientes/:id/cardapio" element={<PaginaCardapio />} />
                   <Route path="/cardapio" element={<PaginaMontagemCardapio />} />
                   <Route path="/clientes/:id/relatorio" element={<PaginaRelatorio />} />
+                  <Route path="/relatorio" element={<PaginaRelatorioMenu />} />
                   <Route path="/pratos" element={<PaginaPratos />} />
                   <Route path="/pratos/:id/receita" element={<PaginaReceita />} />
                   <Route path="/insumos" element={<PaginaInsumos />} />

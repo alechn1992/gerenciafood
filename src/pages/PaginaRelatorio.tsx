@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
+import type { Cliente } from '../domain/types';
 import {
   CHECKLIST_BOAS_PRATICAS,
   CHECKLIST_CEI_SESA_162,
@@ -11,24 +12,14 @@ import { formatarData } from '../lib/datas';
 
 type Situacao = 'conforme' | 'nao_conforme' | 'na' | '';
 
-export function PaginaRelatorio() {
-  const { id } = useParams();
-  const { clientes } = useData();
-  const cliente = clientes.find((c) => c.id === id);
-
+// Componente reutilizável — pode ser montado via rota /clientes/:id/relatorio
+// ou via /relatorio com seletor de cliente.
+export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
   const [respostas, setRespostas] = useState<Record<string, Situacao>>({});
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
   const [avaliador, setAvaliador] = useState('');
   const [dataAval, setDataAval] = useState(new Date().toISOString().slice(0, 10));
   const [ehCei, setEhCei] = useState(false);
-
-  if (!cliente) {
-    return (
-      <div className="card vazio">
-        Cliente não encontrado. <Link to="/clientes">Voltar</Link>
-      </div>
-    );
-  }
 
   const blocosAtivos = ehCei
     ? [...CHECKLIST_BOAS_PRATICAS, ...CHECKLIST_CEI_SESA_162]
@@ -45,24 +36,7 @@ export function PaginaRelatorio() {
       : 0;
 
   return (
-    <div>
-      <div className="linha no-print">
-        <div>
-          <h1>Relatório de segurança dos alimentos</h1>
-          <p className="subtitulo">
-            Checklist de Boas Práticas — RDC ANVISA nº 216/2004 e normas do Paraná.
-          </p>
-        </div>
-        <div className="acoes">
-          <Link to="/clientes" className="btn secundario">
-            ← Voltar
-          </Link>
-          <button className="btn" onClick={() => window.print()}>
-            🖨️ Imprimir / PDF
-          </button>
-        </div>
-      </div>
-
+    <>
       <div className="card no-print">
         <div className="linha">
           <div>
@@ -132,9 +106,7 @@ export function PaginaRelatorio() {
             <thead>
               <tr>
                 <th>Item</th>
-                <th style={{ width: 210 }} className="no-print">
-                  Situação
-                </th>
+                <th style={{ width: 210 }} className="no-print">Situação</th>
                 <th style={{ width: 90 }} className="somente-print" />
               </tr>
             </thead>
@@ -220,20 +192,47 @@ export function PaginaRelatorio() {
           substitui a íntegra das normas nem a fiscalização da vigilância sanitária.
         </p>
       </div>
+    </>
+  );
+}
+
+// Rota /clientes/:id/relatorio — acesso direto via lista de clientes.
+export function PaginaRelatorio() {
+  const { id } = useParams();
+  const { clientes } = useData();
+  const cliente = clientes.find((c) => c.id === id);
+
+  if (!cliente) {
+    return (
+      <div className="card vazio">
+        Cliente não encontrado. <Link to="/clientes">Voltar</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="linha no-print">
+        <div>
+          <h1>Relatório de segurança dos alimentos</h1>
+          <p className="subtitulo">
+            Checklist de Boas Práticas — RDC ANVISA nº 216/2004 e normas do Paraná.
+          </p>
+        </div>
+        <div className="acoes">
+          <Link to="/clientes" className="btn secundario">← Voltar</Link>
+          <button className="btn" onClick={() => window.print()}>🖨️ Imprimir / PDF</button>
+        </div>
+      </div>
+      <RelatorioCliente cliente={cliente} />
     </div>
   );
 }
 
 function Indicador({
-  titulo,
-  valor,
-  destaque,
-  alerta,
+  titulo, valor, destaque, alerta,
 }: {
-  titulo: string;
-  valor: string;
-  destaque?: boolean;
-  alerta?: boolean;
+  titulo: string; valor: string; destaque?: boolean; alerta?: boolean;
 }) {
   return (
     <div
@@ -245,13 +244,7 @@ function Indicador({
         background: destaque ? 'var(--verde-claro)' : alerta ? 'var(--alerta-bg)' : 'var(--branco)',
       }}
     >
-      <div
-        style={{
-          fontSize: '1.8rem',
-          fontWeight: 700,
-          color: alerta ? 'var(--alerta)' : 'var(--verde-escuro)',
-        }}
-      >
+      <div style={{ fontSize: '1.8rem', fontWeight: 700, color: alerta ? 'var(--alerta)' : 'var(--verde-escuro)' }}>
         {valor}
       </div>
       <div style={{ color: 'var(--cinza)', fontSize: '0.85rem' }}>{titulo}</div>
@@ -259,13 +252,7 @@ function Indicador({
   );
 }
 
-function SeletorSituacao({
-  valor,
-  onChange,
-}: {
-  valor: Situacao;
-  onChange: (v: Situacao) => void;
-}) {
+function SeletorSituacao({ valor, onChange }: { valor: Situacao; onChange: (v: Situacao) => void }) {
   const opcoes: { v: Situacao; label: string }[] = [
     { v: 'conforme', label: 'Conforme' },
     { v: 'nao_conforme', label: 'Não conf.' },
@@ -287,11 +274,8 @@ function SeletorSituacao({
 }
 
 function rotuloSituacao(s: Situacao): string {
-  return s === 'conforme'
-    ? '☑ Conforme'
-    : s === 'nao_conforme'
-      ? '☒ Não conforme'
-      : s === 'na'
-        ? '— N/A'
-        : '☐';
+  return s === 'conforme' ? '☑ Conforme'
+    : s === 'nao_conforme' ? '☒ Não conforme'
+    : s === 'na' ? '— N/A'
+    : '☐';
 }
