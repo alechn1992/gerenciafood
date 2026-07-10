@@ -8,7 +8,7 @@ function calcUnitario(precoEmbalagem: number, qtd: number): number {
 }
 
 function formatarPreco(v: number) {
-  return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function PaginaInsumos() {
