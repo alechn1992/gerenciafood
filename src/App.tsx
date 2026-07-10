@@ -80,10 +80,7 @@ export function App() {
                       </button>
                     </div>
                   )}
-                  <div className="modo">
-                    Armazenamento:{' '}
-                    <strong>{repo.modo === 'supabase' ? 'Supabase' : 'Local (navegador)'}</strong>
-                  </div>
+
                 </div>
               </aside>
 
