@@ -1,8 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Remetente: configure um domínio verificado no Resend e troque este valor.
-// Sem domínio verificado, use 'onboarding@resend.dev' (funciona em sandbox).
-const FROM = 'GerenciaFood <onboarding@resend.dev>'
+const FROM = 'GerenciaFood <noreply@escolapontedosaber.com.br>'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
