@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useData } from '../state/DataContext';
 import { UNIDADES_MEDIDA, type Insumo, type NutricaoInsumo, type UnidadeMedida } from '../domain/types';
-import { TACO, type ItemTaco } from '../data/taco';
+import { TODAS_TABELAS, ROTULO_FONTE, COR_FONTE, type ItemTaco } from '../data/tabelasNutricao';
 
 // Unidades cujo peso em gramas é derivado automaticamente da quantidade.
 const PESO_AUTO = new Set<UnidadeMedida>(['kg', 'g', 'l', 'ml']);
@@ -27,7 +27,9 @@ function TacoBusca({ onSelecionar }: { onSelecionar: (item: ItemTaco) => void })
 
   const resultados =
     busca.trim().length >= 2
-      ? TACO.filter((t) => t.nome.toLowerCase().includes(busca.trim().toLowerCase())).slice(0, 10)
+      ? TODAS_TABELAS.filter((t) =>
+          t.nome.toLowerCase().includes(busca.trim().toLowerCase()),
+        ).slice(0, 12)
       : [];
 
   return (
@@ -58,29 +60,46 @@ function TacoBusca({ onSelecionar }: { onSelecionar: (item: ItemTaco) => void })
             overflowY: 'auto',
           }}
         >
-          {resultados.map((t) => (
-            <div
-              key={t.id}
-              onMouseDown={() => {
-                onSelecionar(t);
-                setBusca(t.nome);
-                setAberto(false);
-              }}
-              style={{
-                padding: '8px 12px',
-                cursor: 'pointer',
-                borderBottom: '1px solid var(--borda)',
-                fontSize: '0.88rem',
-              }}
-              className="taco-opcao"
-            >
-              <strong style={{ display: 'block' }}>{t.nome}</strong>
-              <span style={{ color: 'var(--cinza)' }}>
-                {t.kcal} kcal · P {formatarNutri(t.proteinas)}g · C {formatarNutri(t.carboidratos)}g ·
-                G {formatarNutri(t.gorduras)}g
-              </span>
-            </div>
-          ))}
+          {resultados.map((t) => {
+            const cor = COR_FONTE[t.fonte];
+            return (
+              <div
+                key={t.id}
+                onMouseDown={() => {
+                  onSelecionar(t);
+                  setBusca(t.nome);
+                  setAberto(false);
+                }}
+                style={{
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid var(--borda)',
+                  fontSize: '0.88rem',
+                }}
+                className="taco-opcao"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <strong>{t.nome}</strong>
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '1px 5px',
+                      borderRadius: 4,
+                      background: cor.bg,
+                      color: cor.text,
+                    }}
+                  >
+                    {ROTULO_FONTE[t.fonte]}
+                  </span>
+                </div>
+                <span style={{ color: 'var(--cinza)' }}>
+                  {t.kcal} kcal · P {formatarNutri(t.proteinas)}g · C{' '}
+                  {formatarNutri(t.carboidratos)}g · G {formatarNutri(t.gorduras)}g
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -154,7 +173,25 @@ function PainelNutricao({
       }}
     >
       <div style={{ marginBottom: 10 }}>
-        <label>Buscar na tabela TACO (preenche automaticamente)</label>
+        <label>
+          Buscar nas tabelas{' '}
+          {(['taco', 'usda', 'ibge'] as const).map((f) => (
+            <span
+              key={f}
+              style={{
+                marginLeft: 4,
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                padding: '1px 5px',
+                borderRadius: 4,
+                background: COR_FONTE[f].bg,
+                color: COR_FONTE[f].text,
+              }}
+            >
+              {ROTULO_FONTE[f]}
+            </span>
+          ))}
+        </label>
         <TacoBusca onSelecionar={aplicarTaco} />
       </div>
 
@@ -242,6 +279,13 @@ function InsumoLinha({
   const qtdNum = Number(qtd.replace(',', '.')) || 1;
   const precoNum = Number(preco.replace(',', '.')) || 0;
   const temNutri = !!insumo.nutricao;
+  const fonteItem = temNutri && insumo.nutricao?.tacoId
+    ? (insumo.nutricao.tacoId.startsWith('usda-')
+        ? 'usda'
+        : insumo.nutricao.tacoId.startsWith('ibge-')
+        ? 'ibge'
+        : 'taco') as import('../data/tabelasNutricao').FonteNutricional
+    : null;
 
   return (
     <>
@@ -275,9 +319,28 @@ function InsumoLinha({
             style={{ whiteSpace: 'nowrap' }}
             onClick={() => setExpandido((v) => !v)}
           >
-            {temNutri
-              ? `✓ ${insumo.nutricao!.kcal} kcal`
-              : '🔬 Vincular'}
+            {temNutri ? (
+              <>
+                ✓ {insumo.nutricao!.kcal} kcal
+                {fonteItem && (
+                  <span
+                    style={{
+                      marginLeft: 5,
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      padding: '1px 4px',
+                      borderRadius: 3,
+                      background: COR_FONTE[fonteItem].bg,
+                      color: COR_FONTE[fonteItem].text,
+                    }}
+                  >
+                    {ROTULO_FONTE[fonteItem]}
+                  </span>
+                )}
+              </>
+            ) : (
+              '🔬 Vincular'
+            )}
           </button>
         </td>
         <td>{insumo.ativo ? 'Ativo' : 'Inativo'}</td>
