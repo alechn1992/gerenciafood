@@ -226,6 +226,8 @@ function mapInsumoFromRow(r: any): Insumo {
     precoEmbalagem,
     precoUnitario: precoEmbalagem / qtd,
     ativo: r.ativo ?? true,
+    pesoGramas: r.peso_gramas != null ? Number(r.peso_gramas) : undefined,
+    nutricao: r.nutricao ?? undefined,
   };
 }
 
@@ -238,6 +240,8 @@ function mapInsumoToRow(i: Insumo) {
     preco_embalagem: i.precoEmbalagem,
     preco_unitario: i.precoUnitario,
     ativo: i.ativo,
+    peso_gramas: i.pesoGramas ?? null,
+    nutricao: i.nutricao ?? null,
   };
 }
 
