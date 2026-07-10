@@ -385,7 +385,7 @@ export function PaginaReceita() {
             </>
           )}
           <p style={{ color: 'var(--cinza)', fontSize: '0.78rem', margin: '12px 0 0' }}>
-            Referência: TACO, 4ª edição (NEPA/UNICAMP)
+            Referências: TACO 4ª ed. (NEPA/UNICAMP) · USDA FoodData Central · IBGE/POF
           </p>
         </div>
       )}
