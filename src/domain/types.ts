@@ -58,6 +58,18 @@ export const UNIDADES_MEDIDA: { valor: UnidadeMedida; nome: string; sigla: strin
   { valor: 'pct', nome: 'Pacote', sigla: 'pct' },
 ];
 
+/** Valores nutricionais por 100 g / 100 ml do alimento (fonte: TACO ou entrada manual). */
+export interface NutricaoInsumo {
+  /** ID do item na tabela TACO, quando vinculado automaticamente. */
+  tacoId?: string;
+  kcal: number;
+  proteinas: number;
+  carboidratos: number;
+  gorduras: number;
+  fibras: number;
+  sodio: number;
+}
+
 /** Insumo (matéria-prima) cadastrado com preço, usado para custear receitas. */
 export interface Insumo {
   id: string;
@@ -70,6 +82,13 @@ export interface Insumo {
   /** Calculado: precoEmbalagem / qtdEmbalagem. Usado para custear receitas. */
   precoUnitario: number;
   ativo: boolean;
+  /**
+   * Gramas por 1 unidade de medida — necessário para calcular nutrição quando a
+   * unidade é un / dz / pct. Para kg/g/L/ml o peso é derivado automaticamente.
+   */
+  pesoGramas?: number;
+  /** Informação nutricional por 100 g (fonte: TACO ou manual). */
+  nutricao?: NutricaoInsumo;
 }
 
 /** Um insumo e a quantidade usada dentro de uma receita, para cálculo de custo. */

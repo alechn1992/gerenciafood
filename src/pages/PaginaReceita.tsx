@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import { rotuloCategoria } from '../domain/gerador';
-import { UNIDADES_MEDIDA, type ItemReceita, type Receita } from '../domain/types';
+import {
+  UNIDADES_MEDIDA,
+  type Insumo,
+  type ItemReceita,
+  type Receita,
+  type UnidadeMedida,
+} from '../domain/types';
 import { RESTRICOES_DISPONIVEIS } from '../data/seed';
 import { formatarMoeda } from '../lib/moeda';
 
@@ -14,6 +20,52 @@ function receitaVazia(): Receita {
 function extrairNumero(texto: string): number | null {
   const m = texto.match(/\d+/);
   return m ? Number(m[0]) : null;
+}
+
+/** Converte quantidade + unidade para gramas (null quando não calculável). */
+function calcGramas(quantidade: number, unidade: UnidadeMedida, pesoGramas?: number): number | null {
+  switch (unidade) {
+    case 'kg': return quantidade * 1000;
+    case 'g':  return quantidade;
+    case 'l':  return quantidade * 1000;
+    case 'ml': return quantidade;
+    case 'un': return pesoGramas != null ? quantidade * pesoGramas : null;
+    case 'dz': return pesoGramas != null ? quantidade * 12 * pesoGramas : null;
+    case 'pct': return pesoGramas != null ? quantidade * pesoGramas : null;
+  }
+}
+
+interface TotalNutricional {
+  kcal: number;
+  proteinas: number;
+  carboidratos: number;
+  gorduras: number;
+  fibras: number;
+  sodio: number;
+  comDados: number;
+  semDados: number;
+}
+
+function calcNutricao(itens: ItemReceita[], insumos: Insumo[]): TotalNutricional {
+  const total: TotalNutricional = {
+    kcal: 0, proteinas: 0, carboidratos: 0, gorduras: 0, fibras: 0, sodio: 0,
+    comDados: 0, semDados: 0,
+  };
+  for (const item of itens) {
+    const ins = insumos.find((i) => i.id === item.insumoId);
+    if (!ins || !ins.nutricao) { total.semDados++; continue; }
+    const gramas = calcGramas(item.quantidade, ins.unidade, ins.pesoGramas);
+    if (gramas === null) { total.semDados++; continue; }
+    const fator = gramas / 100;
+    total.kcal += ins.nutricao.kcal * fator;
+    total.proteinas += ins.nutricao.proteinas * fator;
+    total.carboidratos += ins.nutricao.carboidratos * fator;
+    total.gorduras += ins.nutricao.gorduras * fator;
+    total.fibras += ins.nutricao.fibras * fator;
+    total.sodio += ins.nutricao.sodio * fator;
+    total.comDados++;
+  }
+  return total;
 }
 
 export function PaginaReceita() {
@@ -66,6 +118,8 @@ export function PaginaReceita() {
   );
   const porcoes = extrairNumero(rendimento ?? '');
   const custoPorPorcao = porcoes && porcoes > 0 ? custoTotal / porcoes : null;
+
+  const nutricaoTotal = calcNutricao(insumosUsados, insumos);
 
   const salvarReceita = async () => {
     const receita: Receita = {
@@ -299,6 +353,43 @@ export function PaginaReceita() {
         )}
       </div>
 
+      {nutricaoTotal.comDados > 0 && (
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Informação nutricional</h3>
+          {nutricaoTotal.semDados > 0 && (
+            <p className="subtitulo" style={{ margin: '0 0 12px' }}>
+              ⚠ {nutricaoTotal.semDados} insumo(s) sem dados nutricionais — valores parciais.
+            </p>
+          )}
+          <div className="grid cols-3" style={{ gap: 8 }}>
+            <NutriCard titulo="Energia" valor={`${Math.round(nutricaoTotal.kcal)} kcal`} destaque />
+            <NutriCard titulo="Proteínas" valor={`${nutricaoTotal.proteinas.toFixed(1)} g`} />
+            <NutriCard titulo="Carboidratos" valor={`${nutricaoTotal.carboidratos.toFixed(1)} g`} />
+            <NutriCard titulo="Gorduras" valor={`${nutricaoTotal.gorduras.toFixed(1)} g`} />
+            <NutriCard titulo="Fibras" valor={`${nutricaoTotal.fibras.toFixed(1)} g`} />
+            <NutriCard titulo="Sódio" valor={`${Math.round(nutricaoTotal.sodio)} mg`} />
+          </div>
+          {porcoes && porcoes > 0 && (
+            <>
+              <h4 style={{ margin: '16px 0 8px', color: 'var(--verde-escuro)' }}>
+                Por porção ({porcoes})
+              </h4>
+              <div className="grid cols-3" style={{ gap: 8 }}>
+                <NutriCard titulo="Energia" valor={`${Math.round(nutricaoTotal.kcal / porcoes)} kcal`} destaque />
+                <NutriCard titulo="Proteínas" valor={`${(nutricaoTotal.proteinas / porcoes).toFixed(1)} g`} />
+                <NutriCard titulo="Carboidratos" valor={`${(nutricaoTotal.carboidratos / porcoes).toFixed(1)} g`} />
+                <NutriCard titulo="Gorduras" valor={`${(nutricaoTotal.gorduras / porcoes).toFixed(1)} g`} />
+                <NutriCard titulo="Fibras" valor={`${(nutricaoTotal.fibras / porcoes).toFixed(1)} g`} />
+                <NutriCard titulo="Sódio" valor={`${Math.round(nutricaoTotal.sodio / porcoes)} mg`} />
+              </div>
+            </>
+          )}
+          <p style={{ color: 'var(--cinza)', fontSize: '0.78rem', margin: '12px 0 0' }}>
+            Referência: TACO, 4ª edição (NEPA/UNICAMP)
+          </p>
+        </div>
+      )}
+
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Ingredientes</h3>
         {ingredientesLista.length === 0 ? (
@@ -349,6 +440,25 @@ function Indicador({ titulo, valor, destaque }: { titulo: string; valor: string;
         {valor}
       </div>
       <div style={{ color: 'var(--cinza)', fontSize: '0.85rem' }}>{titulo}</div>
+    </div>
+  );
+}
+
+function NutriCard({ titulo, valor, destaque }: { titulo: string; valor: string; destaque?: boolean }) {
+  return (
+    <div
+      style={{
+        border: '1px solid var(--borda)',
+        borderRadius: 8,
+        padding: '10px 12px',
+        textAlign: 'center',
+        background: destaque ? 'var(--verde-claro)' : 'var(--branco)',
+      }}
+    >
+      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--verde-escuro)' }}>
+        {valor}
+      </div>
+      <div style={{ color: 'var(--cinza)', fontSize: '0.78rem' }}>{titulo}</div>
     </div>
   );
 }
