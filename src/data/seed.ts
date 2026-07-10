@@ -1,6 +1,6 @@
 // Dados iniciais (seed) usados no primeiro acesso / modo local.
 
-import type { Prato, TipoRefeicao } from '../domain/types';
+import type { Insumo, Prato, TipoRefeicao } from '../domain/types';
 
 export const TIPOS_REFEICAO_PADRAO: TipoRefeicao[] = [
   { id: 'cafe', nome: 'Café da manhã', ordem: 1 },
@@ -68,4 +68,49 @@ export const RESTRICOES_DISPONIVEIS: { valor: string; nome: string }[] = [
   { valor: 'sem_lactose', nome: 'Sem lactose' },
   { valor: 'vegetariano', nome: 'Vegetariano' },
   { valor: 'vegano', nome: 'Vegano' },
+];
+
+let ni = 0;
+const i = (nome: string, unidade: Insumo['unidade']): Insumo => ({
+  id: `seed-insumo-${++ni}`,
+  nome,
+  unidade,
+  precoUnitario: 0,
+  ativo: true,
+});
+
+/**
+ * Catálogo inicial de insumos, cobrindo os ingredientes mais comuns dos
+ * pratos já cadastrados. Preço zerado — basta preencher o valor de compra.
+ */
+export const INSUMOS_PADRAO: Insumo[] = [
+  i('Arroz branco', 'kg'),
+  i('Arroz integral', 'kg'),
+  i('Feijão carioca', 'kg'),
+  i('Feijão preto', 'kg'),
+  i('Peito de frango', 'kg'),
+  i('Carne bovina (patinho)', 'kg'),
+  i('Carne moída', 'kg'),
+  i('Peixe (filé)', 'kg'),
+  i('Ovo', 'dz'),
+  i('Batata', 'kg'),
+  i('Cebola', 'kg'),
+  i('Alho', 'kg'),
+  i('Tomate', 'kg'),
+  i('Repolho', 'kg'),
+  i('Beterraba', 'kg'),
+  i('Cenoura', 'kg'),
+  i('Alface', 'un'),
+  i('Óleo de soja', 'l'),
+  i('Leite', 'l'),
+  i('Farinha de trigo', 'kg'),
+  i('Farinha de mandioca', 'kg'),
+  i('Macarrão', 'kg'),
+  i('Açúcar', 'kg'),
+  i('Sal', 'kg'),
+  i('Café (pó)', 'kg'),
+  i('Laranja', 'kg'),
+  i('Uva', 'kg'),
+  i('Pão', 'un'),
+  i('Manteiga', 'kg'),
 ];

@@ -45,6 +45,49 @@ export const CATEGORIAS_PRATO: { valor: CategoriaPrato; nome: string }[] = [
   { valor: 'outro', nome: 'Outro' },
 ];
 
+/** Unidade de medida de um insumo. */
+export type UnidadeMedida = 'kg' | 'g' | 'l' | 'ml' | 'un' | 'dz' | 'pct';
+
+export const UNIDADES_MEDIDA: { valor: UnidadeMedida; nome: string; sigla: string }[] = [
+  { valor: 'kg', nome: 'Quilograma', sigla: 'kg' },
+  { valor: 'g', nome: 'Grama', sigla: 'g' },
+  { valor: 'l', nome: 'Litro', sigla: 'L' },
+  { valor: 'ml', nome: 'Mililitro', sigla: 'ml' },
+  { valor: 'un', nome: 'Unidade', sigla: 'un' },
+  { valor: 'dz', nome: 'Dúzia', sigla: 'dz' },
+  { valor: 'pct', nome: 'Pacote', sigla: 'pct' },
+];
+
+/** Insumo (matéria-prima) cadastrado com preço, usado para custear receitas. */
+export interface Insumo {
+  id: string;
+  nome: string;
+  unidade: UnidadeMedida;
+  /** Preço por 1 unidade de `unidade` (ex.: preço por kg). */
+  precoUnitario: number;
+  ativo: boolean;
+}
+
+/** Um insumo e a quantidade usada dentro de uma receita, para cálculo de custo. */
+export interface ItemReceita {
+  insumoId: string;
+  quantidade: number;
+}
+
+/** Ficha técnica de preparo de um prato. */
+export interface Receita {
+  /** Um ingrediente por item (ex.: "500g de peito de frango") — texto livre, para exibição/impressão. */
+  ingredientes: string[];
+  /** Insumos e quantidades usadas, para cálculo automático do custo da receita. */
+  insumosUsados: ItemReceita[];
+  /** Modo de preparo; passos separados por linha. */
+  modoPreparo: string;
+  /** Ex.: "10 porções". */
+  rendimento?: string;
+  /** Ex.: "40 min". */
+  tempoPreparo?: string;
+}
+
 /** Prato do banco de dados de receitas. */
 export interface Prato {
   id: string;
@@ -55,6 +98,8 @@ export interface Prato {
   /** Tags livres para casar com preferências do cliente (ex.: 'regional'). */
   tags: string[];
   ativo: boolean;
+  /** Ficha técnica (ingredientes e modo de preparo), opcional. */
+  receita?: Receita;
 }
 
 /**
@@ -70,6 +115,20 @@ export interface ComposicaoRefeicao {
 export interface RefeicaoConfig {
   tipoRefeicaoId: string;
   composicao: ComposicaoRefeicao[];
+}
+
+/**
+ * Turma/faixa etária dentro de um cliente (ex.: um CEI com "Baby 1 (4-6 meses)",
+ * "Baby 2 (6 meses)", ..., "Infantis"). Cada turma tem suas próprias refeições
+ * e restrições; os dias de operação são os do cliente.
+ */
+export interface Turma {
+  id: string;
+  clienteId: string;
+  nome: string;
+  ordem: number;
+  refeicoes: RefeicaoConfig[];
+  restricoes: string[];
 }
 
 /** Cliente e suas particularidades. */
@@ -99,10 +158,12 @@ export interface ItemCardapio {
   pratoNome: string;
 }
 
-/** Cardápio gerado para um cliente numa semana. */
+/** Cardápio gerado para um cliente (ou uma turma do cliente) numa semana. */
 export interface Cardapio {
   id: string;
   clienteId: string;
+  /** Presente quando o cardápio é de uma turma específica do cliente. */
+  turmaId?: string;
   /** Data (ISO) da segunda-feira de referência da semana. */
   semanaInicio: string;
   itens: ItemCardapio[];
