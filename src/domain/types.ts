@@ -140,6 +140,7 @@ export interface Cliente {
   id: string;
   nome: string;
   cnpj?: string;
+  email?: string;
   responsavel?: string;
   registroProfissional?: string;
   logo?: string;

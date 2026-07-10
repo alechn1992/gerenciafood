@@ -76,6 +76,7 @@ export function PaginaClienteForm() {
       .replace(/\.(\d{3})(\d)/, '.$1/$2')
       .replace(/(\d{4})(\d)/, '$1-$2');
   }
+  const [email, setEmail] = useState(existente?.email ?? '');
   const [responsavel, setResponsavel] = useState(existente?.responsavel ?? '');
   const [registroProfissional, setRegistroProfissional] = useState(existente?.registroProfissional ?? '');
   const [logo, setLogo] = useState(existente?.logo ?? '');
@@ -159,6 +160,7 @@ export function PaginaClienteForm() {
       id: existente?.id ?? crypto.randomUUID(),
       nome: nome.trim(),
       cnpj: cnpj.trim() || undefined,
+      email: email.trim() || undefined,
       responsavel: responsavel.trim() || undefined,
       registroProfissional: registroProfissional.trim() || undefined,
       logo: logo || undefined,
@@ -242,6 +244,15 @@ export function PaginaClienteForm() {
               onChange={(e) => setCnpj(mascaraCnpj(e.target.value))}
               placeholder="00.000.000/0000-00"
               maxLength={18}
+            />
+          </div>
+          <div>
+            <label>E-mail do estabelecimento</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="contato@empresa.com.br"
             />
           </div>
           <div>

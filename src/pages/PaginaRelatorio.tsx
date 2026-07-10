@@ -37,7 +37,7 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
   const [salvando, setSalvando] = useState(false);
   const [msgSalvar, setMsgSalvar] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   const [modalEmail, setModalEmail] = useState(false);
-  const [emailDest, setEmailDest] = useState('');
+  const [emailDest, setEmailDest] = useState(cliente.email ?? '');
   const [enviando, setEnviando] = useState(false);
   const [msgEmail, setMsgEmail] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
 
