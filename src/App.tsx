@@ -11,6 +11,7 @@ import { PaginaRelatorio } from './pages/PaginaRelatorio';
 import { PaginaRelatorioMenu } from './pages/PaginaRelatorioMenu';
 import { PaginaReceita } from './pages/PaginaReceita';
 import { PaginaInsumos } from './pages/PaginaInsumos';
+import { PaginaConfiguracoes } from './pages/PaginaConfiguracoes';
 
 function RotaProtegida({ children }: { children: React.ReactNode }) {
   const { session, carregando } = useAuth();
@@ -67,6 +68,9 @@ export function App() {
                   <NavLink to="/relatorio" className={({ isActive }) => (isActive ? 'ativo' : '')}>
                     Relatório
                   </NavLink>
+                  <NavLink to="/configuracoes" className={({ isActive }) => (isActive ? 'ativo' : '')}>
+                    Configurações
+                  </NavLink>
                 </nav>
 
                 <div className="sidebar-rodape">
@@ -95,6 +99,7 @@ export function App() {
                   <Route path="/pratos" element={<PaginaPratos />} />
                   <Route path="/pratos/:id/receita" element={<PaginaReceita />} />
                   <Route path="/insumos" element={<PaginaInsumos />} />
+                  <Route path="/configuracoes" element={<PaginaConfiguracoes />} />
                   <Route path="*" element={<Navigate to="/clientes" replace />} />
                 </Routes>
               </main>
