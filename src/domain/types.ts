@@ -63,7 +63,11 @@ export interface Insumo {
   id: string;
   nome: string;
   unidade: UnidadeMedida;
-  /** Preço por 1 unidade de `unidade` (ex.: preço por kg). */
+  /** Quantidade total na embalagem comprada (ex.: 30 para caixa com 30 ovos). */
+  qtdEmbalagem: number;
+  /** Preço total pago pela embalagem. */
+  precoEmbalagem: number;
+  /** Calculado: precoEmbalagem / qtdEmbalagem. Usado para custear receitas. */
   precoUnitario: number;
   ativo: boolean;
 }

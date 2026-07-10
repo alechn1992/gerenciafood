@@ -416,6 +416,10 @@ th {
 }
 
 @media print {
+  @page {
+    margin: 8mm 10mm;
+  }
+
   * {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -423,6 +427,10 @@ th {
 
   .sidebar,
   .no-print {
+    display: none !important;
+  }
+
+  .print-ocultar {
     display: none !important;
   }
 
@@ -435,10 +443,44 @@ th {
     max-width: none;
   }
 
+  h1 {
+    font-size: 1.1rem;
+    margin-bottom: 2px;
+  }
+
+  h2 {
+    font-size: 1rem;
+  }
+
+  h3 {
+    font-size: 0.85rem;
+    margin-bottom: 6px !important;
+  }
+
   .card {
     box-shadow: none;
     border: 1px solid #ccc;
     break-inside: avoid;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+
+  th,
+  td {
+    padding: 5px 8px;
+    font-size: 0.78rem;
+  }
+
+  th {
+    font-size: 0.68rem;
+  }
+
+  label {
+    font-size: 0.72rem;
+  }
+
+  .grid {
+    gap: 8px;
   }
 
   tr.relatorio-item-linha {
@@ -449,6 +491,7 @@ th {
   .assinatura-bloco {
     break-inside: avoid;
     page-break-inside: avoid;
+    gap: 16px;
   }
 
   .semana-print-quebra {
@@ -461,6 +504,16 @@ th {
 
   .badge-situacao {
     border: 1px solid currentColor;
+  }
+
+  .relatorio-logo {
+    max-width: 100px;
+    max-height: 60px;
+  }
+
+  .relatorio-foto-item {
+    max-height: 80px;
+    max-width: 120px;
   }
 }
 

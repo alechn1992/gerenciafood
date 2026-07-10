@@ -256,7 +256,7 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
       ))}
 
       {/* POPs */}
-      <div className="card">
+      <div className="card print-ocultar">
         <h3 style={{ marginTop: 0 }}>POPs obrigatórios (RDC 216/2004, item 4.11.2)</h3>
         <ul>
           {POPS_OBRIGATORIOS.map((pop) => (
@@ -299,7 +299,7 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
       </div>
 
       {/* Referências */}
-      <div className="card">
+      <div className="card print-ocultar">
         <h3 style={{ marginTop: 0 }}>Referências normativas</h3>
         <table>
           <thead>

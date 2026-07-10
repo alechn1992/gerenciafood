@@ -181,11 +181,15 @@ function mapPratoToRow(p: Prato) {
 }
 
 function mapInsumoFromRow(r: any): Insumo {
+  const qtd = Number(r.qtd_embalagem ?? 1) || 1;
+  const precoEmbalagem = Number(r.preco_embalagem ?? r.preco_unitario ?? 0);
   return {
     id: r.id,
     nome: r.nome,
     unidade: r.unidade,
-    precoUnitario: Number(r.preco_unitario ?? 0),
+    qtdEmbalagem: qtd,
+    precoEmbalagem,
+    precoUnitario: precoEmbalagem / qtd,
     ativo: r.ativo ?? true,
   };
 }
@@ -195,6 +199,8 @@ function mapInsumoToRow(i: Insumo) {
     id: i.id,
     nome: i.nome,
     unidade: i.unidade,
+    qtd_embalagem: i.qtdEmbalagem,
+    preco_embalagem: i.precoEmbalagem,
     preco_unitario: i.precoUnitario,
     ativo: i.ativo,
   };

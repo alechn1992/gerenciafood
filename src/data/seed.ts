@@ -75,6 +75,8 @@ const i = (nome: string, unidade: Insumo['unidade']): Insumo => ({
   id: `seed-insumo-${++ni}`,
   nome,
   unidade,
+  qtdEmbalagem: 1,
+  precoEmbalagem: 0,
   precoUnitario: 0,
   ativo: true,
 });
