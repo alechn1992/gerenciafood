@@ -66,6 +66,16 @@ export function PaginaClienteForm() {
 
   const [nome, setNome] = useState(existente?.nome ?? '');
   const [cnpj, setCnpj] = useState(existente?.cnpj ?? '');
+
+  function mascaraCnpj(valor: string) {
+    return valor
+      .replace(/\D/g, '')
+      .slice(0, 14)
+      .replace(/^(\d{2})(\d)/, '$1.$2')
+      .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d)/, '.$1/$2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  }
   const [responsavel, setResponsavel] = useState(existente?.responsavel ?? '');
   const [registroProfissional, setRegistroProfissional] = useState(existente?.registroProfissional ?? '');
   const [logo, setLogo] = useState(existente?.logo ?? '');
@@ -227,7 +237,12 @@ export function PaginaClienteForm() {
           </div>
           <div>
             <label>CNPJ</label>
-            <input value={cnpj} onChange={(e) => setCnpj(e.target.value)} />
+            <input
+              value={cnpj}
+              onChange={(e) => setCnpj(mascaraCnpj(e.target.value))}
+              placeholder="00.000.000/0000-00"
+              maxLength={18}
+            />
           </div>
           <div>
             <label>Responsável / Nutricionista</label>
