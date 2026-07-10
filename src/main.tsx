@@ -4,15 +4,18 @@ import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { DataProvider } from './state/DataContext';
 import { AuthProvider } from './auth/AuthContext';
+import { PermissoesProvider } from './auth/PermissoesContext';
 import './styles.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <DataProvider>
-          <App />
-        </DataProvider>
+        <PermissoesProvider>
+          <DataProvider>
+            <App />
+          </DataProvider>
+        </PermissoesProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>,

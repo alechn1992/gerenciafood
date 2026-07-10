@@ -670,3 +670,24 @@ th {
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
 }
+
+.sidebar-config-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 8px auto 0;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  opacity: 0.6;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.sidebar-config-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  opacity: 1;
+}

@@ -1,5 +1,6 @@
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
+import { usePermissoes } from './auth/PermissoesContext';
 import { supabase } from './lib/supabase';
 import { PaginaLogin } from './pages/PaginaLogin';
 import { PaginaClientes } from './pages/PaginaClientes';
@@ -16,7 +17,6 @@ import { PaginaConfiguracoes } from './pages/PaginaConfiguracoes';
 function RotaProtegida({ children }: { children: React.ReactNode }) {
   const { session, carregando } = useAuth();
 
-  // Modo local (sem Supabase): sem autenticação necessária
   if (!supabase) return <>{children}</>;
 
   if (carregando) {
@@ -32,8 +32,18 @@ function RotaProtegida({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+const NAV_ITENS = [
+  { tela: 'clientes',  label: 'Clientes',        to: '/clientes' },
+  { tela: 'cardapio',  label: 'Cardápio',         to: '/cardapio' },
+  { tela: 'pratos',    label: 'Banco de pratos',  to: '/pratos' },
+  { tela: 'insumos',   label: 'Insumos',          to: '/insumos' },
+  { tela: 'relatorio', label: 'Relatório',        to: '/relatorio' },
+];
+
 export function App() {
   const { user, session, carregando: carregandoAuth, sair } = useAuth();
+  const { telas } = usePermissoes();
+  const navigate = useNavigate();
 
   return (
     <Routes>
@@ -53,24 +63,11 @@ export function App() {
               <aside className="sidebar no-print">
                 <div className="marca">🍽️ GerenciaFood</div>
                 <nav>
-                  <NavLink to="/clientes" className={({ isActive }) => (isActive ? 'ativo' : '')}>
-                    Clientes
-                  </NavLink>
-                  <NavLink to="/cardapio" className={({ isActive }) => (isActive ? 'ativo' : '')}>
-                    Cardápio
-                  </NavLink>
-                  <NavLink to="/pratos" className={({ isActive }) => (isActive ? 'ativo' : '')}>
-                    Banco de pratos
-                  </NavLink>
-                  <NavLink to="/insumos" className={({ isActive }) => (isActive ? 'ativo' : '')}>
-                    Insumos
-                  </NavLink>
-                  <NavLink to="/relatorio" className={({ isActive }) => (isActive ? 'ativo' : '')}>
-                    Relatório
-                  </NavLink>
-                  <NavLink to="/configuracoes" className={({ isActive }) => (isActive ? 'ativo' : '')}>
-                    Configurações
-                  </NavLink>
+                  {NAV_ITENS.filter((n) => telas.includes(n.tela)).map((n) => (
+                    <NavLink key={n.tela} to={n.to} className={({ isActive }) => (isActive ? 'ativo' : '')}>
+                      {n.label}
+                    </NavLink>
+                  ))}
                 </nav>
 
                 <div className="sidebar-rodape">
@@ -82,7 +79,13 @@ export function App() {
                       </button>
                     </div>
                   )}
-
+                  <button
+                    className="sidebar-config-btn"
+                    title="Configurações"
+                    onClick={() => navigate('/configuracoes')}
+                  >
+                    ⚙️
+                  </button>
                 </div>
               </aside>
 
