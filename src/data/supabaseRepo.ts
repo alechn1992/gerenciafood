@@ -190,16 +190,29 @@ export class SupabaseRepository implements Repository {
     return rows.map(mapVisitaFromRow);
   }
 
+  async carregarVisita(id: string): Promise<Visita | null> {
+    const { data, error } = await this.db
+      .from('visitas')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? mapVisitaFromRow(data) : null;
+  }
+
   async salvarVisita(v: Visita): Promise<void> {
     const { error } = await this.db.from('visitas').upsert({
       id: v.id,
       cliente_id: v.clienteId,
       data: v.data,
+      hora: v.hora || null,
       consultor: v.consultor,
+      email_consultor: v.emailConsultor || null,
       tipo: v.tipo,
       observacoes: v.observacoes,
-      proxima_visita: v.proximaVisita ?? null,
-      relatorio_id: v.relatorioId ?? null,
+      secoes: v.secoes,
+      proxima_visita: v.proximaVisita || null,
+      relatorio_id: v.relatorioId || null,
       criado_em: v.criadoEm,
     });
     if (error) throw error;
@@ -347,9 +360,12 @@ function mapVisitaFromRow(r: any): Visita {
     id: r.id,
     clienteId: r.cliente_id,
     data: r.data,
+    hora: r.hora ?? undefined,
     consultor: r.consultor ?? '',
+    emailConsultor: r.email_consultor ?? undefined,
     tipo: r.tipo ?? 'auditoria',
     observacoes: r.observacoes ?? '',
+    secoes: r.secoes ?? [],
     proximaVisita: r.proxima_visita ?? undefined,
     relatorioId: r.relatorio_id ?? undefined,
     criadoEm: r.criado_em,

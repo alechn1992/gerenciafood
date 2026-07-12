@@ -225,13 +225,28 @@ export const TIPOS_VISITA: { valor: TipoVisita; nome: string }[] = [
   { valor: 'outro', nome: 'Outro' },
 ];
 
+export interface ItemVisita {
+  id: string;
+  descricao: string;
+  status: 'conforme' | 'nao_conforme';
+}
+
+export interface SecaoVisita {
+  id: string;
+  nome: string;
+  itens: ItemVisita[];
+}
+
 export interface Visita {
   id: string;
   clienteId: string;
   data: string; // YYYY-MM-DD
+  hora?: string; // ex: "até 16:03h"
   consultor: string;
+  emailConsultor?: string;
   tipo: TipoVisita;
-  observacoes: string;
+  observacoes: string; // objetivo / observações gerais
+  secoes: SecaoVisita[];
   proximaVisita?: string; // YYYY-MM-DD
   relatorioId?: string;
   criadoEm: string;

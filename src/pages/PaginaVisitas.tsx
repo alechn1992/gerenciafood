@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
-import type { TipoVisita, Visita } from '../domain/types';
+import type { ItemVisita, SecaoVisita, TipoVisita, Visita } from '../domain/types';
 import { TIPOS_VISITA } from '../domain/types';
 
 const COR_TIPO: Record<TipoVisita, string> = {
@@ -13,21 +13,33 @@ const COR_TIPO: Record<TipoVisita, string> = {
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 
-function novaVisita(clienteId: string): Visita {
+function visitaVazia(clienteId: string): Visita {
   return {
     id: crypto.randomUUID(),
     clienteId,
     data: hoje(),
+    hora: '',
     consultor: '',
+    emailConsultor: '',
     tipo: 'auditoria',
     observacoes: '',
+    secoes: [],
     proximaVisita: '',
     criadoEm: new Date().toISOString(),
   };
 }
 
+function novaSecao(): SecaoVisita {
+  return { id: crypto.randomUUID(), nome: '', itens: [] };
+}
+
+function novoItem(): ItemVisita {
+  return { id: crypto.randomUUID(), descricao: '', status: 'conforme' };
+}
+
 export function PaginaVisitas() {
   const { clientes, repo } = useData();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const filtroCliente = params.get('cliente') ?? '';
 
@@ -41,8 +53,7 @@ export function PaginaVisitas() {
   const carregar = async (cId?: string) => {
     setCarregando(true);
     try {
-      const lista = await repo.listarVisitas(cId || undefined);
-      setVisitas(lista);
+      setVisitas(await repo.listarVisitas(cId || undefined));
     } catch {
       // erro silencioso
     } finally {
@@ -57,31 +68,100 @@ export function PaginaVisitas() {
 
   const abrirFormulario = () => {
     const cId = filtroCliente || (clientes[0]?.id ?? '');
-    setForm(novaVisita(cId));
+    setForm(visitaVazia(cId));
     setAdicionando(true);
   };
+
+  // --- Gerência de seções ---
+  const addSecao = () =>
+    setForm((f) => f && { ...f, secoes: [...f.secoes, novaSecao()] });
+
+  const removeSecao = (sIdx: number) =>
+    setForm((f) => f && { ...f, secoes: f.secoes.filter((_, i) => i !== sIdx) });
+
+  const updateSecaoNome = (sIdx: number, nome: string) =>
+    setForm((f) =>
+      f && { ...f, secoes: f.secoes.map((s, i) => (i === sIdx ? { ...s, nome } : s)) },
+    );
+
+  const addItem = (sIdx: number) =>
+    setForm((f) =>
+      f && {
+        ...f,
+        secoes: f.secoes.map((s, i) =>
+          i === sIdx ? { ...s, itens: [...s.itens, novoItem()] } : s,
+        ),
+      },
+    );
+
+  const removeItem = (sIdx: number, iIdx: number) =>
+    setForm((f) =>
+      f && {
+        ...f,
+        secoes: f.secoes.map((s, i) =>
+          i === sIdx ? { ...s, itens: s.itens.filter((_, j) => j !== iIdx) } : s,
+        ),
+      },
+    );
+
+  const updateItemStatus = (sIdx: number, iIdx: number, status: ItemVisita['status']) =>
+    setForm((f) =>
+      f && {
+        ...f,
+        secoes: f.secoes.map((s, i) =>
+          i === sIdx
+            ? { ...s, itens: s.itens.map((it, j) => (j === iIdx ? { ...it, status } : it)) }
+            : s,
+        ),
+      },
+    );
+
+  const updateItemDescricao = (sIdx: number, iIdx: number, descricao: string) =>
+    setForm((f) =>
+      f && {
+        ...f,
+        secoes: f.secoes.map((s, i) =>
+          i === sIdx
+            ? { ...s, itens: s.itens.map((it, j) => (j === iIdx ? { ...it, descricao } : it)) }
+            : s,
+        ),
+      },
+    );
 
   const salvar = async () => {
     if (!form || !form.clienteId || !form.data) return;
     setSalvando(true);
     try {
-      await repo.salvarVisita({ ...form, proximaVisita: form.proximaVisita || undefined });
+      await repo.salvarVisita({
+        ...form,
+        hora: form.hora || undefined,
+        emailConsultor: form.emailConsultor || undefined,
+        proximaVisita: form.proximaVisita || undefined,
+      });
       setMsg({ tipo: 'ok', texto: 'Visita salva.' });
       setAdicionando(false);
       setForm(null);
       await carregar(filtroCliente);
-    } catch {
-      setMsg({ tipo: 'erro', texto: 'Erro ao salvar. Tente novamente.' });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const ehTabelaInexistente = msg.includes('42P01') || msg.includes('does not exist') || msg.includes('relation');
+      setMsg({
+        tipo: 'erro',
+        texto: ehTabelaInexistente
+          ? 'Tabela não encontrada. Execute a migration 0014_visitas.sql no Supabase antes de continuar.'
+          : 'Erro ao salvar. Tente novamente.',
+      });
     } finally {
       setSalvando(false);
-      setTimeout(() => setMsg(null), 4000);
+      setTimeout(() => setMsg(null), 6000);
     }
   };
 
-  const remover = async (id: string, nomeCliente: string, dataVisita: string) => {
-    if (!confirm(`Remover a visita de ${dataVisita} para "${nomeCliente}"?`)) return;
+  const remover = async (v: Visita) => {
+    const nomeCliente = clientes.find((c) => c.id === v.clienteId)?.nome ?? '';
+    if (!confirm(`Remover a visita de ${formatarData(v.data)} para "${nomeCliente}"?`)) return;
     try {
-      await repo.removerVisita(id);
+      await repo.removerVisita(v.id);
       await carregar(filtroCliente);
     } catch {
       setMsg({ tipo: 'erro', texto: 'Erro ao remover.' });
@@ -89,14 +169,12 @@ export function PaginaVisitas() {
     }
   };
 
-  const nomeCliente = (id: string) =>
-    clientes.find((c) => c.id === id)?.nome ?? '—';
+  const nomeCliente = (id: string) => clientes.find((c) => c.id === id)?.nome ?? '—';
 
-  const formatarData = (iso?: string) => {
-    if (!iso) return '—';
-    const [y, m, d] = iso.split('-');
-    return `${d}/${m}/${y}`;
-  };
+  const totalConformes = (v: Visita) =>
+    v.secoes.reduce((acc, s) => acc + s.itens.filter((i) => i.status === 'conforme').length, 0);
+  const totalNaoConformes = (v: Visita) =>
+    v.secoes.reduce((acc, s) => acc + s.itens.filter((i) => i.status === 'nao_conforme').length, 0);
 
   return (
     <div>
@@ -105,14 +183,10 @@ export function PaginaVisitas() {
           <h1>Visitas</h1>
           <p className="subtitulo">Histórico de visitas de consultoria por cliente.</p>
         </div>
-        <div className="acoes">
-          <button className="btn" onClick={abrirFormulario}>
-            + Nova visita
-          </button>
-        </div>
+        <button className="btn" onClick={abrirFormulario}>+ Nova visita</button>
       </div>
 
-      {/* Filtro por cliente */}
+      {/* Filtro */}
       <div className="card" style={{ padding: '12px 16px' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <label style={{ fontSize: 13, fontWeight: 500 }}>Cliente:</label>
@@ -141,7 +215,9 @@ export function PaginaVisitas() {
       {adicionando && form && (
         <div className="card" style={{ border: '2px solid var(--primario)', marginBottom: 16 }}>
           <h3 style={{ marginTop: 0, marginBottom: 16 }}>Nova visita</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+
+          {/* Campos básicos */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
             <div>
               <label style={{ fontSize: 12 }}>Cliente *</label>
               <select
@@ -155,93 +231,140 @@ export function PaginaVisitas() {
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 12 }}>Data da visita *</label>
-              <input
-                type="date"
-                value={form.data}
-                onChange={(e) => setForm((f) => f && { ...f, data: e.target.value })}
-              />
+              <label style={{ fontSize: 12 }}>Data *</label>
+              <input type="date" value={form.data}
+                onChange={(e) => setForm((f) => f && { ...f, data: e.target.value })} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12 }}>Hora (ex: até 16:03h)</label>
+              <input value={form.hora ?? ''}
+                onChange={(e) => setForm((f) => f && { ...f, hora: e.target.value })}
+                placeholder="ex: das 14h às 16h" />
             </div>
             <div>
               <label style={{ fontSize: 12 }}>Tipo</label>
-              <select
-                value={form.tipo}
-                onChange={(e) => setForm((f) => f && { ...f, tipo: e.target.value as TipoVisita })}
-              >
+              <select value={form.tipo}
+                onChange={(e) => setForm((f) => f && { ...f, tipo: e.target.value as TipoVisita })}>
                 {TIPOS_VISITA.map((t) => (
                   <option key={t.valor} value={t.valor}>{t.nome}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 12 }}>Consultor</label>
-              <input
-                value={form.consultor}
+              <label style={{ fontSize: 12 }}>Consultor(a)</label>
+              <input value={form.consultor}
                 onChange={(e) => setForm((f) => f && { ...f, consultor: e.target.value })}
-                placeholder="Nome do consultor"
-              />
+                placeholder="Nome" />
+            </div>
+            <div>
+              <label style={{ fontSize: 12 }}>E-mail do consultor</label>
+              <input type="email" value={form.emailConsultor ?? ''}
+                onChange={(e) => setForm((f) => f && { ...f, emailConsultor: e.target.value })}
+                placeholder="email@exemplo.com" />
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ fontSize: 12 }}>Observações</label>
-              <textarea
-                value={form.observacoes}
+              <label style={{ fontSize: 12 }}>Observações Gerais / Objetivo</label>
+              <textarea value={form.observacoes}
                 onChange={(e) => setForm((f) => f && { ...f, observacoes: e.target.value })}
-                placeholder="O que foi verificado, orientado ou constatado durante a visita…"
-                rows={3}
-                style={{ width: '100%', resize: 'vertical', fontSize: 13 }}
-              />
+                placeholder="Objetivo da visita, observações gerais…"
+                rows={2} style={{ width: '100%', resize: 'vertical', fontSize: 13 }} />
             </div>
             <div>
               <label style={{ fontSize: 12 }}>Próxima visita</label>
-              <input
-                type="date"
-                value={form.proximaVisita ?? ''}
-                onChange={(e) => setForm((f) => f && { ...f, proximaVisita: e.target.value })}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 12 }}>Vincular checklist RDC 216</label>
-              <select
-                value={form.relatorioId ?? ''}
-                onChange={(e) => setForm((f) => f && { ...f, relatorioId: e.target.value || undefined })}
-              >
-                <option value="">Nenhum</option>
-                <option value="__link__" disabled>
-                  — Salve e acesse o relatório do cliente —
-                </option>
-              </select>
-              {form.clienteId && (
-                <div style={{ marginTop: 4 }}>
-                  <Link
-                    to={`/clientes/${form.clienteId}/relatorio`}
-                    style={{ fontSize: 12, color: 'var(--primario)' }}
-                    target="_blank"
-                  >
-                    Abrir relatório do cliente →
-                  </Link>
-                </div>
-              )}
+              <input type="date" value={form.proximaVisita ?? ''}
+                onChange={(e) => setForm((f) => f && { ...f, proximaVisita: e.target.value })} />
             </div>
           </div>
+
+          {/* Seções com itens ✔/✘ */}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Itens verificados por seção</span>
+              <button type="button" className="btn pequeno secundario" onClick={addSecao}>
+                + Adicionar seção
+              </button>
+            </div>
+
+            {form.secoes.map((secao, si) => (
+              <div key={secao.id} style={{ border: '1px solid var(--borda)', borderRadius: 8, marginBottom: 10, overflow: 'hidden' }}>
+                <div style={{ background: 'var(--fundo)', padding: '8px 12px', display: 'flex', gap: 8, alignItems: 'center', borderBottom: '1px solid var(--borda)' }}>
+                  <input
+                    value={secao.nome}
+                    onChange={(e) => updateSecaoNome(si, e.target.value)}
+                    placeholder="Nome da seção (ex: Cozinha, Berçário)"
+                    style={{ flex: 1, fontWeight: 600 }}
+                  />
+                  <button type="button" className="btn pequeno perigo" onClick={() => removeSecao(si)}>✕</button>
+                </div>
+
+                <div style={{ padding: '10px 12px' }}>
+                  {secao.itens.map((item, ii) => (
+                    <div key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>
+                      {/* Botões ✔ / ✘ */}
+                      <div style={{ display: 'flex', gap: 4, paddingTop: 6, flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          title="Conforme"
+                          onClick={() => updateItemStatus(si, ii, 'conforme')}
+                          style={{
+                            width: 30, height: 30, borderRadius: 6, border: '2px solid',
+                            background: item.status === 'conforme' ? '#16a34a' : 'transparent',
+                            borderColor: item.status === 'conforme' ? '#16a34a' : '#d1d5db',
+                            color: item.status === 'conforme' ? 'white' : '#9ca3af',
+                            cursor: 'pointer', fontWeight: 700, fontSize: 15, lineHeight: 1,
+                          }}
+                        >✔</button>
+                        <button
+                          type="button"
+                          title="Não conforme"
+                          onClick={() => updateItemStatus(si, ii, 'nao_conforme')}
+                          style={{
+                            width: 30, height: 30, borderRadius: 6, border: '2px solid',
+                            background: item.status === 'nao_conforme' ? '#dc2626' : 'transparent',
+                            borderColor: item.status === 'nao_conforme' ? '#dc2626' : '#d1d5db',
+                            color: item.status === 'nao_conforme' ? 'white' : '#9ca3af',
+                            cursor: 'pointer', fontWeight: 700, fontSize: 15, lineHeight: 1,
+                          }}
+                        >✘</button>
+                      </div>
+                      <textarea
+                        value={item.descricao}
+                        onChange={(e) => updateItemDescricao(si, ii, e.target.value)}
+                        placeholder="Descrição do item verificado…"
+                        rows={2}
+                        style={{ flex: 1, fontSize: 13, resize: 'vertical' }}
+                      />
+                      <button
+                        type="button"
+                        className="btn pequeno perigo"
+                        onClick={() => removeItem(si, ii)}
+                        style={{ marginTop: 6, flexShrink: 0 }}
+                      >✕</button>
+                    </div>
+                  ))}
+                  <button type="button" className="btn pequeno secundario" onClick={() => addItem(si)}>
+                    + Adicionar item
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {form.secoes.length === 0 && (
+              <p style={{ fontSize: 13, color: 'var(--cinza)', margin: '4px 0 0' }}>
+                Clique em "+ Adicionar seção" para registrar os itens verificados durante a visita.
+              </p>
+            )}
+          </div>
+
           <div className="acoes" style={{ marginTop: 16 }}>
-            <button
-              className="btn secundario"
-              onClick={() => { setAdicionando(false); setForm(null); }}
-            >
+            <button className="btn secundario" onClick={() => { setAdicionando(false); setForm(null); }}>
               Cancelar
             </button>
-            <button
-              className="btn"
-              onClick={salvar}
-              disabled={salvando || !form.clienteId || !form.data}
-            >
+            <button className="btn" onClick={salvar} disabled={salvando || !form.clienteId || !form.data}>
               {salvando ? 'Salvando…' : '💾 Salvar visita'}
             </button>
             {msg && (
-              <span
-                className={msg.tipo === 'ok' ? 'login-aviso sucesso' : 'login-aviso erro'}
-                style={{ alignSelf: 'center' }}
-              >
+              <span className={msg.tipo === 'ok' ? 'login-aviso sucesso' : 'login-aviso erro'} style={{ alignSelf: 'center' }}>
                 {msg.texto}
               </span>
             )}
@@ -249,14 +372,14 @@ export function PaginaVisitas() {
         </div>
       )}
 
-      {/* Lista de visitas */}
+      {/* Lista */}
       {carregando ? (
         <p style={{ padding: 32, color: 'var(--cinza)' }}>Carregando…</p>
       ) : visitas.length === 0 ? (
         <div className="card vazio">
           {filtroCliente
             ? 'Nenhuma visita registrada para este cliente ainda.'
-            : 'Nenhuma visita registrada ainda. Clique em "+ Nova visita" para começar.'}
+            : 'Nenhuma visita registrada. Clique em "+ Nova visita" para começar.'}
         </div>
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -267,76 +390,52 @@ export function PaginaVisitas() {
                 {!filtroCliente && <th>Cliente</th>}
                 <th>Tipo</th>
                 <th>Consultor</th>
-                <th>Observações</th>
-                <th>Próxima visita</th>
+                <th style={{ textAlign: 'center' }}>✔</th>
+                <th style={{ textAlign: 'center' }}>✘</th>
+                <th>Próxima</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {visitas.map((v) => (
                 <tr key={v.id}>
-                  <td style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>
-                    {formatarData(v.data)}
-                  </td>
+                  <td style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>{formatarData(v.data)}</td>
                   {!filtroCliente && (
                     <td>
-                      <button
-                        className="btn pequeno secundario"
-                        style={{ padding: '2px 8px' }}
-                        onClick={() => setParams({ cliente: v.clienteId })}
-                      >
+                      <button className="btn pequeno secundario" style={{ padding: '2px 8px' }}
+                        onClick={() => setParams({ cliente: v.clienteId })}>
                         {nomeCliente(v.clienteId)}
                       </button>
                     </td>
                   )}
                   <td>
-                    <span
-                      style={{
-                        background: COR_TIPO[v.tipo] + '22',
-                        color: COR_TIPO[v.tipo],
-                        borderRadius: 12,
-                        padding: '2px 10px',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
+                    <span style={{
+                      background: COR_TIPO[v.tipo] + '22', color: COR_TIPO[v.tipo],
+                      borderRadius: 12, padding: '2px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+                    }}>
                       {TIPOS_VISITA.find((t) => t.valor === v.tipo)?.nome ?? v.tipo}
                     </span>
                   </td>
                   <td>{v.consultor || <span style={{ color: 'var(--cinza)' }}>—</span>}</td>
-                  <td style={{ maxWidth: 320 }}>
-                    {v.observacoes ? (
-                      <span style={{ fontSize: 13 }}>{v.observacoes}</span>
-                    ) : (
-                      <span style={{ color: 'var(--cinza)' }}>—</span>
-                    )}
-                    {v.relatorioId && (
-                      <div style={{ marginTop: 4 }}>
-                        <Link
-                          to={`/clientes/${v.clienteId}/relatorio`}
-                          style={{ fontSize: 12, color: 'var(--primario)' }}
-                        >
-                          📋 Ver checklist
-                        </Link>
-                      </div>
-                    )}
+                  <td style={{ textAlign: 'center', color: '#16a34a', fontWeight: 700 }}>
+                    {totalConformes(v) > 0 ? totalConformes(v) : <span style={{ color: 'var(--cinza)' }}>—</span>}
                   </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
-                    {v.proximaVisita ? (
-                      <span style={{ fontSize: 13 }}>{formatarData(v.proximaVisita)}</span>
-                    ) : (
-                      <span style={{ color: 'var(--cinza)' }}>—</span>
-                    )}
+                  <td style={{ textAlign: 'center', color: '#dc2626', fontWeight: 700 }}>
+                    {totalNaoConformes(v) > 0 ? totalNaoConformes(v) : <span style={{ color: 'var(--cinza)' }}>—</span>}
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
+                    {v.proximaVisita ? formatarData(v.proximaVisita) : <span style={{ color: 'var(--cinza)' }}>—</span>}
                   </td>
                   <td>
-                    <button
-                      className="btn pequeno perigo"
-                      onClick={() => remover(v.id, nomeCliente(v.clienteId), formatarData(v.data))}
-                      title="Remover visita"
-                    >
-                      ✕
-                    </button>
+                    <div className="acoes">
+                      <button
+                        className="btn pequeno secundario"
+                        onClick={() => navigate(`/visitas/${v.id}`)}
+                      >
+                        Ver relatório →
+                      </button>
+                      <button className="btn pequeno perigo" onClick={() => remover(v)} title="Remover">✕</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -344,15 +443,12 @@ export function PaginaVisitas() {
           </table>
         </div>
       )}
-
-      {msg && !adicionando && (
-        <div
-          className={msg.tipo === 'ok' ? 'login-aviso sucesso' : 'login-aviso erro'}
-          style={{ marginTop: 12 }}
-        >
-          {msg.texto}
-        </div>
-      )}
     </div>
   );
+}
+
+function formatarData(iso?: string) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
 }

@@ -5,7 +5,7 @@
 // Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY), os dados passam a ser
 // persistidos no Postgres do Supabase.
 
-import type { Cardapio, Cliente, Insumo, PlanoAcao, Prato, Relatorio, TipoRefeicao, Turma, Visita } from '../domain/types';
+import type { Cardapio, Cliente, Insumo, PlanoAcao, Prato, Relatorio, TipoRefeicao, Turma, Visita, SecaoVisita } from '../domain/types';
 import { INSUMOS_PADRAO, PRATOS_PADRAO, TIPOS_REFEICAO_PADRAO } from './seed';
 import { supabase } from '../lib/supabase';
 import { SupabaseRepository } from './supabaseRepo';
@@ -32,6 +32,7 @@ export interface Repository {
   salvarPlanoAcao(p: PlanoAcao): Promise<void>;
   carregarPlanoAcao(clienteId: string): Promise<PlanoAcao | null>;
   listarVisitas(clienteId?: string): Promise<Visita[]>;
+  carregarVisita(id: string): Promise<Visita | null>;
   salvarVisita(v: Visita): Promise<void>;
   removerVisita(id: string): Promise<void>;
 }
@@ -213,7 +214,15 @@ export class LocalRepository implements Repository {
   async listarVisitas(clienteId?: string): Promise<Visita[]> {
     const todas = ler<Visita[]>(KEYS.visitas, []);
     const filtradas = clienteId ? todas.filter((v) => v.clienteId === clienteId) : todas;
-    return filtradas.sort((a, b) => b.data.localeCompare(a.data));
+    return filtradas
+      .map((v): Visita => ({ ...v, secoes: v.secoes ?? ([] as SecaoVisita[]) }))
+      .sort((a, b) => b.data.localeCompare(a.data));
+  }
+
+  async carregarVisita(id: string): Promise<Visita | null> {
+    const todas = ler<Visita[]>(KEYS.visitas, []);
+    const v = todas.find((x) => x.id === id);
+    return v ? { ...v, secoes: v.secoes ?? ([] as SecaoVisita[]) } : null;
   }
 
   async salvarVisita(v: Visita): Promise<void> {
