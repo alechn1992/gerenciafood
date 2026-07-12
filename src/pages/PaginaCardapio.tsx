@@ -371,6 +371,32 @@ function CardapioPorTurmas({
   const [semanasGeradas, setSemanasGeradas] = useState<SemanaGerada[]>([]);
   const [salvos, setSalvos] = useState<Cardapio[]>([]);
 
+  const trocarPratoTurma = (semanaInicio: string, turmaId: string, itemIdx: number, novoPratoId: string) => {
+    const novoPrato = pratos.find((p) => p.id === novoPratoId);
+    if (!novoPrato) return;
+    setSemanasGeradas((prev) =>
+      prev.map((s) => {
+        if (s.semanaInicio !== semanaInicio) return s;
+        const cardapio = s.porTurma[turmaId];
+        if (!cardapio) return s;
+        return {
+          ...s,
+          porTurma: {
+            ...s.porTurma,
+            [turmaId]: {
+              ...cardapio,
+              itens: cardapio.itens.map((item, i) =>
+                i === itemIdx
+                  ? { ...item, pratoId: novoPrato.id, pratoNome: novoPrato.nome }
+                  : item,
+              ),
+            },
+          },
+        };
+      }),
+    );
+  };
+
   useEffect(() => {
     listarCardapios(cliente.id).then(setSalvos);
   }, [cliente.id, listarCardapios]);
@@ -504,6 +530,10 @@ function CardapioPorTurmas({
                   nomeTipo={(tipoId) =>
                     tiposRefeicao.find((t) => t.id === tipoId)?.nome ?? tipoId
                   }
+                  pratos={pratos}
+                  onTrocar={(itemIdx, novoPratoId) =>
+                    trocarPratoTurma(s.semanaInicio, turma.id, itemIdx, novoPratoId)
+                  }
                 />
               </div>
             );
@@ -552,19 +582,44 @@ function GradeTurma({
   refeicoes,
   diasVisiveis,
   nomeTipo,
+  pratos,
+  onTrocar,
 }: {
   cardapio: Cardapio;
   refeicoes: RefeicaoConfig[];
   diasVisiveis: { valor: number; nome: string; curto: string }[];
   nomeTipo: (tipoId: string) => string;
+  pratos: Prato[];
+  onTrocar: (itemIdx: number, novoPratoId: string) => void;
 }) {
-  const celula = (dia: number, tipoId: string, categoria: string) =>
-    cardapio.itens
-      .filter((i: ItemCardapio) => i.dia === dia && i.tipoRefeicaoId === tipoId && i.categoria === categoria)
-      .map((i) => i.pratoNome);
+  const renderCelula = (dia: number, tipoId: string, categoria: string) => {
+    const com = cardapio.itens
+      .map((item, idx) => ({ item, idx }))
+      .filter(({ item }) => item.dia === dia && item.tipoRefeicaoId === tipoId && item.categoria === categoria);
+    if (com.length === 0) return <span style={{ color: 'var(--cinza)' }}>—</span>;
+    const pratosCategoria = pratos.filter((p) => p.ativo && p.categoria === categoria);
+    return (
+      <>
+        {com.map(({ item, idx }, pos) => (
+          <span key={idx}>
+            {pos > 0 && <span style={{ color: 'var(--cinza)' }}>, </span>}
+            <CelulaEditavel
+              item={item}
+              idx={idx}
+              pratosCategoria={pratosCategoria}
+              onTrocar={onTrocar}
+            />
+          </span>
+        ))}
+      </>
+    );
+  };
 
   return (
     <div className="cardapio-grid">
+      <p style={{ fontSize: 12, color: 'var(--cinza)', margin: '0 0 8px' }}>
+        Clique em qualquer prato para trocar manualmente.
+      </p>
       <table>
         <thead>
           <tr>
@@ -584,7 +639,7 @@ function GradeTurma({
                 </td>
                 {diasVisiveis.map((d) => (
                   <td key={d.valor}>
-                    {celula(d.valor, ref.tipoRefeicaoId, comp.categoria).join(', ') || '—'}
+                    {renderCelula(d.valor, ref.tipoRefeicaoId, comp.categoria)}
                   </td>
                 ))}
               </tr>
