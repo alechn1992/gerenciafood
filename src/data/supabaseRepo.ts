@@ -9,6 +9,7 @@ import type {
   Insumo,
   PlanoAcao,
   Prato,
+  Profissional,
   RefeicaoConfig,
   Relatorio,
   TipoRefeicao,
@@ -204,6 +205,7 @@ export class SupabaseRepository implements Repository {
     const { error } = await this.db.from('visitas').upsert({
       id: v.id,
       cliente_id: v.clienteId,
+      profissional_id: v.profissionalId || null,
       data: v.data,
       hora: v.hora || null,
       consultor: v.consultor,
@@ -220,6 +222,34 @@ export class SupabaseRepository implements Repository {
 
   async removerVisita(id: string): Promise<void> {
     const { error } = await this.db.from('visitas').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async listarProfissionais(): Promise<Profissional[]> {
+    const { data, error } = await this.db.from('profissionais').select('*').order('nome');
+    const rows = this.assert(data, error);
+    return rows.map(mapProfissionalFromRow);
+  }
+
+  async salvarProfissional(p: Profissional): Promise<void> {
+    const { error } = await this.db.from('profissionais').upsert({
+      id: p.id,
+      nome: p.nome,
+      email: p.email || null,
+      telefone: p.telefone || null,
+      registro_crn: p.registroCRN || null,
+      especialidade: p.especialidade || null,
+      empresa: p.empresa || null,
+      cargo: p.cargo || null,
+      logo_empresa: p.logoEmpresa || null,
+      assinatura: p.assinatura || null,
+      criado_em: p.criadoEm,
+    });
+    if (error) throw error;
+  }
+
+  async removerProfissional(id: string): Promise<void> {
+    const { error } = await this.db.from('profissionais').delete().eq('id', id);
     if (error) throw error;
   }
 }
@@ -359,6 +389,7 @@ function mapVisitaFromRow(r: any): Visita {
   return {
     id: r.id,
     clienteId: r.cliente_id,
+    profissionalId: r.profissional_id ?? undefined,
     data: r.data,
     hora: r.hora ?? undefined,
     consultor: r.consultor ?? '',
@@ -368,6 +399,22 @@ function mapVisitaFromRow(r: any): Visita {
     secoes: r.secoes ?? [],
     proximaVisita: r.proxima_visita ?? undefined,
     relatorioId: r.relatorio_id ?? undefined,
+    criadoEm: r.criado_em,
+  };
+}
+
+function mapProfissionalFromRow(r: any): Profissional {
+  return {
+    id: r.id,
+    nome: r.nome,
+    email: r.email ?? undefined,
+    telefone: r.telefone ?? undefined,
+    registroCRN: r.registro_crn ?? undefined,
+    especialidade: r.especialidade ?? undefined,
+    empresa: r.empresa ?? undefined,
+    cargo: r.cargo ?? undefined,
+    logoEmpresa: r.logo_empresa ?? undefined,
+    assinatura: r.assinatura ?? undefined,
     criadoEm: r.criado_em,
   };
 }

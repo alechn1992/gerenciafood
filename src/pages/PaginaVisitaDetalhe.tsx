@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
-import type { Visita } from '../domain/types';
+import type { Profissional, Visita } from '../domain/types';
 import { TIPOS_VISITA } from '../domain/types';
 import { supabase } from '../lib/supabase';
 
@@ -13,8 +13,9 @@ function formatarData(iso?: string) {
 
 export function PaginaVisitaDetalhe() {
   const { id } = useParams<{ id: string }>();
-  const { clientes, repo } = useData();
+  const { clientes, profissionais, repo } = useData();
   const [visita, setVisita] = useState<Visita | null>(null);
+  const [profissional, setProfissional] = useState<Profissional | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [modalEmail, setModalEmail] = useState(false);
   const [emailDest, setEmailDest] = useState('');
@@ -24,7 +25,14 @@ export function PaginaVisitaDetalhe() {
   useEffect(() => {
     (async () => {
       try {
-        if (id) setVisita(await repo.carregarVisita(id));
+        if (id) {
+          const v = await repo.carregarVisita(id);
+          setVisita(v);
+          if (v?.profissionalId) {
+            const p = profissionais.find((x) => x.id === v.profissionalId) ?? null;
+            setProfissional(p);
+          }
+        }
       } catch {
         // continua com null
       } finally {
@@ -32,7 +40,7 @@ export function PaginaVisitaDetalhe() {
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, profissionais]);
 
   if (carregando) {
     return <p style={{ padding: 32, color: 'var(--cinza)' }}>Carregando…</p>;
@@ -224,11 +232,34 @@ export function PaginaVisitaDetalhe() {
         )}
 
         {/* Rodapé */}
-        {visita.consultor && (
+        {(visita.consultor || profissional) && (
           <div className="relatorio-visita-rodape">
+            {/* Logo da empresa do profissional */}
+            {profissional?.logoEmpresa && (
+              <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                <img
+                  src={profissional.logoEmpresa}
+                  alt={profissional.empresa ?? profissional.nome}
+                  style={{ maxHeight: 60, maxWidth: 200, objectFit: 'contain' }}
+                />
+              </div>
+            )}
             <div className="relatorio-visita-assinatura">
-              <div className="relatorio-visita-assinatura-linha" />
-              <p>{visita.consultor}</p>
+              {/* Imagem da assinatura digital */}
+              {profissional?.assinatura ? (
+                <div style={{ marginBottom: 4 }}>
+                  <img
+                    src={profissional.assinatura}
+                    alt="Assinatura"
+                    style={{ maxHeight: 72, maxWidth: 220, objectFit: 'contain' }}
+                  />
+                </div>
+              ) : (
+                <div className="relatorio-visita-assinatura-linha" />
+              )}
+              <p>{visita.consultor || profissional?.nome}</p>
+              {profissional?.registroCRN && <p style={{ fontSize: 12 }}>{profissional.registroCRN}</p>}
+              {profissional?.empresa && !profissional?.logoEmpresa && <p style={{ fontSize: 12 }}>{profissional.empresa}</p>}
               {visita.emailConsultor && <p style={{ fontSize: 12 }}>{visita.emailConsultor}</p>}
             </div>
           </div>

@@ -22,7 +22,7 @@ function lerImagemComoDataURL(file: File): Promise<string> {
 }
 
 export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
-  const { repo } = useData();
+  const { repo, profissionais } = useData();
   const [respostas, setRespostas] = useState<Record<string, Situacao>>({});
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
   const [fotos, setFotos] = useState<Record<string, string>>({});
@@ -31,6 +31,7 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
   const [ehCei, setEhCei] = useState(false);
   const [logo, setLogo] = useState(cliente.logo ?? '');
   const [registroCRN, setRegistroCRN] = useState(cliente.registroProfissional ?? '');
+  const [profissionalId, setProfissionalId] = useState('');
   const relatorioIdRef = useRef<string>(crypto.randomUUID());
 
   // estado de UI
@@ -443,6 +444,30 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
       {/* Assinatura */}
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Responsável técnico</h3>
+        {profissionais.length > 0 && (
+          <div className="no-print" style={{ marginBottom: 16 }}>
+            <label>Selecionar profissional cadastrado</label>
+            <select
+              value={profissionalId}
+              onChange={(e) => {
+                const pid = e.target.value;
+                setProfissionalId(pid);
+                const p = profissionais.find((x) => x.id === pid);
+                if (p) {
+                  setAvaliador(p.nome);
+                  setRegistroCRN(p.registroCRN ?? '');
+                }
+              }}
+            >
+              <option value="">— Selecione ou preencha manualmente —</option>
+              {profissionais.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}{p.registroCRN ? ` (${p.registroCRN})` : ''}{p.empresa ? ` — ${p.empresa}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="no-print grid cols-2" style={{ marginBottom: 20 }}>
           <div>
             <label>Nome completo</label>
@@ -453,24 +478,52 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
             <input value={registroCRN} onChange={(e) => setRegistroCRN(e.target.value)} />
           </div>
         </div>
-        <div className="assinatura-bloco">
-          <div className="assinatura-campo">
-            <div className="assinatura-linha">{avaliador}</div>
-            <div className="assinatura-rotulo">Nome / Responsável Técnico</div>
-          </div>
-          <div className="assinatura-campo">
-            <div className="assinatura-linha">{registroCRN}</div>
-            <div className="assinatura-rotulo">Registro profissional</div>
-          </div>
-          <div className="assinatura-campo">
-            <div className="assinatura-linha" />
-            <div className="assinatura-rotulo">Assinatura</div>
-          </div>
-          <div className="assinatura-campo">
-            <div className="assinatura-linha">{formatarData(dataAval)}</div>
-            <div className="assinatura-rotulo">Data</div>
-          </div>
-        </div>
+        {/* Bloco de assinatura para impressão */}
+        {(() => {
+          const prof = profissionais.find((p) => p.id === profissionalId);
+          return (
+            <div className="assinatura-bloco">
+              {prof?.logoEmpresa && (
+                <div className="assinatura-campo" style={{ textAlign: 'center' }}>
+                  <img
+                    src={prof.logoEmpresa}
+                    alt={prof.empresa ?? prof.nome}
+                    style={{ maxHeight: 56, maxWidth: 160, objectFit: 'contain', marginBottom: 4 }}
+                  />
+                  {prof.empresa && <div className="assinatura-rotulo">{prof.empresa}</div>}
+                </div>
+              )}
+              <div className="assinatura-campo">
+                {prof?.assinatura ? (
+                  <div style={{ marginBottom: 2 }}>
+                    <img
+                      src={prof.assinatura}
+                      alt="Assinatura"
+                      style={{ maxHeight: 64, maxWidth: 200, objectFit: 'contain' }}
+                    />
+                  </div>
+                ) : (
+                  <div className="assinatura-linha">{avaliador}</div>
+                )}
+                <div className="assinatura-rotulo">Nome / Responsável Técnico</div>
+              </div>
+              <div className="assinatura-campo">
+                <div className="assinatura-linha">{registroCRN}</div>
+                <div className="assinatura-rotulo">Registro profissional</div>
+              </div>
+              {!prof?.assinatura && (
+                <div className="assinatura-campo">
+                  <div className="assinatura-linha" />
+                  <div className="assinatura-rotulo">Assinatura</div>
+                </div>
+              )}
+              <div className="assinatura-campo">
+                <div className="assinatura-linha">{formatarData(dataAval)}</div>
+                <div className="assinatura-rotulo">Data</div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Referências */}

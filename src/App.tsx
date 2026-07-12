@@ -19,6 +19,7 @@ import { PaginaPlanoAcao } from './pages/PaginaPlanoAcao';
 import { PaginaVisitas } from './pages/PaginaVisitas';
 import { PaginaVisitaDetalhe } from './pages/PaginaVisitaDetalhe';
 import { PaginaProfissionais } from './pages/PaginaProfissionais';
+import { PaginaProfissionalForm } from './pages/PaginaProfissionalForm';
 
 function RotaProtegida({ children }: { children: React.ReactNode }) {
   const { session, carregando } = useAuth();
@@ -150,6 +151,8 @@ export function App() {
                 <Routes>
                   <Route path="/" element={<Navigate to="/clientes" replace />} />
                   <Route path="/profissionais" element={<PaginaProfissionais />} />
+                  <Route path="/profissionais/novo" element={<PaginaProfissionalForm />} />
+                  <Route path="/profissionais/:id/editar" element={<PaginaProfissionalForm />} />
                   <Route path="/clientes" element={<PaginaClientes />} />
                   <Route path="/clientes/novo" element={<PaginaClienteForm />} />
                   <Route path="/clientes/:id/editar" element={<PaginaClienteForm />} />
