@@ -1,7 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { Cardapio, Cliente, Insumo, Prato, Profissional, TipoRefeicao, Turma } from '../domain/types';
+import type { Cardapio, CategoriaInsumo, Cliente, ConfiguracaoSync, Insumo, Prato, Profissional, TipoRefeicao, Turma, UnidadeMedida } from '../domain/types';
 import { getRepository, type Repository } from '../data/repo';
 import { TIPOS_REFEICAO_PADRAO } from '../data/seed';
+
+export interface ResultadoSync {
+  importados: number;
+  atualizados: number;
+  erros: string[];
+}
 
 interface DataState {
   repo: Repository;
@@ -12,6 +18,7 @@ interface DataState {
   turmas: Turma[];
   profissionais: Profissional[];
   carregando: boolean;
+  configuracaoSync: ConfiguracaoSync | null;
   recarregarClientes: () => Promise<void>;
   recarregarPratos: () => Promise<void>;
   recarregarInsumos: () => Promise<void>;
@@ -29,9 +36,22 @@ interface DataState {
   removerTurma: (id: string) => Promise<void>;
   salvarProfissional: (p: Profissional) => Promise<void>;
   removerProfissional: (id: string) => Promise<void>;
+  salvarConfiguracaoSync: (c: ConfiguracaoSync) => Promise<void>;
+  sincronizarInsumos: () => Promise<ResultadoSync>;
 }
 
 const Ctx = createContext<DataState | null>(null);
+
+/** Formato esperado da API externa de produtos. */
+interface ProdutoExterno {
+  id: string;
+  nome: string;
+  categoria?: string;
+  unidade?: string;
+  qtd_embalagem?: number;
+  preco_embalagem?: number;
+  ativo?: boolean;
+}
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const repo = getRepository();
@@ -42,6 +62,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [configuracaoSync, setConfiguracaoSync] = useState<ConfiguracaoSync | null>(null);
 
   const recarregarClientes = async () => setClientes(await repo.listarClientes());
   const recarregarPratos = async () => setPratos(await repo.listarPratos());
@@ -52,13 +73,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const [c, p, t, i, tu, pr] = await Promise.all([
+        const [c, p, t, i, tu, pr, cfg] = await Promise.all([
           repo.listarClientes(),
           repo.listarPratos(),
           repo.listarTiposRefeicao(),
           repo.listarInsumos(),
           repo.listarTurmas(),
           repo.listarProfissionais(),
+          repo.carregarConfiguracaoSync(),
         ]);
         setClientes(c);
         setPratos(p);
@@ -66,6 +88,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setInsumos(i);
         setTurmas(tu);
         setProfissionais(pr);
+        setConfiguracaoSync(cfg);
       } catch (err) {
         console.error('[GerenciaFood] Erro ao carregar dados:', err);
         setTipos(TIPOS_REFEICAO_PADRAO);
@@ -76,6 +99,82 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const salvarConfiguracaoSync = async (c: ConfiguracaoSync) => {
+    await repo.salvarConfiguracaoSync(c);
+    setConfiguracaoSync(c);
+  };
+
+  const sincronizarInsumos = async (): Promise<ResultadoSync> => {
+    const cfg = configuracaoSync;
+    if (!cfg?.urlBase || !cfg?.apiKey) {
+      return { importados: 0, atualizados: 0, erros: ['Configuração de API não definida.'] };
+    }
+
+    let produtos: ProdutoExterno[];
+    try {
+      const resp = await fetch(`${cfg.urlBase.replace(/\/$/, '')}/produtos`, {
+        headers: { 'X-Api-Key': cfg.apiKey },
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+      produtos = await resp.json();
+      if (!Array.isArray(produtos)) throw new Error('A resposta da API não é um array.');
+    } catch (e: unknown) {
+      return { importados: 0, atualizados: 0, erros: [e instanceof Error ? e.message : String(e)] };
+    }
+
+    const insumosAtuais = await repo.listarInsumos();
+    const porCodigoExterno = new Map(
+      insumosAtuais.filter((i) => i.codigoExterno).map((i) => [i.codigoExterno!, i]),
+    );
+
+    let importados = 0;
+    let atualizados = 0;
+    const erros: string[] = [];
+    const agora = new Date().toISOString();
+
+    for (const prod of produtos) {
+      try {
+        const existente = porCodigoExterno.get(String(prod.id));
+        const qtd = Number(prod.qtd_embalagem) || 1;
+        const preco = Number(prod.preco_embalagem) || 0;
+        const insumo: Insumo = existente
+          ? {
+              ...existente,
+              nome: prod.nome ?? existente.nome,
+              categoria: (prod.categoria as CategoriaInsumo) ?? existente.categoria,
+              unidade: (prod.unidade as UnidadeMedida) ?? existente.unidade,
+              qtdEmbalagem: qtd,
+              precoEmbalagem: preco,
+              precoUnitario: qtd > 0 ? preco / qtd : 0,
+              ativo: prod.ativo ?? existente.ativo,
+              sincronizadoEm: agora,
+            }
+          : {
+              id: crypto.randomUUID(),
+              nome: prod.nome,
+              categoria: prod.categoria as CategoriaInsumo | undefined,
+              unidade: (prod.unidade as UnidadeMedida) ?? 'un',
+              qtdEmbalagem: qtd,
+              precoEmbalagem: preco,
+              precoUnitario: qtd > 0 ? preco / qtd : 0,
+              ativo: prod.ativo ?? true,
+              codigoExterno: String(prod.id),
+              sincronizadoEm: agora,
+            };
+        await repo.salvarInsumo(insumo);
+        if (existente) atualizados++; else importados++;
+      } catch (e: unknown) {
+        erros.push(`"${prod.nome}": ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
+    const novaCfg: ConfiguracaoSync = { ...cfg, ultimaSincronizacao: agora };
+    await repo.salvarConfiguracaoSync(novaCfg);
+    setConfiguracaoSync(novaCfg);
+    await recarregarInsumos();
+    return { importados, atualizados, erros };
+  };
+
   const valor: DataState = {
     repo,
     clientes,
@@ -85,6 +184,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     turmas,
     profissionais,
     carregando,
+    configuracaoSync,
     recarregarClientes,
     recarregarPratos,
     recarregarInsumos,
@@ -133,6 +233,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await repo.removerProfissional(id);
       await recarregarProfissionais();
     },
+    salvarConfiguracaoSync,
+    sincronizarInsumos,
   };
 
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
