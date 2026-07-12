@@ -13,6 +13,7 @@ import { PaginaRelatorioMenu } from './pages/PaginaRelatorioMenu';
 import { PaginaReceita } from './pages/PaginaReceita';
 import { PaginaInsumos } from './pages/PaginaInsumos';
 import { PaginaConfiguracoes } from './pages/PaginaConfiguracoes';
+import { PaginaSazonalidade } from './pages/PaginaSazonalidade';
 
 function RotaProtegida({ children }: { children: React.ReactNode }) {
   const { session, carregando } = useAuth();
@@ -33,11 +34,12 @@ function RotaProtegida({ children }: { children: React.ReactNode }) {
 }
 
 const NAV_ITENS = [
-  { tela: 'clientes',  label: 'Clientes',        to: '/clientes' },
-  { tela: 'cardapio',  label: 'Cardápio',         to: '/cardapio' },
-  { tela: 'pratos',    label: 'Banco de pratos',  to: '/pratos' },
-  { tela: 'insumos',   label: 'Insumos',          to: '/insumos' },
-  { tela: 'relatorio', label: 'Relatório',        to: '/relatorio' },
+  { tela: 'clientes',     label: 'Clientes',        to: '/clientes' },
+  { tela: 'cardapio',     label: 'Cardápio',         to: '/cardapio' },
+  { tela: 'pratos',       label: 'Banco de pratos',  to: '/pratos' },
+  { tela: 'insumos',      label: 'Insumos',          to: '/insumos' },
+  { tela: 'relatorio',    label: 'Relatório',        to: '/relatorio' },
+  { tela: 'sazonalidade', label: 'Sazonalidade',     to: '/sazonalidade' },
 ];
 
 export function App() {
@@ -102,6 +104,7 @@ export function App() {
                   <Route path="/pratos" element={<PaginaPratos />} />
                   <Route path="/pratos/:id/receita" element={<PaginaReceita />} />
                   <Route path="/insumos" element={<PaginaInsumos />} />
+                  <Route path="/sazonalidade" element={<PaginaSazonalidade />} />
                   <Route path="/configuracoes" element={<PaginaConfiguracoes />} />
                   <Route path="*" element={<Navigate to="/clientes" replace />} />
                 </Routes>
