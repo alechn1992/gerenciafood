@@ -3,13 +3,14 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
 export const TELAS_DISPONIVEIS = [
-  { id: 'clientes',     label: 'Clientes' },
-  { id: 'cardapio',     label: 'Cardápio' },
-  { id: 'pratos',       label: 'Banco de pratos' },
-  { id: 'insumos',      label: 'Insumos' },
-  { id: 'relatorio',    label: 'Relatório' },
-  { id: 'sazonalidade', label: 'Sazonalidade' },
-  { id: 'visitas',      label: 'Visitas' },
+  { id: 'profissionais', label: 'Profissionais' },
+  { id: 'clientes',      label: 'Clientes' },
+  { id: 'insumos',       label: 'Insumos' },
+  { id: 'cardapio',      label: 'Cardápio' },
+  { id: 'pratos',        label: 'Receituário' },
+  { id: 'sazonalidade',  label: 'Sazonalidade' },
+  { id: 'relatorio',     label: 'Checklist de Boas Práticas' },
+  { id: 'visitas',       label: 'Visitas' },
 ] as const;
 
 export const TELAS_PADRAO = TELAS_DISPONIVEIS.map((t) => t.id);

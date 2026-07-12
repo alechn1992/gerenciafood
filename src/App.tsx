@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
 import { usePermissoes } from './auth/PermissoesContext';
@@ -17,6 +18,7 @@ import { PaginaSazonalidade } from './pages/PaginaSazonalidade';
 import { PaginaPlanoAcao } from './pages/PaginaPlanoAcao';
 import { PaginaVisitas } from './pages/PaginaVisitas';
 import { PaginaVisitaDetalhe } from './pages/PaginaVisitaDetalhe';
+import { PaginaProfissionais } from './pages/PaginaProfissionais';
 
 function RotaProtegida({ children }: { children: React.ReactNode }) {
   const { session, carregando } = useAuth();
@@ -36,20 +38,44 @@ function RotaProtegida({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-const NAV_ITENS = [
-  { tela: 'clientes',     label: 'Clientes',        to: '/clientes' },
-  { tela: 'cardapio',     label: 'Cardápio',         to: '/cardapio' },
-  { tela: 'pratos',       label: 'Banco de pratos',  to: '/pratos' },
-  { tela: 'insumos',      label: 'Insumos',          to: '/insumos' },
-  { tela: 'relatorio',    label: 'Relatório',        to: '/relatorio' },
-  { tela: 'sazonalidade', label: 'Sazonalidade',     to: '/sazonalidade' },
-  { tela: 'visitas',      label: 'Visitas',           to: '/visitas' },
+type NavLink = { tipo: 'link'; tela: string; label: string; to: string };
+type NavGrupo = { tipo: 'grupo'; id: string; label: string; filhos: { tela: string; label: string; to: string }[] };
+type NavItem = NavLink | NavGrupo;
+
+const NAV_ESTRUTURA: NavItem[] = [
+  { tipo: 'link',  tela: 'cardapio',     label: 'Cardápio',      to: '/cardapio' },
+  { tipo: 'link',  tela: 'pratos',       label: 'Receituário',   to: '/pratos' },
+  { tipo: 'link',  tela: 'sazonalidade', label: 'Sazonalidade',  to: '/sazonalidade' },
+  {
+    tipo: 'grupo', id: 'cadastro', label: 'Cadastro',
+    filhos: [
+      { tela: 'profissionais', label: 'Profissionais', to: '/profissionais' },
+      { tela: 'clientes',      label: 'Clientes',      to: '/clientes' },
+      { tela: 'insumos',       label: 'Insumos',       to: '/insumos' },
+    ],
+  },
+  {
+    tipo: 'grupo', id: 'relatorios', label: 'Relatórios',
+    filhos: [
+      { tela: 'relatorio', label: 'Checklist de Boas Práticas', to: '/relatorio' },
+      { tela: 'visitas',   label: 'Visitas',                    to: '/visitas' },
+    ],
+  },
 ];
 
 export function App() {
   const { user, session, carregando: carregandoAuth, sair } = useAuth();
   const { telas } = usePermissoes();
   const navigate = useNavigate();
+  const [gruposAbertos, setGruposAbertos] = useState<Set<string>>(new Set(['cadastro', 'relatorios']));
+
+  function toggleGrupo(id: string) {
+    setGruposAbertos((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   return (
     <Routes>
@@ -69,11 +95,36 @@ export function App() {
               <aside className="sidebar no-print">
                 <div className="marca">🍽️ GerenciaFood</div>
                 <nav>
-                  {NAV_ITENS.filter((n) => telas.includes(n.tela)).map((n) => (
-                    <NavLink key={n.tela} to={n.to} className={({ isActive }) => (isActive ? 'ativo' : '')}>
-                      {n.label}
-                    </NavLink>
-                  ))}
+                  {NAV_ESTRUTURA.map((item) => {
+                    if (item.tipo === 'link') {
+                      if (!telas.includes(item.tela)) return null;
+                      return (
+                        <NavLink key={item.tela} to={item.to} className={({ isActive }) => (isActive ? 'ativo' : '')}>
+                          {item.label}
+                        </NavLink>
+                      );
+                    }
+                    const filhosVisiveis = item.filhos.filter((f) => telas.includes(f.tela));
+                    if (filhosVisiveis.length === 0) return null;
+                    const aberto = gruposAbertos.has(item.id);
+                    return (
+                      <div key={item.id} className="nav-grupo">
+                        <button className="nav-grupo-header" onClick={() => toggleGrupo(item.id)}>
+                          <span>{item.label}</span>
+                          <span className="nav-grupo-seta">{aberto ? '▾' : '▸'}</span>
+                        </button>
+                        {aberto && (
+                          <div className="nav-grupo-filhos">
+                            {filhosVisiveis.map((f) => (
+                              <NavLink key={f.tela} to={f.to} className={({ isActive }) => (isActive ? 'ativo' : '')}>
+                                {f.label}
+                              </NavLink>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </nav>
 
                 <div className="sidebar-rodape">
@@ -98,6 +149,7 @@ export function App() {
               <main className="conteudo">
                 <Routes>
                   <Route path="/" element={<Navigate to="/clientes" replace />} />
+                  <Route path="/profissionais" element={<PaginaProfissionais />} />
                   <Route path="/clientes" element={<PaginaClientes />} />
                   <Route path="/clientes/novo" element={<PaginaClienteForm />} />
                   <Route path="/clientes/:id/editar" element={<PaginaClienteForm />} />
