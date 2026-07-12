@@ -7,6 +7,7 @@ import type {
   Cliente,
   DiaSemana,
   Insumo,
+  PlanoAcao,
   Prato,
   RefeicaoConfig,
   Relatorio,
@@ -148,6 +149,36 @@ export class SupabaseRepository implements Repository {
       .maybeSingle();
     if (error) throw error;
     return data ? mapRelatorioFromRow(data) : null;
+  }
+
+  async salvarPlanoAcao(p: PlanoAcao): Promise<void> {
+    const { error } = await this.db.from('planos_acao').upsert({
+      id: p.id,
+      cliente_id: p.clienteId,
+      relatorio_id: p.relatorioId,
+      acoes: p.acoes,
+      criado_em: p.criadoEm,
+      atualizado_em: new Date().toISOString(),
+    }, { onConflict: 'cliente_id' });
+    if (error) throw error;
+  }
+
+  async carregarPlanoAcao(clienteId: string): Promise<PlanoAcao | null> {
+    const { data, error } = await this.db
+      .from('planos_acao')
+      .select('*')
+      .eq('cliente_id', clienteId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      id: data.id,
+      clienteId: data.cliente_id,
+      relatorioId: data.relatorio_id ?? '',
+      acoes: data.acoes ?? [],
+      criadoEm: data.criado_em,
+      atualizadoEm: data.atualizado_em,
+    };
   }
 }
 

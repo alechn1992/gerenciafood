@@ -216,6 +216,29 @@ export interface Cardapio {
   geradoEm: string;
 }
 
+export type StatusAcao = 'pendente' | 'em_andamento' | 'concluido';
+
+/** Uma ação corretiva vinculada a um item não conforme do checklist. */
+export interface AcaoCorretiva {
+  itemId: string;
+  itemTexto: string;
+  acao: string;
+  responsavel: string;
+  prazo: string; // YYYY-MM-DD
+  status: StatusAcao;
+  observacao?: string;
+}
+
+/** Plano de ação gerado a partir das não conformidades do relatório. */
+export interface PlanoAcao {
+  id: string;
+  clienteId: string;
+  relatorioId: string;
+  acoes: AcaoCorretiva[];
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 /** Relatório de segurança dos alimentos salvo para um cliente. */
 export interface Relatorio {
   id: string;
