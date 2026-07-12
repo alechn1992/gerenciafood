@@ -216,6 +216,27 @@ export interface Cardapio {
   geradoEm: string;
 }
 
+export type TipoVisita = 'auditoria' | 'orientacao' | 'retorno' | 'outro';
+
+export const TIPOS_VISITA: { valor: TipoVisita; nome: string }[] = [
+  { valor: 'auditoria', nome: 'Auditoria' },
+  { valor: 'orientacao', nome: 'Orientação' },
+  { valor: 'retorno', nome: 'Retorno' },
+  { valor: 'outro', nome: 'Outro' },
+];
+
+export interface Visita {
+  id: string;
+  clienteId: string;
+  data: string; // YYYY-MM-DD
+  consultor: string;
+  tipo: TipoVisita;
+  observacoes: string;
+  proximaVisita?: string; // YYYY-MM-DD
+  relatorioId?: string;
+  criadoEm: string;
+}
+
 export type StatusAcao = 'pendente' | 'em_andamento' | 'concluido';
 
 /** Uma ação corretiva vinculada a um item não conforme do checklist. */
