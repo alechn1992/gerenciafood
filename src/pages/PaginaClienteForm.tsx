@@ -16,6 +16,7 @@ import {
   type Cliente,
   type ComposicaoRefeicao,
   type DiaSemana,
+  type PratoFixoCliente,
   type RefeicaoConfig,
   type TipoRefeicao,
   type Turma,
@@ -51,6 +52,7 @@ export function PaginaClienteForm() {
   const navigate = useNavigate();
   const {
     clientes,
+    pratos,
     tiposRefeicao,
     salvarCliente,
     turmas,
@@ -87,6 +89,9 @@ export function PaginaClienteForm() {
     existente?.diasOperacao ?? [1, 2, 3, 4, 5],
   );
   const [restricoes, setRestricoes] = useState<string[]>(existente?.restricoes ?? []);
+  const [exclusoes, setExclusoes] = useState<string[]>(existente?.exclusoes ?? []);
+  const [novaExclusao, setNovaExclusao] = useState('');
+  const [pratosFixos, setPratosFixos] = useState<PratoFixoCliente[]>(existente?.pratosFixos ?? []);
   const [refeicoes, setRefeicoes] = useState<RefeicaoConfig[]>(
     existente?.refeicoes ?? refeicaoPadrao(),
   );
@@ -169,6 +174,8 @@ export function PaginaClienteForm() {
       diasOperacao,
       refeicoes,
       restricoes,
+      exclusoes: exclusoes.length > 0 ? exclusoes : undefined,
+      pratosFixos: pratosFixos.length > 0 ? pratosFixos : undefined,
       observacoes: observacoes.trim() || undefined,
       criadoEm: existente?.criadoEm ?? new Date().toISOString(),
     };
@@ -430,6 +437,203 @@ export function PaginaClienteForm() {
           </div>
         </>
       )}
+
+      {/* Exclusões do cardápio */}
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Exclusões do cardápio</h3>
+        <p className="subtitulo" style={{ marginBottom: 12 }}>
+          Palavras-chave que excluem pratos da geração automática para este cliente.
+          Ex.: "suína", "porco", "bacon" excluem qualquer prato que contenha esses termos.
+        </p>
+        <div className="linha" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <input
+            value={novaExclusao}
+            onChange={(e) => setNovaExclusao(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && novaExclusao.trim()) {
+                const termo = novaExclusao.trim().toLowerCase();
+                if (!exclusoes.includes(termo)) setExclusoes((prev) => [...prev, termo]);
+                setNovaExclusao('');
+              }
+            }}
+            placeholder='Ex.: "suína" e pressione Enter'
+            style={{ flex: 1, minWidth: 200 }}
+          />
+          <button
+            className="btn pequeno secundario"
+            type="button"
+            onClick={() => {
+              const termo = novaExclusao.trim().toLowerCase();
+              if (termo && !exclusoes.includes(termo)) {
+                setExclusoes((prev) => [...prev, termo]);
+              }
+              setNovaExclusao('');
+            }}
+          >
+            + Adicionar
+          </button>
+        </div>
+        {exclusoes.length > 0 && (
+          <div className="chips" style={{ marginTop: 10 }}>
+            {exclusoes.map((e) => (
+              <span key={e} className="chip on" onClick={() => setExclusoes((prev) => prev.filter((x) => x !== e))}>
+                {e} ×
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Pratos fixos por dia (combinados) */}
+      <div className="card">
+        <div className="linha">
+          <div>
+            <h3 style={{ margin: 0 }}>Pratos fixos por dia</h3>
+            <p className="subtitulo" style={{ margin: '4px 0 0' }}>
+              Acordos pré-definidos: o gerador sempre coloca este prato neste slot.
+            </p>
+          </div>
+          <button
+            className="btn pequeno"
+            type="button"
+            onClick={() => {
+              const dia = diasOperacao[0] ?? 1;
+              const refeicao = refeicoes[0];
+              const categoria = refeicao?.composicao[0]?.categoria ?? 'proteina';
+              const pratosCategoria = pratos.filter((p) => p.ativo && p.categoria === categoria);
+              if (pratosCategoria.length === 0) return;
+              setPratosFixos((prev) => [
+                ...prev,
+                {
+                  diaId: dia,
+                  tipoRefeicaoId: refeicao?.tipoRefeicaoId ?? 'almoco',
+                  categoria,
+                  pratoId: pratosCategoria[0].id,
+                  pratoNome: pratosCategoria[0].nome,
+                },
+              ]);
+            }}
+          >
+            + Adicionar combinado
+          </button>
+        </div>
+        {pratosFixos.length === 0 && (
+          <p className="subtitulo" style={{ marginTop: 10 }}>
+            Nenhum combinado definido. Clique em "+ Adicionar combinado" para fixar um prato em um
+            slot específico.
+          </p>
+        )}
+        {pratosFixos.map((pf, idx) => {
+          const pratosCategoria = pratos.filter((p) => p.ativo && p.categoria === pf.categoria);
+          return (
+            <div
+              key={idx}
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 8,
+                alignItems: 'center',
+                padding: '8px 0',
+                borderBottom: idx < pratosFixos.length - 1 ? '1px solid var(--borda)' : undefined,
+              }}
+            >
+              {/* Dia */}
+              <select
+                value={pf.diaId}
+                onChange={(e) =>
+                  setPratosFixos((prev) =>
+                    prev.map((f, i) => i === idx ? { ...f, diaId: Number(e.target.value) as DiaSemana } : f),
+                  )
+                }
+                style={{ minWidth: 140 }}
+              >
+                {DIAS_SEMANA.filter((d) => diasOperacao.includes(d.valor)).map((d) => (
+                  <option key={d.valor} value={d.valor}>
+                    {d.nome}
+                  </option>
+                ))}
+              </select>
+              {/* Refeição */}
+              <select
+                value={pf.tipoRefeicaoId}
+                onChange={(e) =>
+                  setPratosFixos((prev) =>
+                    prev.map((f, i) => i === idx ? { ...f, tipoRefeicaoId: e.target.value } : f),
+                  )
+                }
+                style={{ minWidth: 140 }}
+              >
+                {refeicoes.map((r) => {
+                  const tipo = tiposRefeicao.find((t) => t.id === r.tipoRefeicaoId);
+                  return (
+                    <option key={r.tipoRefeicaoId} value={r.tipoRefeicaoId}>
+                      {tipo?.nome ?? r.tipoRefeicaoId}
+                    </option>
+                  );
+                })}
+              </select>
+              {/* Categoria */}
+              <select
+                value={pf.categoria}
+                onChange={(e) => {
+                  const cat = e.target.value as CategoriaPrato;
+                  const pratosNovaCat = pratos.filter((p) => p.ativo && p.categoria === cat);
+                  setPratosFixos((prev) =>
+                    prev.map((f, i) =>
+                      i === idx
+                        ? {
+                            ...f,
+                            categoria: cat,
+                            pratoId: pratosNovaCat[0]?.id ?? f.pratoId,
+                            pratoNome: pratosNovaCat[0]?.nome ?? f.pratoNome,
+                          }
+                        : f,
+                    ),
+                  );
+                }}
+                style={{ minWidth: 130 }}
+              >
+                {CATEGORIAS_PRATO.map((c) => (
+                  <option key={c.valor} value={c.valor}>
+                    {c.nome}
+                  </option>
+                ))}
+              </select>
+              {/* Prato */}
+              <select
+                value={pf.pratoId}
+                onChange={(e) => {
+                  const p = pratos.find((x) => x.id === e.target.value);
+                  if (!p) return;
+                  setPratosFixos((prev) =>
+                    prev.map((f, i) =>
+                      i === idx ? { ...f, pratoId: p.id, pratoNome: p.nome } : f,
+                    ),
+                  );
+                }}
+                style={{ minWidth: 180 }}
+              >
+                {pratosCategoria.length === 0 ? (
+                  <option value="">Sem pratos nesta categoria</option>
+                ) : (
+                  pratosCategoria.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))
+                )}
+              </select>
+              <button
+                className="btn pequeno perigo"
+                type="button"
+                onClick={() => setPratosFixos((prev) => prev.filter((_, i) => i !== idx))}
+              >
+                ×
+              </button>
+            </div>
+          );
+        })}
+      </div>
 
       <div className="card">
         <label>Observações</label>

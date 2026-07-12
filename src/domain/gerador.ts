@@ -14,6 +14,7 @@ import type {
   Cardapio,
   Cliente,
   ItemCardapio,
+  PratoFixoCliente,
   Prato,
   RefeicaoConfig,
   Turma,
@@ -46,6 +47,13 @@ function embaralhar<T>(itens: T[], rng: () => number): T[] {
 /** True se o prato atende a todas as restrições exigidas pelo cliente. */
 function atendeRestricoes(prato: Prato, restricoes: string[]): boolean {
   return restricoes.every((r) => prato.restricoes.includes(r));
+}
+
+/** True se o prato deve ser excluído por palavra-chave (ex.: 'suína', 'porco'). */
+function ehExcluido(prato: Prato, exclusoes: string[]): boolean {
+  if (exclusoes.length === 0) return false;
+  const texto = (prato.nome + ' ' + prato.tags.join(' ')).toLowerCase();
+  return exclusoes.some((e) => texto.includes(e.toLowerCase()));
 }
 
 export interface ResultadoGeracao {
@@ -119,9 +127,17 @@ export function gerarCardapio(opcoes: OpcoesGeracao): ResultadoGeracao {
     cliente.diasOperacao.includes(d),
   );
 
-  const pratosAtivos = pratos.filter((p) => p.ativo);
+  const pratosAtivos = pratos.filter(
+    (p) => p.ativo && !ehExcluido(p, cliente.exclusoes ?? []),
+  );
   const refeicoesPorId = new Map<string, RefeicaoConfig>();
   refeicoes.forEach((r) => refeicoesPorId.set(r.tipoRefeicaoId, r));
+
+  // Mapa de pratos fixos: chave = "diaId-tipoRefeicaoId-categoria"
+  const pratosFixosMap = new Map<string, PratoFixoCliente>();
+  for (const f of cliente.pratosFixos ?? []) {
+    pratosFixosMap.set(`${f.diaId}-${f.tipoRefeicaoId}-${f.categoria}`, f);
+  }
 
   const mesAtual = opcoes.mesSazonalidade ?? new Date().getMonth() + 1;
   const regiao = opcoes.ufSazonalidade
@@ -157,8 +173,19 @@ export function gerarCardapio(opcoes: OpcoesGeracao): ResultadoGeracao {
       for (let pos = 0; pos < comp.quantidade; pos++) {
         const sequencia = distribuir(candidatosEfetivos, diasOrdenados.length, rng);
         diasOrdenados.forEach((dia, idx) => {
-          const prato = sequencia[idx];
+          let prato = sequencia[idx];
           if (!prato) return;
+
+          // Na primeira posição, aplica prato fixo se configurado para este slot.
+          if (pos === 0) {
+            const chave = `${dia}-${refeicao.tipoRefeicaoId}-${comp.categoria}`;
+            const fixo = pratosFixosMap.get(chave);
+            if (fixo) {
+              const pratoFixado = pratosAtivos.find((p) => p.id === fixo.pratoId);
+              if (pratoFixado) prato = pratoFixado;
+            }
+          }
+
           itens.push({
             dia,
             tipoRefeicaoId: refeicao.tipoRefeicaoId,
