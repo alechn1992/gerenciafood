@@ -204,4 +204,128 @@ export const TACO: ItemTaco[] = [
   { id: 'taco-158', nome: 'Castanha-do-pará',               kcal: 643, proteinas: 14.3, carboidratos: 12.3, gorduras: 61.5,fibras: 7.9, sodio: 1,   fonte: 'taco' },
   { id: 'taco-159', nome: 'Amendoim torrado com sal',       kcal: 604, proteinas: 26.0, carboidratos: 22.0, gorduras: 48.0,fibras: 7.5, sodio: 391, fonte: 'taco' },
   { id: 'taco-160', nome: 'Sal de cozinha',                 kcal: 0,   proteinas: 0.0, carboidratos: 0.0,  gorduras: 0.0, fibras: 0.0, sodio: 39300,fonte: 'taco' },
+
+  // ── CEREAIS EXTRAS ───────────────────────────────────────────────────────
+  { id: 'taco-161', nome: 'Quinoa cozida',                 kcal: 120, proteinas: 4.4, carboidratos: 21.3, gorduras: 1.9, fibras: 2.8, sodio: 7,   fonte: 'taco' },
+  { id: 'taco-162', nome: 'Granola',                       kcal: 415, proteinas: 9.8, carboidratos: 65.7, gorduras: 13.5,fibras: 5.9, sodio: 58,  fonte: 'taco' },
+  { id: 'taco-163', nome: 'Pão de queijo',                 kcal: 279, proteinas: 4.7, carboidratos: 42.7, gorduras: 10.1,fibras: 1.3, sodio: 186, fonte: 'taco' },
+  { id: 'taco-164', nome: 'Farinha de rosca',              kcal: 380, proteinas: 10.5,carboidratos: 76.1, gorduras: 3.5, fibras: 2.5, sodio: 480, fonte: 'taco' },
+  { id: 'taco-165', nome: 'Farinha de milho seca',         kcal: 349, proteinas: 7.8, carboidratos: 74.4, gorduras: 2.0, fibras: 7.3, sodio: 1,   fonte: 'taco' },
+  { id: 'taco-166', nome: 'Polvilho azedo',                kcal: 345, proteinas: 0.2, carboidratos: 85.5, gorduras: 0.2, fibras: 0.0, sodio: 1,   fonte: 'taco' },
+  { id: 'taco-167', nome: 'Polvilho doce',                 kcal: 347, proteinas: 0.2, carboidratos: 86.5, gorduras: 0.2, fibras: 0.0, sodio: 1,   fonte: 'taco' },
+
+  // ── LEGUMINOSAS EXTRAS ───────────────────────────────────────────────────
+  { id: 'taco-168', nome: 'Feijão branco cozido',          kcal: 139, proteinas: 9.1, carboidratos: 25.3, gorduras: 0.5, fibras: 7.0, sodio: 4,   fonte: 'taco' },
+  { id: 'taco-169', nome: 'Feijão azuki cozido',           kcal: 128, proteinas: 7.5, carboidratos: 24.8, gorduras: 0.1, fibras: 7.3, sodio: 3,   fonte: 'taco' },
+  { id: 'taco-170', nome: 'Feijão moyashi cozido',         kcal: 30,  proteinas: 3.2, carboidratos: 5.9,  gorduras: 0.2, fibras: 1.5, sodio: 6,   fonte: 'taco' },
+
+  // ── CARNES BOVINAS EXTRAS ────────────────────────────────────────────────
+  { id: 'taco-171', nome: 'Contrafilé grelhado',           kcal: 279, proteinas: 30.5,carboidratos: 0.0,  gorduras: 17.2,fibras: 0.0, sodio: 65,  fonte: 'taco' },
+  { id: 'taco-172', nome: 'Picanha assada',                kcal: 373, proteinas: 26.5,carboidratos: 0.0,  gorduras: 29.5,fibras: 0.0, sodio: 70,  fonte: 'taco' },
+  { id: 'taco-173', nome: 'Filé mignon grelhado',          kcal: 219, proteinas: 32.8,carboidratos: 0.0,  gorduras: 9.7, fibras: 0.0, sodio: 58,  fonte: 'taco' },
+  { id: 'taco-174', nome: 'Fraldinha bovina grelhada',     kcal: 255, proteinas: 30.1,carboidratos: 0.0,  gorduras: 14.8,fibras: 0.0, sodio: 60,  fonte: 'taco' },
+  { id: 'taco-175', nome: 'Carne seca cozida dessalgada',  kcal: 247, proteinas: 40.3,carboidratos: 0.0,  gorduras: 9.3, fibras: 0.0, sodio: 1420,fonte: 'taco' },
+  { id: 'taco-176', nome: 'Charque bovino cozido',         kcal: 231, proteinas: 38.5,carboidratos: 0.0,  gorduras: 8.2, fibras: 0.0, sodio: 1350,fonte: 'taco' },
+  { id: 'taco-177', nome: 'Buchada de bode cozida',        kcal: 143, proteinas: 18.6,carboidratos: 0.0,  gorduras: 7.5, fibras: 0.0, sodio: 88,  fonte: 'taco' },
+
+  // ── SUÍNOS EXTRAS ────────────────────────────────────────────────────────
+  { id: 'taco-178', nome: 'Pernil suíno assado',           kcal: 265, proteinas: 28.7,carboidratos: 0.0,  gorduras: 16.5,fibras: 0.0, sodio: 71,  fonte: 'taco' },
+  { id: 'taco-179', nome: 'Carne suína paleta cozida',     kcal: 236, proteinas: 28.2,carboidratos: 0.0,  gorduras: 13.5,fibras: 0.0, sodio: 64,  fonte: 'taco' },
+  { id: 'taco-180', nome: 'Lombo suíno defumado',          kcal: 190, proteinas: 22.8,carboidratos: 0.0,  gorduras: 10.7,fibras: 0.0, sodio: 940, fonte: 'taco' },
+
+  // ── PEIXES E FRUTOS DO MAR EXTRAS ───────────────────────────────────────
+  { id: 'taco-181', nome: 'Peixe cação cozido',            kcal: 115, proteinas: 24.1,carboidratos: 0.0,  gorduras: 1.8, fibras: 0.0, sodio: 68,  fonte: 'taco' },
+  { id: 'taco-182', nome: 'Peixe dourado grelhado',        kcal: 112, proteinas: 23.5,carboidratos: 0.0,  gorduras: 1.8, fibras: 0.0, sodio: 55,  fonte: 'taco' },
+  { id: 'taco-183', nome: 'Peixe robalo cozido',           kcal: 99,  proteinas: 22.0,carboidratos: 0.0,  gorduras: 1.2, fibras: 0.0, sodio: 54,  fonte: 'taco' },
+  { id: 'taco-184', nome: 'Polvo cozido',                  kcal: 82,  proteinas: 17.0,carboidratos: 0.0,  gorduras: 1.2, fibras: 0.0, sodio: 160, fonte: 'taco' },
+  { id: 'taco-185', nome: 'Lula cozida',                   kcal: 92,  proteinas: 18.2,carboidratos: 1.3,  gorduras: 1.5, fibras: 0.0, sodio: 210, fonte: 'taco' },
+  { id: 'taco-186', nome: 'Caranguejo cozido',             kcal: 89,  proteinas: 17.9,carboidratos: 0.0,  gorduras: 1.8, fibras: 0.0, sodio: 395, fonte: 'taco' },
+  { id: 'taco-187', nome: 'Lagostim cozido',               kcal: 90,  proteinas: 19.2,carboidratos: 0.0,  gorduras: 1.0, fibras: 0.0, sodio: 340, fonte: 'taco' },
+  { id: 'taco-188', nome: 'Mariscos cozidos',              kcal: 86,  proteinas: 14.9,carboidratos: 3.7,  gorduras: 1.6, fibras: 0.0, sodio: 286, fonte: 'taco' },
+
+  // ── OVOS EXTRAS ──────────────────────────────────────────────────────────
+  { id: 'taco-189', nome: 'Clara de ovo cozida',           kcal: 48,  proteinas: 10.8,carboidratos: 0.7,  gorduras: 0.0, fibras: 0.0, sodio: 166, fonte: 'taco' },
+  { id: 'taco-190', nome: 'Gema de ovo cozida',            kcal: 328, proteinas: 15.9,carboidratos: 0.4,  gorduras: 28.3,fibras: 0.0, sodio: 48,  fonte: 'taco' },
+
+  // ── LATICÍNIOS EXTRAS ────────────────────────────────────────────────────
+  { id: 'taco-191', nome: 'Queijo coalho assado',          kcal: 289, proteinas: 21.2,carboidratos: 0.4,  gorduras: 22.2,fibras: 0.0, sodio: 548, fonte: 'taco' },
+  { id: 'taco-192', nome: 'Queijo ricota',                 kcal: 134, proteinas: 9.7, carboidratos: 3.0,  gorduras: 9.5, fibras: 0.0, sodio: 100, fonte: 'taco' },
+  { id: 'taco-193', nome: 'Cream cheese',                  kcal: 271, proteinas: 7.5, carboidratos: 4.1,  gorduras: 24.9,fibras: 0.0, sodio: 430, fonte: 'taco' },
+  { id: 'taco-194', nome: 'Leite de coco',                 kcal: 197, proteinas: 2.0, carboidratos: 3.0,  gorduras: 20.0,fibras: 0.0, sodio: 15,  fonte: 'taco' },
+  { id: 'taco-195', nome: 'Queijo gouda',                  kcal: 356, proteinas: 24.9,carboidratos: 2.2,  gorduras: 27.4,fibras: 0.0, sodio: 819, fonte: 'taco' },
+  { id: 'taco-196', nome: 'Tofu firme',                    kcal: 76,  proteinas: 8.1, carboidratos: 1.9,  gorduras: 4.2, fibras: 0.3, sodio: 7,   fonte: 'taco' },
+  { id: 'taco-197', nome: 'Bebida vegetal de soja',        kcal: 40,  proteinas: 3.3, carboidratos: 3.2,  gorduras: 1.8, fibras: 0.0, sodio: 34,  fonte: 'taco' },
+
+  // ── HORTALIÇAS EXTRAS ────────────────────────────────────────────────────
+  { id: 'taco-198', nome: 'Rúcula crua',                   kcal: 17,  proteinas: 1.6, carboidratos: 2.9,  gorduras: 0.3, fibras: 1.6, sodio: 27,  fonte: 'taco' },
+  { id: 'taco-199', nome: 'Agrião cru',                    kcal: 18,  proteinas: 2.1, carboidratos: 2.1,  gorduras: 0.2, fibras: 1.5, sodio: 34,  fonte: 'taco' },
+  { id: 'taco-200', nome: 'Almeirão cru',                  kcal: 13,  proteinas: 1.3, carboidratos: 1.7,  gorduras: 0.2, fibras: 2.0, sodio: 18,  fonte: 'taco' },
+  { id: 'taco-201', nome: 'Cogumelo champignon cru',       kcal: 16,  proteinas: 2.5, carboidratos: 2.8,  gorduras: 0.3, fibras: 1.6, sodio: 3,   fonte: 'taco' },
+  { id: 'taco-202', nome: 'Cogumelo champignon cozido',    kcal: 28,  proteinas: 2.1, carboidratos: 5.3,  gorduras: 0.3, fibras: 2.0, sodio: 10,  fonte: 'taco' },
+  { id: 'taco-203', nome: 'Cogumelo shitake cozido',       kcal: 56,  proteinas: 1.6, carboidratos: 14.4, gorduras: 0.2, fibras: 2.5, sodio: 5,   fonte: 'taco' },
+  { id: 'taco-204', nome: 'Aspargo cozido',                kcal: 20,  proteinas: 2.2, carboidratos: 3.2,  gorduras: 0.2, fibras: 2.1, sodio: 8,   fonte: 'taco' },
+  { id: 'taco-205', nome: 'Palmito cozido',                kcal: 28,  proteinas: 2.7, carboidratos: 4.3,  gorduras: 0.5, fibras: 2.8, sodio: 210, fonte: 'taco' },
+  { id: 'taco-206', nome: 'Alho-poró cozido',              kcal: 27,  proteinas: 0.9, carboidratos: 6.0,  gorduras: 0.2, fibras: 1.5, sodio: 8,   fonte: 'taco' },
+  { id: 'taco-207', nome: 'Maxixe cozido',                 kcal: 15,  proteinas: 0.8, carboidratos: 3.1,  gorduras: 0.2, fibras: 1.2, sodio: 5,   fonte: 'taco' },
+  { id: 'taco-208', nome: 'Nabo cozido',                   kcal: 22,  proteinas: 0.9, carboidratos: 4.7,  gorduras: 0.1, fibras: 2.2, sodio: 20,  fonte: 'taco' },
+  { id: 'taco-209', nome: 'Rabanete cru',                  kcal: 15,  proteinas: 0.8, carboidratos: 3.3,  gorduras: 0.1, fibras: 1.6, sodio: 29,  fonte: 'taco' },
+  { id: 'taco-210', nome: 'Cebolinha crua',                kcal: 30,  proteinas: 1.8, carboidratos: 6.6,  gorduras: 0.2, fibras: 2.6, sodio: 16,  fonte: 'taco' },
+  { id: 'taco-211', nome: 'Salsinha crua',                 kcal: 36,  proteinas: 3.0, carboidratos: 6.3,  gorduras: 0.5, fibras: 3.3, sodio: 56,  fonte: 'taco' },
+  { id: 'taco-212', nome: 'Acelga crua',                   kcal: 17,  proteinas: 1.7, carboidratos: 2.6,  gorduras: 0.2, fibras: 1.6, sodio: 213, fonte: 'taco' },
+  { id: 'taco-213', nome: 'Ervilha fresca crua',           kcal: 78,  proteinas: 5.4, carboidratos: 14.2, gorduras: 0.4, fibras: 5.7, sodio: 3,   fonte: 'taco' },
+  { id: 'taco-214', nome: 'Ervilha torta crua',            kcal: 42,  proteinas: 2.8, carboidratos: 7.6,  gorduras: 0.2, fibras: 2.6, sodio: 4,   fonte: 'taco' },
+  { id: 'taco-215', nome: 'Mandioquinha cozida',           kcal: 78,  proteinas: 1.4, carboidratos: 18.5, gorduras: 0.1, fibras: 2.8, sodio: 13,  fonte: 'taco' },
+  { id: 'taco-216', nome: 'Inhame cozido',                 kcal: 116, proteinas: 1.5, carboidratos: 27.5, gorduras: 0.1, fibras: 4.1, sodio: 9,   fonte: 'taco' },
+  { id: 'taco-217', nome: 'Bardana cozida',                kcal: 88,  proteinas: 1.7, carboidratos: 21.1, gorduras: 0.1, fibras: 3.9, sodio: 5,   fonte: 'taco' },
+
+  // ── FRUTAS EXTRAS ────────────────────────────────────────────────────────
+  { id: 'taco-218', nome: 'Tangerina crua',                kcal: 38,  proteinas: 0.7, carboidratos: 9.8,  gorduras: 0.2, fibras: 1.3, sodio: 2,   fonte: 'taco' },
+  { id: 'taco-219', nome: 'Limão tahiti cru',              kcal: 30,  proteinas: 1.0, carboidratos: 7.3,  gorduras: 0.2, fibras: 2.3, sodio: 2,   fonte: 'taco' },
+  { id: 'taco-220', nome: 'Caqui cru',                     kcal: 67,  proteinas: 0.6, carboidratos: 18.6, gorduras: 0.2, fibras: 2.5, sodio: 1,   fonte: 'taco' },
+  { id: 'taco-221', nome: 'Carambola crua',                kcal: 37,  proteinas: 0.6, carboidratos: 9.4,  gorduras: 0.1, fibras: 2.8, sodio: 2,   fonte: 'taco' },
+  { id: 'taco-222', nome: 'Kiwi cru',                      kcal: 60,  proteinas: 1.1, carboidratos: 14.7, gorduras: 0.6, fibras: 3.0, sodio: 5,   fonte: 'taco' },
+  { id: 'taco-223', nome: 'Amora crua',                    kcal: 43,  proteinas: 1.4, carboidratos: 9.6,  gorduras: 0.3, fibras: 4.9, sodio: 1,   fonte: 'taco' },
+  { id: 'taco-224', nome: 'Figo cru',                      kcal: 74,  proteinas: 0.7, carboidratos: 19.2, gorduras: 0.2, fibras: 2.9, sodio: 1,   fonte: 'taco' },
+  { id: 'taco-225', nome: 'Pitaya crua',                   kcal: 50,  proteinas: 1.2, carboidratos: 11.2, gorduras: 0.4, fibras: 3.0, sodio: 2,   fonte: 'taco' },
+  { id: 'taco-226', nome: 'Graviola crua',                 kcal: 62,  proteinas: 1.0, carboidratos: 14.9, gorduras: 0.3, fibras: 3.3, sodio: 14,  fonte: 'taco' },
+  { id: 'taco-227', nome: 'Ameixa fresca crua',            kcal: 46,  proteinas: 0.7, carboidratos: 11.2, gorduras: 0.1, fibras: 1.4, sodio: 1,   fonte: 'taco' },
+  { id: 'taco-228', nome: 'Framboesa crua',                kcal: 52,  proteinas: 1.2, carboidratos: 11.9, gorduras: 0.7, fibras: 6.5, sodio: 1,   fonte: 'taco' },
+  { id: 'taco-229', nome: 'Mirtilo cru',                   kcal: 57,  proteinas: 0.7, carboidratos: 14.5, gorduras: 0.3, fibras: 2.4, sodio: 1,   fonte: 'taco' },
+  { id: 'taco-230', nome: 'Jabuticaba crua',               kcal: 58,  proteinas: 0.6, carboidratos: 14.2, gorduras: 0.1, fibras: 2.2, sodio: 1,   fonte: 'taco' },
+  { id: 'taco-231', nome: 'Uva Thompson crua',             kcal: 70,  proteinas: 0.6, carboidratos: 18.1, gorduras: 0.2, fibras: 0.9, sodio: 1,   fonte: 'taco' },
+  { id: 'taco-232', nome: 'Manga Palmer crua',             kcal: 61,  proteinas: 0.4, carboidratos: 16.1, gorduras: 0.2, fibras: 1.5, sodio: 1,   fonte: 'taco' },
+  { id: 'taco-233', nome: 'Cupuaçu polpa crua',            kcal: 49,  proteinas: 1.5, carboidratos: 10.9, gorduras: 0.5, fibras: 2.3, sodio: 3,   fonte: 'taco' },
+  { id: 'taco-234', nome: 'Açaí polpa congelada',          kcal: 70,  proteinas: 1.5, carboidratos: 4.0,  gorduras: 5.0, fibras: 2.6, sodio: 0,   fonte: 'taco' },
+
+  // ── OLEAGINOSAS E SEMENTES ───────────────────────────────────────────────
+  { id: 'taco-235', nome: 'Castanha de caju torrada s/sal',kcal: 570, proteinas: 18.5,carboidratos: 32.7, gorduras: 44.0,fibras: 3.7, sodio: 12,  fonte: 'taco' },
+  { id: 'taco-236', nome: 'Nozes',                         kcal: 620, proteinas: 14.3,carboidratos: 13.7, gorduras: 58.8,fibras: 4.6, sodio: 1,   fonte: 'taco' },
+  { id: 'taco-237', nome: 'Amêndoas',                      kcal: 626, proteinas: 21.2,carboidratos: 19.7, gorduras: 52.5,fibras: 11.6,sodio: 6,   fonte: 'taco' },
+  { id: 'taco-238', nome: 'Sementes de chia',              kcal: 490, proteinas: 15.6,carboidratos: 42.1, gorduras: 30.7,fibras: 34.4,sodio: 16,  fonte: 'taco' },
+  { id: 'taco-239', nome: 'Sementes de abóbora',           kcal: 541, proteinas: 28.8,carboidratos: 17.8, gorduras: 44.6,fibras: 3.9, sodio: 5,   fonte: 'taco' },
+  { id: 'taco-240', nome: 'Pistache torrado s/sal',        kcal: 569, proteinas: 20.2,carboidratos: 27.5, gorduras: 45.0,fibras: 10.3,sodio: 0,   fonte: 'taco' },
+  { id: 'taco-241', nome: 'Avelã',                         kcal: 628, proteinas: 12.9,carboidratos: 17.0, gorduras: 60.8,fibras: 9.7, sodio: 0,   fonte: 'taco' },
+  { id: 'taco-242', nome: 'Macadâmia',                     kcal: 718, proteinas: 7.9, carboidratos: 13.8, gorduras: 75.8,fibras: 8.6, sodio: 5,   fonte: 'taco' },
+
+  // ── GORDURAS EXTRAS ──────────────────────────────────────────────────────
+  { id: 'taco-243', nome: 'Óleo de coco',                  kcal: 884, proteinas: 0.0, carboidratos: 0.0,  gorduras: 100.0,fibras: 0.0, sodio: 0,  fonte: 'taco' },
+  { id: 'taco-244', nome: 'Banha de porco',                kcal: 897, proteinas: 0.0, carboidratos: 0.0,  gorduras: 99.7, fibras: 0.0, sodio: 0,  fonte: 'taco' },
+  { id: 'taco-245', nome: 'Creme vegetal light',           kcal: 258, proteinas: 0.1, carboidratos: 0.2,  gorduras: 28.5, fibras: 0.0, sodio: 360,fonte: 'taco' },
+
+  // ── BEBIDAS EXTRAS ───────────────────────────────────────────────────────
+  { id: 'taco-246', nome: 'Suco de acerola natural',       kcal: 39,  proteinas: 0.5, carboidratos: 9.6,  gorduras: 0.1, fibras: 0.2, sodio: 3,   fonte: 'taco' },
+  { id: 'taco-247', nome: 'Suco de caju natural',          kcal: 42,  proteinas: 0.8, carboidratos: 9.2,  gorduras: 0.4, fibras: 0.2, sodio: 2,   fonte: 'taco' },
+  { id: 'taco-248', nome: 'Suco de goiaba natural',        kcal: 57,  proteinas: 1.0, carboidratos: 14.0, gorduras: 0.2, fibras: 0.9, sodio: 2,   fonte: 'taco' },
+  { id: 'taco-249', nome: 'Suco de uva natural',           kcal: 70,  proteinas: 0.5, carboidratos: 17.5, gorduras: 0.1, fibras: 0.2, sodio: 3,   fonte: 'taco' },
+  { id: 'taco-250', nome: 'Chá-mate infusão',              kcal: 4,   proteinas: 0.2, carboidratos: 0.8,  gorduras: 0.0, fibras: 0.0, sodio: 1,   fonte: 'taco' },
+
+  // ── CONDIMENTOS EXTRAS ───────────────────────────────────────────────────
+  { id: 'taco-251', nome: 'Molho shoyu',                   kcal: 60,  proteinas: 5.3, carboidratos: 8.2,  gorduras: 0.1, fibras: 0.0, sodio: 5350,fonte: 'taco' },
+  { id: 'taco-252', nome: 'Ketchup',                       kcal: 89,  proteinas: 1.5, carboidratos: 21.4, gorduras: 0.3, fibras: 0.8, sodio: 991, fonte: 'taco' },
+  { id: 'taco-253', nome: 'Mostarda preparada',            kcal: 67,  proteinas: 3.9, carboidratos: 6.1,  gorduras: 3.7, fibras: 3.2, sodio: 987, fonte: 'taco' },
+  { id: 'taco-254', nome: 'Vinagre',                       kcal: 14,  proteinas: 0.1, carboidratos: 3.5,  gorduras: 0.0, fibras: 0.0, sodio: 4,   fonte: 'taco' },
+  { id: 'taco-255', nome: 'Molho inglês (Worcestershire)', kcal: 78,  proteinas: 0.0, carboidratos: 19.4, gorduras: 0.0, fibras: 0.0, sodio: 980, fonte: 'taco' },
+  { id: 'taco-256', nome: 'Tabasco / Molho de pimenta',   kcal: 11,  proteinas: 0.4, carboidratos: 1.7,  gorduras: 0.0, fibras: 0.4, sodio: 2110,fonte: 'taco' },
+  { id: 'taco-257', nome: 'Caldo de galinha tablete',      kcal: 230, proteinas: 5.2, carboidratos: 27.8, gorduras: 11.3,fibras: 0.0, sodio: 9290,fonte: 'taco' },
+  { id: 'taco-258', nome: 'Caldo de carne tablete',        kcal: 226, proteinas: 5.0, carboidratos: 27.0, gorduras: 10.9,fibras: 0.0, sodio: 9100,fonte: 'taco' },
 ];
