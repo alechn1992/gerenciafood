@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import type { Visita } from '../domain/types';
 import { TIPOS_VISITA } from '../domain/types';
+import { supabase } from '../lib/supabase';
 
 function formatarData(iso?: string) {
   if (!iso) return '—';
@@ -15,6 +16,10 @@ export function PaginaVisitaDetalhe() {
   const { clientes, repo } = useData();
   const [visita, setVisita] = useState<Visita | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [modalEmail, setModalEmail] = useState(false);
+  const [emailDest, setEmailDest] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [msgEmail, setMsgEmail] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -44,6 +49,56 @@ export function PaginaVisitaDetalhe() {
   const cliente = clientes.find((c) => c.id === visita.clienteId);
   const tipoNome = TIPOS_VISITA.find((t) => t.valor === visita.tipo)?.nome ?? visita.tipo;
 
+  async function handleEnviarEmail() {
+    if (!visita || !emailDest.trim()) return;
+    if (!supabase) {
+      setMsgEmail({ tipo: 'erro', texto: 'Envio por e-mail requer modo Supabase.' });
+      return;
+    }
+    setEnviando(true);
+    setMsgEmail(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('enviar-relatorio-visita', {
+        body: {
+          destinatario: emailDest.trim(),
+          clienteNome: cliente?.nome ?? '',
+          consultor: visita.consultor,
+          emailConsultor: visita.emailConsultor,
+          data: formatarData(visita.data),
+          hora: visita.hora,
+          tipo: tipoNome,
+          observacoes: visita.observacoes,
+          secoes: visita.secoes,
+          proximaVisita: visita.proximaVisita ? formatarData(visita.proximaVisita) : undefined,
+        },
+      });
+      if (error) {
+        let msg = 'Falha ao enviar.';
+        try {
+          const body = typeof (error as { context?: { json?: () => Promise<{ error?: string }> } }).context?.json === 'function'
+            ? await (error as { context: { json: () => Promise<{ error?: string }> } }).context.json()
+            : null;
+          if (body?.error) msg = body.error;
+          else if (error.message) msg = error.message;
+        } catch { /* ignora */ }
+        setMsgEmail({ tipo: 'erro', texto: msg });
+        return;
+      }
+      if ((data as { error?: string })?.error) {
+        setMsgEmail({ tipo: 'erro', texto: (data as { error: string }).error });
+        return;
+      }
+      setMsgEmail({ tipo: 'ok', texto: `E-mail enviado para ${emailDest}.` });
+      setEmailDest('');
+      setTimeout(() => { setModalEmail(false); setMsgEmail(null); }, 3000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro inesperado.';
+      setMsgEmail({ tipo: 'erro', texto: msg });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   const totalConformes = visita.secoes.reduce(
     (acc, s) => acc + s.itens.filter((i) => i.status === 'conforme').length, 0,
   );
@@ -58,14 +113,9 @@ export function PaginaVisitaDetalhe() {
       <div className="linha no-print" style={{ marginBottom: 20 }}>
         <Link to="/visitas" className="btn secundario">← Voltar</Link>
         <div className="acoes">
-          {cliente?.email && (
-            <a
-              className="btn secundario"
-              href={`mailto:${cliente.email}?subject=${encodeURIComponent(`Relatório de Visita — ${formatarData(visita.data)}`)}&body=${encodeURIComponent(`Olá, ${cliente.nome}!\n\nSegue o relatório da visita realizada em ${formatarData(visita.data)}.\n\nAtenciosamente,\n${visita.consultor}`)}`}
-            >
-              📧 Enviar por e-mail
-            </a>
-          )}
+          <button className="btn secundario" onClick={() => { setEmailDest(cliente?.email ?? ''); setModalEmail(true); setMsgEmail(null); }}>
+            ✉️ Enviar por e-mail
+          </button>
           <button className="btn secundario" onClick={() => window.print()}>
             🖨️ Imprimir / PDF
           </button>
@@ -189,6 +239,48 @@ export function PaginaVisitaDetalhe() {
           Gerado em {new Date().toLocaleDateString('pt-BR')} — GerenciaFood
         </div>
       </div>
+
+      {/* Modal de envio por e-mail */}
+      {modalEmail && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setModalEmail(false); }}
+        >
+          <div className="card" style={{ width: 360, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>Enviar relatório por e-mail</h3>
+              <button className="btn secundario" style={{ padding: '2px 10px' }} onClick={() => setModalEmail(false)}>✕</button>
+            </div>
+            <label>E-mail do destinatário</label>
+            <input
+              type="email"
+              className="input"
+              placeholder={cliente?.email ?? 'destinatario@exemplo.com'}
+              value={emailDest}
+              onChange={(e) => setEmailDest(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleEnviarEmail()}
+            />
+            {msgEmail && (
+              <span
+                className={msgEmail.tipo === 'ok' ? 'login-aviso sucesso' : 'login-aviso erro'}
+                style={{ display: 'block', margin: 0 }}
+              >
+                {msgEmail.texto}
+              </span>
+            )}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn secundario" onClick={() => setModalEmail(false)}>Cancelar</button>
+              <button className="btn primario" onClick={handleEnviarEmail} disabled={enviando || !emailDest.trim()}>
+                {enviando ? 'Enviando…' : 'Enviar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Estilos específicos do relatório */}
       <style>{`
