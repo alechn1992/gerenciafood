@@ -132,10 +132,28 @@ export function PaginaVisitaDetalhe() {
 
       {/* RELATÓRIO */}
       <div className="relatorio-visita-wrapper">
-        {/* Logo do cliente */}
-        {cliente?.logo && (
-          <div className="relatorio-visita-logo">
-            <img src={cliente.logo} alt={cliente.nome} />
+        {/* Logos no cabeçalho: terceirizada (esquerda) e cliente (direita) */}
+        {(profissional?.logoEmpresa || cliente?.logo) && (
+          <div style={{
+            display: 'flex',
+            justifyContent: (profissional?.logoEmpresa && cliente?.logo) ? 'space-between' : (cliente?.logo ? 'flex-end' : 'flex-start'),
+            alignItems: 'center',
+            marginBottom: 16,
+          }}>
+            {profissional?.logoEmpresa && (
+              <img
+                src={profissional.logoEmpresa}
+                alt={profissional.empresa ?? profissional.nome}
+                style={{ maxHeight: 72, maxWidth: 180, objectFit: 'contain' }}
+              />
+            )}
+            {cliente?.logo && (
+              <img
+                src={cliente.logo}
+                alt={cliente.nome}
+                style={{ maxHeight: 72, maxWidth: 180, objectFit: 'contain' }}
+              />
+            )}
           </div>
         )}
 
@@ -231,21 +249,10 @@ export function PaginaVisitaDetalhe() {
           </div>
         )}
 
-        {/* Rodapé */}
+        {/* Rodapé — assinatura, nome e registro apenas */}
         {(visita.consultor || profissional) && (
           <div className="relatorio-visita-rodape">
-            {/* Logo da empresa do profissional */}
-            {profissional?.logoEmpresa && (
-              <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                <img
-                  src={profissional.logoEmpresa}
-                  alt={profissional.empresa ?? profissional.nome}
-                  style={{ maxHeight: 60, maxWidth: 200, objectFit: 'contain' }}
-                />
-              </div>
-            )}
             <div className="relatorio-visita-assinatura">
-              {/* Imagem da assinatura digital */}
               {profissional?.assinatura ? (
                 <div style={{ marginBottom: 4 }}>
                   <img
@@ -259,8 +266,6 @@ export function PaginaVisitaDetalhe() {
               )}
               <p>{visita.consultor || profissional?.nome}</p>
               {profissional?.registroCRN && <p style={{ fontSize: 12 }}>{profissional.registroCRN}</p>}
-              {profissional?.empresa && !profissional?.logoEmpresa && <p style={{ fontSize: 12 }}>{profissional.empresa}</p>}
-              {visita.emailConsultor && <p style={{ fontSize: 12 }}>{visita.emailConsultor}</p>}
             </div>
           </div>
         )}
@@ -395,13 +400,9 @@ export function PaginaVisitaDetalhe() {
           flex-shrink: 0;
           margin-top: 2px;
         }
-        .relatorio-visita-logo {
-          text-align: center;
-          margin-bottom: 16px;
-        }
         .relatorio-visita-logo img {
-          max-height: 80px;
-          max-width: 240px;
+          max-height: 72px;
+          max-width: 180px;
           object-fit: contain;
         }
         .relatorio-visita-icone.conforme { color: #16a34a; }
