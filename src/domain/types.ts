@@ -240,6 +240,7 @@ export interface SecaoVisita {
 export interface Visita {
   id: string;
   clienteId: string;
+  profissionalId?: string;
   data: string; // YYYY-MM-DD
   hora?: string; // ex: "até 16:03h"
   consultor: string;
@@ -275,10 +276,26 @@ export interface PlanoAcao {
   atualizadoEm: string;
 }
 
+/** Profissional de nutrição/consultoria. */
+export interface Profissional {
+  id: string;
+  nome: string;
+  email?: string;
+  telefone?: string;
+  registroCRN?: string;
+  especialidade?: string;
+  empresa?: string;
+  cargo?: string;
+  logoEmpresa?: string;   // base64 data URL
+  assinatura?: string;    // base64 data URL (PNG)
+  criadoEm: string;
+}
+
 /** Relatório de segurança dos alimentos salvo para um cliente. */
 export interface Relatorio {
   id: string;
   clienteId: string;
+  profissionalId?: string;
   avaliador: string;
   registroCRN: string;
   ehCei: boolean;

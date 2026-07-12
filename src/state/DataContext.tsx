@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { Cardapio, Cliente, Insumo, Prato, TipoRefeicao, Turma } from '../domain/types';
+import type { Cardapio, Cliente, Insumo, Prato, Profissional, TipoRefeicao, Turma } from '../domain/types';
 import { getRepository, type Repository } from '../data/repo';
 import { TIPOS_REFEICAO_PADRAO } from '../data/seed';
 
@@ -10,11 +10,13 @@ interface DataState {
   tiposRefeicao: TipoRefeicao[];
   insumos: Insumo[];
   turmas: Turma[];
+  profissionais: Profissional[];
   carregando: boolean;
   recarregarClientes: () => Promise<void>;
   recarregarPratos: () => Promise<void>;
   recarregarInsumos: () => Promise<void>;
   recarregarTurmas: () => Promise<void>;
+  recarregarProfissionais: () => Promise<void>;
   salvarCliente: (c: Cliente) => Promise<void>;
   removerCliente: (id: string) => Promise<void>;
   salvarPrato: (p: Prato) => Promise<void>;
@@ -25,6 +27,8 @@ interface DataState {
   removerInsumo: (id: string) => Promise<void>;
   salvarTurma: (t: Turma) => Promise<void>;
   removerTurma: (id: string) => Promise<void>;
+  salvarProfissional: (p: Profissional) => Promise<void>;
+  removerProfissional: (id: string) => Promise<void>;
 }
 
 const Ctx = createContext<DataState | null>(null);
@@ -36,28 +40,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [tiposRefeicao, setTipos] = useState<TipoRefeicao[]>([]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   const recarregarClientes = async () => setClientes(await repo.listarClientes());
   const recarregarPratos = async () => setPratos(await repo.listarPratos());
   const recarregarInsumos = async () => setInsumos(await repo.listarInsumos());
   const recarregarTurmas = async () => setTurmas(await repo.listarTurmas());
+  const recarregarProfissionais = async () => setProfissionais(await repo.listarProfissionais());
 
   useEffect(() => {
     (async () => {
       try {
-        const [c, p, t, i, tu] = await Promise.all([
+        const [c, p, t, i, tu, pr] = await Promise.all([
           repo.listarClientes(),
           repo.listarPratos(),
           repo.listarTiposRefeicao(),
           repo.listarInsumos(),
           repo.listarTurmas(),
+          repo.listarProfissionais(),
         ]);
         setClientes(c);
         setPratos(p);
         setTipos(t.length > 0 ? t : TIPOS_REFEICAO_PADRAO);
         setInsumos(i);
         setTurmas(tu);
+        setProfissionais(pr);
       } catch (err) {
         console.error('[GerenciaFood] Erro ao carregar dados:', err);
         setTipos(TIPOS_REFEICAO_PADRAO);
@@ -75,11 +83,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     tiposRefeicao,
     insumos,
     turmas,
+    profissionais,
     carregando,
     recarregarClientes,
     recarregarPratos,
     recarregarInsumos,
     recarregarTurmas,
+    recarregarProfissionais,
     salvarCliente: async (c) => {
       await repo.salvarCliente(c);
       await recarregarClientes();
@@ -114,6 +124,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     removerTurma: async (id) => {
       await repo.removerTurma(id);
       await recarregarTurmas();
+    },
+    salvarProfissional: async (p) => {
+      await repo.salvarProfissional(p);
+      await recarregarProfissionais();
+    },
+    removerProfissional: async (id) => {
+      await repo.removerProfissional(id);
+      await recarregarProfissionais();
     },
   };
 

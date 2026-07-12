@@ -17,6 +17,7 @@ function visitaVazia(clienteId: string): Visita {
   return {
     id: crypto.randomUUID(),
     clienteId,
+    profissionalId: '',
     data: hoje(),
     hora: '',
     consultor: '',
@@ -38,7 +39,7 @@ function novoItem(): ItemVisita {
 }
 
 export function PaginaVisitas() {
-  const { clientes, repo } = useData();
+  const { clientes, profissionais, repo } = useData();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const filtroCliente = params.get('cliente') ?? '';
@@ -134,6 +135,7 @@ export function PaginaVisitas() {
     try {
       await repo.salvarVisita({
         ...form,
+        profissionalId: form.profissionalId || undefined,
         hora: form.hora || undefined,
         emailConsultor: form.emailConsultor || undefined,
         proximaVisita: form.proximaVisita || undefined,
@@ -241,6 +243,29 @@ export function PaginaVisitas() {
                 onChange={(e) => setForm((f) => f && { ...f, tipo: e.target.value as TipoVisita })}>
                 {TIPOS_VISITA.map((t) => (
                   <option key={t.valor} value={t.valor}>{t.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ fontSize: 12 }}>Profissional responsável</label>
+              <select
+                value={form.profissionalId ?? ''}
+                onChange={(e) => {
+                  const pid = e.target.value;
+                  const prof = profissionais.find((p) => p.id === pid);
+                  setForm((f) => f && {
+                    ...f,
+                    profissionalId: pid || undefined,
+                    consultor: prof?.nome ?? f.consultor,
+                    emailConsultor: prof?.email ?? f.emailConsultor,
+                  });
+                }}
+              >
+                <option value="">— Selecione ou preencha manualmente —</option>
+                {profissionais.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}{p.registroCRN ? ` (${p.registroCRN})` : ''}{p.empresa ? ` — ${p.empresa}` : ''}
+                  </option>
                 ))}
               </select>
             </div>
