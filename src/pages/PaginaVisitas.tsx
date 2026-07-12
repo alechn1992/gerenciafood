@@ -143,14 +143,8 @@ export function PaginaVisitas() {
       setForm(null);
       await carregar(filtroCliente);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      const ehTabelaInexistente = msg.includes('42P01') || msg.includes('does not exist') || msg.includes('relation');
-      setMsg({
-        tipo: 'erro',
-        texto: ehTabelaInexistente
-          ? 'Tabela não encontrada. Execute a migration 0014_visitas.sql no Supabase antes de continuar.'
-          : 'Erro ao salvar. Tente novamente.',
-      });
+      const detalhe = e instanceof Error ? e.message : JSON.stringify(e);
+      setMsg({ tipo: 'erro', texto: `Erro: ${detalhe}` });
     } finally {
       setSalvando(false);
       setTimeout(() => setMsg(null), 6000);
