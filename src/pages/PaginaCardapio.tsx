@@ -97,13 +97,75 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
   const nomeTipo = (tipoId: string) =>
     tiposRefeicao.find((t) => t.id === tipoId)?.nome ?? tipoId;
 
-  const celula = (itens: ItemCardapio[], dia: number, tipoId: string, categoria: string) =>
-    itens
-      .filter((i) => i.dia === dia && i.tipoRefeicaoId === tipoId && i.categoria === categoria)
-      .map((i) => i.pratoNome);
+  const [editandoItemIdx, setEditandoItemIdx] = useState<number | null>(null);
+
+  const trocarPrato = (itemIdx: number, novoPratoId: string) => {
+    if (!atual) return;
+    const novoPrato = pratos.find((p) => p.id === novoPratoId);
+    if (!novoPrato) return;
+    setAtual({
+      ...atual,
+      itens: atual.itens.map((item, i) =>
+        i === itemIdx ? { ...item, pratoId: novoPrato.id, pratoNome: novoPrato.nome } : item,
+      ),
+    });
+    setEditandoItemIdx(null);
+  };
+
+  const renderCelula = (c: Cardapio, dia: number, tipoId: string, categoria: string) => {
+    const com = c.itens
+      .map((item, idx) => ({ item, idx }))
+      .filter(
+        ({ item }) =>
+          item.dia === dia && item.tipoRefeicaoId === tipoId && item.categoria === categoria,
+      );
+    if (com.length === 0) return <span style={{ color: 'var(--cinza)' }}>—</span>;
+
+    const pratosCategoria = pratos.filter((p) => p.ativo && p.categoria === categoria);
+
+    return (
+      <>
+        {com.map(({ item, idx }, pos) => (
+          <span key={idx}>
+            {pos > 0 && <span style={{ color: 'var(--cinza)' }}>, </span>}
+            {editandoItemIdx === idx ? (
+              <select
+                autoFocus
+                value={item.pratoId}
+                onChange={(e) => trocarPrato(idx, e.target.value)}
+                onBlur={() => setEditandoItemIdx(null)}
+                style={{ fontSize: 'inherit', maxWidth: 180 }}
+              >
+                {pratosCategoria.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span
+                title="Clique para trocar o prato"
+                style={{
+                  cursor: 'pointer',
+                  borderBottom: '1px dashed var(--cinza)',
+                  paddingBottom: 1,
+                }}
+                onClick={() => setEditandoItemIdx(idx)}
+              >
+                {item.pratoNome}
+              </span>
+            )}
+          </span>
+        ))}
+      </>
+    );
+  };
 
   const renderGrade = (c: Cardapio) => (
     <div className="cardapio-grid">
+      <p style={{ fontSize: 12, color: 'var(--cinza)', margin: '0 0 8px' }}>
+        Clique em qualquer prato para trocar manualmente.
+      </p>
       <table>
         <thead>
           <tr>
@@ -123,8 +185,7 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
                 </td>
                 {diasVisiveis.map((d) => (
                   <td key={d.valor}>
-                    {celula(c.itens, d.valor, ref.tipoRefeicaoId, comp.categoria).join(', ') ||
-                      '—'}
+                    {renderCelula(c, d.valor, ref.tipoRefeicaoId, comp.categoria)}
                   </td>
                 ))}
               </tr>

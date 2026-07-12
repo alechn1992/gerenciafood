@@ -167,6 +167,8 @@ function mapClienteFromRow(r: any): Cliente {
     diasOperacao: (r.dias_operacao ?? []) as DiaSemana[],
     refeicoes: (r.refeicoes ?? []) as RefeicaoConfig[],
     restricoes: r.restricoes ?? [],
+    exclusoes: r.exclusoes?.length ? r.exclusoes : undefined,
+    pratosFixos: r.pratos_fixos?.length ? r.pratos_fixos : undefined,
     observacoes: r.observacoes ?? undefined,
     criadoEm: r.criado_em,
   };
@@ -186,6 +188,8 @@ function mapClienteToRow(c: Cliente) {
     dias_operacao: c.diasOperacao,
     refeicoes: c.refeicoes,
     restricoes: c.restricoes,
+    exclusoes: c.exclusoes ?? [],
+    pratos_fixos: c.pratosFixos ?? [],
     observacoes: c.observacoes ?? null,
     criado_em: c.criadoEm,
   };

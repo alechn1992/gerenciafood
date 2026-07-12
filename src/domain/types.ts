@@ -154,6 +154,18 @@ export interface Turma {
   restricoes: string[];
 }
 
+/**
+ * Prato fixo por dia/refeição/categoria: o gerador sempre coloca este prato
+ * na primeira posição daquele slot, independente da aleatoriedade.
+ */
+export interface PratoFixoCliente {
+  diaId: DiaSemana;
+  tipoRefeicaoId: string;
+  categoria: CategoriaPrato;
+  pratoId: string;
+  pratoNome: string;
+}
+
 /** Cliente e suas particularidades. */
 export interface Cliente {
   id: string;
@@ -171,6 +183,14 @@ export interface Cliente {
   refeicoes: RefeicaoConfig[];
   /** Restrições/preferências globais do cliente (ex.: 'sem_gluten'). */
   restricoes: string[];
+  /**
+   * Palavras-chave que excluem pratos do cardápio deste cliente.
+   * Ex.: ['suína', 'porco', 'bacon'] excluirá qualquer prato cujo nome contenha
+   * qualquer um desses termos.
+   */
+  exclusoes?: string[];
+  /** Pratos acordados (fixos) para slots específicos de dia/refeição/categoria. */
+  pratosFixos?: PratoFixoCliente[];
   observacoes?: string;
   criadoEm: string;
 }
