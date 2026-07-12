@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import { gerarCardapio, rotuloCategoria } from '../domain/gerador';
@@ -7,11 +7,69 @@ import {
   type Cardapio,
   type Cliente,
   type ItemCardapio,
+  type Prato,
   type RefeicaoConfig,
   type Turma,
 } from '../domain/types';
 import { formatarData, segundaFeiraDaSemana } from '../lib/datas';
 import { UF_PARA_REGIAO } from '../data/sazonalidade';
+
+function CelulaEditavel({
+  item,
+  idx,
+  pratosCategoria,
+  onTrocar,
+}: {
+  item: ItemCardapio;
+  idx: number;
+  pratosCategoria: Prato[];
+  onTrocar: (idx: number, pratoId: string) => void;
+}) {
+  const [editando, setEditando] = useState(false);
+  const selectRef = useRef<HTMLSelectElement>(null);
+
+  const abrir = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditando(true);
+  };
+
+  useEffect(() => {
+    if (editando && selectRef.current) {
+      selectRef.current.focus();
+    }
+  }, [editando]);
+
+  if (editando) {
+    return (
+      <select
+        ref={selectRef}
+        value={item.pratoId}
+        onChange={(e) => {
+          onTrocar(idx, e.target.value);
+          setEditando(false);
+        }}
+        onBlur={() => setEditando(false)}
+        style={{ fontSize: 'inherit', maxWidth: 180 }}
+      >
+        {pratosCategoria.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.nome}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  return (
+    <span
+      title="Clique para trocar o prato"
+      style={{ cursor: 'pointer', borderBottom: '1px dashed var(--cinza)', paddingBottom: 1 }}
+      onClick={abrir}
+    >
+      {item.pratoNome}
+    </span>
+  );
+}
 
 export function PaginaCardapio() {
   const { id } = useParams();
@@ -97,19 +155,19 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
   const nomeTipo = (tipoId: string) =>
     tiposRefeicao.find((t) => t.id === tipoId)?.nome ?? tipoId;
 
-  const [editandoItemIdx, setEditandoItemIdx] = useState<number | null>(null);
-
   const trocarPrato = (itemIdx: number, novoPratoId: string) => {
     if (!atual) return;
     const novoPrato = pratos.find((p) => p.id === novoPratoId);
     if (!novoPrato) return;
-    setAtual({
-      ...atual,
-      itens: atual.itens.map((item, i) =>
-        i === itemIdx ? { ...item, pratoId: novoPrato.id, pratoNome: novoPrato.nome } : item,
-      ),
+    setAtual((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        itens: prev.itens.map((item, i) =>
+          i === itemIdx ? { ...item, pratoId: novoPrato.id, pratoNome: novoPrato.nome } : item,
+        ),
+      };
     });
-    setEditandoItemIdx(null);
   };
 
   const renderCelula = (c: Cardapio, dia: number, tipoId: string, categoria: string) => {
@@ -128,33 +186,12 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
         {com.map(({ item, idx }, pos) => (
           <span key={idx}>
             {pos > 0 && <span style={{ color: 'var(--cinza)' }}>, </span>}
-            {editandoItemIdx === idx ? (
-              <select
-                autoFocus
-                value={item.pratoId}
-                onChange={(e) => trocarPrato(idx, e.target.value)}
-                onBlur={() => setEditandoItemIdx(null)}
-                style={{ fontSize: 'inherit', maxWidth: 180 }}
-              >
-                {pratosCategoria.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <span
-                title="Clique para trocar o prato"
-                style={{
-                  cursor: 'pointer',
-                  borderBottom: '1px dashed var(--cinza)',
-                  paddingBottom: 1,
-                }}
-                onClick={() => setEditandoItemIdx(idx)}
-              >
-                {item.pratoNome}
-              </span>
-            )}
+            <CelulaEditavel
+              item={item}
+              idx={idx}
+              pratosCategoria={pratosCategoria}
+              onTrocar={trocarPrato}
+            />
           </span>
         ))}
       </>
