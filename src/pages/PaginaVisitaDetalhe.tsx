@@ -58,6 +58,14 @@ export function PaginaVisitaDetalhe() {
       <div className="linha no-print" style={{ marginBottom: 20 }}>
         <Link to="/visitas" className="btn secundario">← Voltar</Link>
         <div className="acoes">
+          {cliente?.email && (
+            <a
+              className="btn secundario"
+              href={`mailto:${cliente.email}?subject=${encodeURIComponent(`Relatório de Visita — ${formatarData(visita.data)}`)}&body=${encodeURIComponent(`Olá, ${cliente.nome}!\n\nSegue o relatório da visita realizada em ${formatarData(visita.data)}.\n\nAtenciosamente,\n${visita.consultor}`)}`}
+            >
+              📧 Enviar por e-mail
+            </a>
+          )}
           <button className="btn secundario" onClick={() => window.print()}>
             🖨️ Imprimir / PDF
           </button>
@@ -66,6 +74,13 @@ export function PaginaVisitaDetalhe() {
 
       {/* RELATÓRIO */}
       <div className="relatorio-visita-wrapper">
+        {/* Logo do cliente */}
+        {cliente?.logo && (
+          <div className="relatorio-visita-logo">
+            <img src={cliente.logo} alt={cliente.nome} />
+          </div>
+        )}
+
         {/* Título */}
         <h1 className="relatorio-visita-titulo">Visita do dia {formatarData(visita.data)}</h1>
 
@@ -257,7 +272,16 @@ export function PaginaVisitaDetalhe() {
           flex-shrink: 0;
           margin-top: 2px;
         }
-        .relatorio-visita-icone.conforme { color: #f59e0b; }
+        .relatorio-visita-logo {
+          text-align: center;
+          margin-bottom: 16px;
+        }
+        .relatorio-visita-logo img {
+          max-height: 80px;
+          max-width: 240px;
+          object-fit: contain;
+        }
+        .relatorio-visita-icone.conforme { color: #16a34a; }
         .relatorio-visita-icone.nao-conforme { color: #dc2626; }
         .relatorio-visita-proxima {
           margin: 20px 0;
@@ -296,7 +320,7 @@ export function PaginaVisitaDetalhe() {
         @media print {
           .relatorio-visita-cabecalho td.label { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; }
           .relatorio-visita-secao-header { background: #f59e0b !important; -webkit-print-color-adjust: exact; }
-          .relatorio-visita-icone.conforme { color: #f59e0b !important; }
+          .relatorio-visita-icone.conforme { color: #16a34a !important; }
           .relatorio-visita-icone.nao-conforme { color: #dc2626 !important; }
           .relatorio-visita-obs { border-left-color: #f59e0b !important; -webkit-print-color-adjust: exact; }
         }
