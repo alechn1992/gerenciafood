@@ -691,3 +691,38 @@ th {
   background: rgba(255, 255, 255, 0.12);
   opacity: 1;
 }
+
+/* ── Grupos de nav ──────────────────────────────────── */
+.nav-grupo {
+  margin: 4px 0;
+}
+
+.nav-grupo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 8px 20px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.nav-grupo-header:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.nav-grupo-seta {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.nav-grupo-filhos {
+  padding-left: 8px;
+}
