@@ -19,6 +19,7 @@ import type {
   Turma,
 } from './types';
 import { DIAS_SEMANA } from './types';
+import { pratoEhSazonal, UF_PARA_REGIAO, type RegiaoClimatica } from '../data/sazonalidade';
 
 /** Gerador pseudoaleatório determinístico (mulberry32). */
 function criarRng(seed: number): () => number {
@@ -66,6 +67,12 @@ export interface OpcoesGeracao {
   /** Injeção de id/data para testes; produção usa valores reais. */
   id?: string;
   geradoEm?: string;
+  /** Quando true, prioriza pratos com ingredientes sazonais na geração. */
+  priorizarSazonais?: boolean;
+  /** UF de referência para sazonalidade (ex.: 'SP'). */
+  ufSazonalidade?: string;
+  /** Mês de referência para sazonalidade (1–12). Padrão: mês atual. */
+  mesSazonalidade?: number;
 }
 
 /**
@@ -116,6 +123,11 @@ export function gerarCardapio(opcoes: OpcoesGeracao): ResultadoGeracao {
   const refeicoesPorId = new Map<string, RefeicaoConfig>();
   refeicoes.forEach((r) => refeicoesPorId.set(r.tipoRefeicaoId, r));
 
+  const mesAtual = opcoes.mesSazonalidade ?? new Date().getMonth() + 1;
+  const regiao = opcoes.ufSazonalidade
+    ? (UF_PARA_REGIAO[opcoes.ufSazonalidade] as RegiaoClimatica | undefined)
+    : undefined;
+
   const itens: ItemCardapio[] = [];
 
   for (const refeicao of refeicoes) {
@@ -131,10 +143,19 @@ export function gerarCardapio(opcoes: OpcoesGeracao): ResultadoGeracao {
         continue;
       }
 
+      // Quando sazonalidade está ativa e há candidatos sazonais, usa somente eles.
+      let candidatosEfetivos = candidatos;
+      if (opcoes.priorizarSazonais && regiao) {
+        const sazonais = candidatos.filter((p) =>
+          pratoEhSazonal(p.nome, p.tags, mesAtual, regiao),
+        );
+        if (sazonais.length > 0) candidatosEfetivos = sazonais;
+      }
+
       // Para cada "posição" da categoria (quantidade), gera uma sequência
       // independente ao longo dos dias, dando mais variedade entre colunas.
       for (let pos = 0; pos < comp.quantidade; pos++) {
-        const sequencia = distribuir(candidatos, diasOrdenados.length, rng);
+        const sequencia = distribuir(candidatosEfetivos, diasOrdenados.length, rng);
         diasOrdenados.forEach((dia, idx) => {
           const prato = sequencia[idx];
           if (!prato) return;

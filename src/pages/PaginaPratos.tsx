@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import {
@@ -8,6 +8,11 @@ import {
 } from '../domain/types';
 import { RESTRICOES_DISPONIVEIS } from '../data/seed';
 import { rotuloCategoria } from '../domain/gerador';
+import {
+  pratoEhSazonal,
+  UF_PARA_REGIAO,
+  type RegiaoClimatica,
+} from '../data/sazonalidade';
 
 export function PaginaPratos() {
   const { pratos, salvarPrato, removerPrato } = useData();
@@ -15,6 +20,19 @@ export function PaginaPratos() {
   const [categoria, setCategoria] = useState<CategoriaPrato>('proteina');
   const [restricoes, setRestricoes] = useState<string[]>([]);
   const [filtro, setFiltro] = useState<CategoriaPrato | 'todas'>('todas');
+
+  const mesAtual = new Date().getMonth() + 1;
+  const ufSalva = localStorage.getItem('sazonalidade_uf') ?? 'SP';
+  const regiaoAtual = UF_PARA_REGIAO[ufSalva] as RegiaoClimatica | undefined;
+
+  const idsSazonais = useMemo(() => {
+    if (!regiaoAtual) return new Set<string>();
+    return new Set(
+      pratos
+        .filter((p) => pratoEhSazonal(p.nome, p.tags, mesAtual, regiaoAtual))
+        .map((p) => p.id),
+    );
+  }, [pratos, mesAtual, regiaoAtual]);
 
   const toggleRestricao = (r: string) =>
     setRestricoes((p) => (p.includes(r) ? p.filter((x) => x !== r) : [...p, r]));
@@ -111,6 +129,7 @@ export function PaginaPratos() {
               <th>Categoria</th>
               <th>Restrições atendidas</th>
               <th>Status</th>
+              <th title={`Safra atual — ${ufSalva}`}>Safra</th>
               <th></th>
             </tr>
           </thead>
@@ -129,6 +148,13 @@ export function PaginaPratos() {
                       ))}
                 </td>
                 <td>{p.ativo ? 'Ativo' : 'Inativo'}</td>
+                <td style={{ textAlign: 'center' }}>
+                  {idsSazonais.has(p.id) && (
+                    <span title="Ingrediente em safra este mês" style={{ fontSize: 16 }}>
+                      🌱
+                    </span>
+                  )}
+                </td>
                 <td>
                   <div className="acoes">
                     <button

@@ -11,6 +11,7 @@ import {
   type Turma,
 } from '../domain/types';
 import { formatarData, segundaFeiraDaSemana } from '../lib/datas';
+import { UF_PARA_REGIAO } from '../data/sazonalidade';
 
 export function PaginaCardapio() {
   const { id } = useParams();
@@ -59,6 +60,10 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
   const [atual, setAtual] = useState<Cardapio | null>(null);
   const [avisos, setAvisos] = useState<string[]>([]);
   const [salvos, setSalvos] = useState<Cardapio[]>([]);
+  const [priorizarSazonais, setPriorizarSazonais] = useState(false);
+  const [ufSazonalidade, setUfSazonalidade] = useState<string>(
+    () => localStorage.getItem('sazonalidade_uf') ?? 'SP',
+  );
 
   useEffect(() => {
     listarCardapios(cliente.id).then(setSalvos);
@@ -75,6 +80,8 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
       pratos,
       semanaInicio: semana,
       seed: Date.now(),
+      priorizarSazonais,
+      ufSazonalidade: priorizarSazonais ? ufSazonalidade : undefined,
     });
     setAtual(cardapio);
     setAvisos(avisos);
@@ -143,12 +150,37 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
       </div>
 
       <div className="card">
-        <div className="linha">
+        <div className="linha" style={{ flexWrap: 'wrap', gap: 16 }}>
           <div>
             <label>Semana (segunda-feira de referência)</label>
             <input type="date" value={semana} onChange={(e) => setSemana(e.target.value)} />
           </div>
-          <div className="acoes" style={{ marginTop: 20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'flex-end' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 400 }}>
+              <input
+                type="checkbox"
+                checked={priorizarSazonais}
+                onChange={(e) => setPriorizarSazonais(e.target.checked)}
+              />
+              🌱 Priorizar ingredientes da estação
+            </label>
+            {priorizarSazonais && (
+              <select
+                value={ufSazonalidade}
+                onChange={(e) => {
+                  setUfSazonalidade(e.target.value);
+                  localStorage.setItem('sazonalidade_uf', e.target.value);
+                }}
+                style={{ fontSize: 13 }}
+                title="Estado de referência para sazonalidade"
+              >
+                {Object.keys(UF_PARA_REGIAO).sort().map((uf) => (
+                  <option key={uf} value={uf}>{uf}</option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="acoes" style={{ marginTop: 'auto' }}>
             <button className="btn" onClick={gerar}>
               ⚙️ Gerar cardápio
             </button>
