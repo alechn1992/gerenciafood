@@ -196,6 +196,87 @@ export const SAZONALIDADE: ItemSazonal[] = [
     palavrasChave: ['romã', 'roma'],
     meses: { sul: [2,3,4,5], sudeste: [2,3,4,5], 'centro-oeste': [3,4,5] },
   },
+  {
+    id: 'sz-68', nome: 'Framboesa', categoria: 'fruta',
+    palavrasChave: ['framboesa'],
+    meses: { sul: [12,1,2,3], sudeste: [12,1,2] },
+  },
+  {
+    id: 'sz-69', nome: 'Mirtilo', categoria: 'fruta',
+    palavrasChave: ['mirtilo', 'blueberry'],
+    meses: { sul: [10,11,12,1], sudeste: [10,11,12] },
+  },
+  {
+    id: 'sz-70', nome: 'Jabuticaba', categoria: 'fruta',
+    palavrasChave: ['jabuticaba'],
+    meses: { sul: [10,11,12], sudeste: [9,10,11,12], 'centro-oeste': [9,10,11] },
+  },
+  {
+    id: 'sz-71', nome: 'Fruta-do-conde / Pinha', categoria: 'fruta',
+    palavrasChave: ['fruta-do-conde', 'pinha', 'fruta do conde', 'ata'],
+    meses: { sudeste: [1,2,3,4], 'centro-oeste': [1,2,3,4], nordeste: [12,1,2,3,4], norte: [11,12,1,2,3] },
+  },
+  {
+    id: 'sz-72', nome: 'Jaca', categoria: 'fruta',
+    palavrasChave: ['jaca'],
+    meses: { sul: [11,12,1], sudeste: [11,12,1,2], 'centro-oeste': [10,11,12,1], nordeste: [10,11,12,1], norte: [10,11,12,1,2] },
+  },
+  {
+    id: 'sz-73', nome: 'Pitaya', categoria: 'fruta',
+    palavrasChave: ['pitaya', 'pitaia'],
+    meses: { sudeste: [12,1,2,3], 'centro-oeste': [11,12,1,2,3], nordeste: [11,12,1,2,3], norte: [11,12,1,2] },
+  },
+  {
+    id: 'sz-74', nome: 'Siriguela', categoria: 'fruta',
+    palavrasChave: ['siriguela', 'ceriguela'],
+    meses: { 'centro-oeste': [9,10,11,12], nordeste: [9,10,11,12,1], norte: [8,9,10,11] },
+  },
+  {
+    id: 'sz-75', nome: 'Umbu', categoria: 'fruta',
+    palavrasChave: ['umbu', 'imbu'],
+    meses: { nordeste: [1,2,3,4] },
+  },
+  {
+    id: 'sz-76', nome: 'Tamarindo', categoria: 'fruta',
+    palavrasChave: ['tamarindo'],
+    meses: { 'centro-oeste': [6,7,8,9], nordeste: [6,7,8,9,10], norte: [6,7,8,9] },
+  },
+  {
+    id: 'sz-77', nome: 'Coco', categoria: 'fruta',
+    palavrasChave: ['coco'],
+    meses: {
+      sul: [1,2,3,4,5,6,7,8,9,10,11,12],
+      sudeste: [1,2,3,4,5,6,7,8,9,10,11,12],
+      'centro-oeste': [1,2,3,4,5,6,7,8,9,10,11,12],
+      nordeste: [1,2,3,4,5,6,7,8,9,10,11,12],
+      norte: [1,2,3,4,5,6,7,8,9,10,11,12],
+    },
+  },
+  {
+    id: 'sz-78', nome: 'Mangaba', categoria: 'fruta',
+    palavrasChave: ['mangaba'],
+    meses: { 'centro-oeste': [1,2,3,4,11,12], nordeste: [12,1,2,3,4,5], norte: [1,2,3,4,5] },
+  },
+  {
+    id: 'sz-79', nome: 'Sapoti', categoria: 'fruta',
+    palavrasChave: ['sapoti', 'sapota'],
+    meses: { nordeste: [3,4,5,6,7,8], norte: [3,4,5,6,7] },
+  },
+  {
+    id: 'sz-80', nome: 'Pequi', categoria: 'fruta',
+    palavrasChave: ['pequi'],
+    meses: { 'centro-oeste': [11,12,1,2], norte: [11,12,1,2,3] },
+  },
+  {
+    id: 'sz-81', nome: 'Lichia', categoria: 'fruta',
+    palavrasChave: ['lichia', 'lychee'],
+    meses: { sul: [12,1,2], sudeste: [12,1,2], 'centro-oeste': [11,12,1] },
+  },
+  {
+    id: 'sz-82', nome: 'Buriti', categoria: 'fruta',
+    palavrasChave: ['buriti'],
+    meses: { 'centro-oeste': [3,4,5,6], norte: [3,4,5,6,7] },
+  },
 
   // ── Verduras e folhas ─────────────────────────────────────────────────────
   {
@@ -252,6 +333,36 @@ export const SAZONALIDADE: ItemSazonal[] = [
     id: 'sz-25', nome: 'Acelga', categoria: 'verdura',
     palavrasChave: ['acelga'],
     meses: { sul: [4,5,6,7,8,9], sudeste: [4,5,6,7,8], 'centro-oeste': [4,5,6,7,8], nordeste: [5,6,7,8] },
+  },
+  {
+    id: 'sz-83', nome: 'Almeirão', categoria: 'verdura',
+    palavrasChave: ['almeirão', 'almeirao'],
+    meses: { sul: [4,5,6,7,8,9], sudeste: [4,5,6,7,8,9], 'centro-oeste': [4,5,6,7,8], nordeste: [5,6,7,8] },
+  },
+  {
+    id: 'sz-84', nome: 'Ora-pro-nóbis', categoria: 'verdura',
+    palavrasChave: ['ora-pro-nobis', 'ora pro nobis'],
+    meses: { sudeste: [9,10,11,12,1,2,3], 'centro-oeste': [9,10,11,12,1,2,3] },
+  },
+  {
+    id: 'sz-85', nome: 'Taioba', categoria: 'verdura',
+    palavrasChave: ['taioba'],
+    meses: { sudeste: [11,12,1,2,3,4], 'centro-oeste': [11,12,1,2,3] },
+  },
+  {
+    id: 'sz-86', nome: 'Mostarda', categoria: 'verdura',
+    palavrasChave: ['mostarda'],
+    meses: { sul: [4,5,6,7,8,9], sudeste: [4,5,6,7,8,9], 'centro-oeste': [4,5,6,7,8] },
+  },
+  {
+    id: 'sz-87', nome: 'Catalonha', categoria: 'verdura',
+    palavrasChave: ['catalonha', 'catalônia'],
+    meses: { sul: [4,5,6,7,8,9], sudeste: [4,5,6,7,8,9], 'centro-oeste': [4,5,6,7,8] },
+  },
+  {
+    id: 'sz-88', nome: 'Nirá', categoria: 'verdura',
+    palavrasChave: ['nirá', 'nira', 'cebolinha japonesa'],
+    meses: { sul: [4,5,6,7,8,9], sudeste: [4,5,6,7,8,9], 'centro-oeste': [4,5,6,7,8] },
   },
 
   // ── Legumes ───────────────────────────────────────────────────────────────
@@ -350,6 +461,37 @@ export const SAZONALIDADE: ItemSazonal[] = [
     palavrasChave: ['jiló', 'jilo'],
     meses: { sudeste: [12,1,2,3], 'centro-oeste': [12,1,2,3], nordeste: [10,11,12,1,2], norte: [10,11,12,1,2] },
   },
+  {
+    id: 'sz-89', nome: 'Alcachofra', categoria: 'legume',
+    palavrasChave: ['alcachofra'],
+    meses: { sul: [7,8,9,10], sudeste: [7,8,9,10], 'centro-oeste': [8,9,10] },
+  },
+  {
+    id: 'sz-90', nome: 'Broto de feijão', categoria: 'legume',
+    palavrasChave: ['broto de feijão', 'broto de feijao', 'moyashi', 'broto'],
+    meses: {
+      sul: [1,2,3,4,5,6,7,8,9,10,11,12],
+      sudeste: [1,2,3,4,5,6,7,8,9,10,11,12],
+      'centro-oeste': [1,2,3,4,5,6,7,8,9,10,11,12],
+      nordeste: [1,2,3,4,5,6,7,8,9,10,11,12],
+      norte: [1,2,3,4,5,6,7,8,9,10,11,12],
+    },
+  },
+  {
+    id: 'sz-91', nome: 'Pimenta', categoria: 'legume',
+    palavrasChave: ['pimenta', 'dedo-de-moça', 'malagueta', 'pimentinha'],
+    meses: { sul: [1,2,3,12], sudeste: [11,12,1,2,3], 'centro-oeste': [11,12,1,2,3], nordeste: [9,10,11,12,1], norte: [9,10,11,12] },
+  },
+  {
+    id: 'sz-92', nome: 'Alho-poró', categoria: 'legume',
+    palavrasChave: ['alho-poró', 'alho poro', 'porro'],
+    meses: { sul: [5,6,7,8,9], sudeste: [5,6,7,8,9], 'centro-oeste': [5,6,7,8] },
+  },
+  {
+    id: 'sz-93', nome: 'Erva-doce / Funcho', categoria: 'legume',
+    palavrasChave: ['erva-doce', 'funcho', 'erva doce'],
+    meses: { sul: [5,6,7,8,9], sudeste: [5,6,7,8,9], 'centro-oeste': [5,6,7,8] },
+  },
 
   // ── Raízes e tubérculos ───────────────────────────────────────────────────
   {
@@ -387,6 +529,26 @@ export const SAZONALIDADE: ItemSazonal[] = [
     id: 'sz-42', nome: 'Inhame', categoria: 'raiz',
     palavrasChave: ['inhame'],
     meses: { sul: [4,5,6,7,8], sudeste: [3,4,5,6,7], 'centro-oeste': [3,4,5,6,7], nordeste: [3,4,5,6,7,8], norte: [2,3,4,5,6,7] },
+  },
+  {
+    id: 'sz-94', nome: 'Mandioquinha / Batata-baroa', categoria: 'raiz',
+    palavrasChave: ['mandioquinha', 'batata-baroa', 'batata baroa', 'batata-salsa'],
+    meses: { sul: [4,5,6,7,8,9], sudeste: [4,5,6,7,8,9], 'centro-oeste': [5,6,7,8,9] },
+  },
+  {
+    id: 'sz-95', nome: 'Bardana', categoria: 'raiz',
+    palavrasChave: ['bardana'],
+    meses: { sul: [5,6,7,8,9], sudeste: [5,6,7,8,9], 'centro-oeste': [6,7,8,9] },
+  },
+  {
+    id: 'sz-96', nome: 'Alho', categoria: 'raiz',
+    palavrasChave: ['alho'],
+    meses: { sul: [12,1,2,3], sudeste: [11,12,1,2], 'centro-oeste': [10,11,12,1], nordeste: [6,7,8,9] },
+  },
+  {
+    id: 'sz-97', nome: 'Amendoim', categoria: 'raiz',
+    palavrasChave: ['amendoim'],
+    meses: { sul: [1,2,3,4], sudeste: [1,2,3,4], 'centro-oeste': [2,3,4,5], nordeste: [2,3,4,5], norte: [1,2,3,4] },
   },
 ];
 
