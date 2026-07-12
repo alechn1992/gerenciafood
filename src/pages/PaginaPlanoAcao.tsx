@@ -45,46 +45,49 @@ function PlanoAcaoCliente({ clienteId, clienteNome }: { clienteId: string; clien
 
   useEffect(() => {
     (async () => {
-      const [rel, plano] = await Promise.all([
-        repo.carregarRelatorio(clienteId),
-        repo.carregarPlanoAcao(clienteId),
-      ]);
+      try {
+        const rel = await repo.carregarRelatorio(clienteId);
+        // carregarPlanoAcao pode falhar se a tabela ainda não existir no Supabase
+        const plano = await repo.carregarPlanoAcao(clienteId).catch(() => null);
 
-      if (plano) {
-        setAcoes(plano.acoes);
-        setRelatorioId(plano.relatorioId);
+        if (plano) {
+          setAcoes(plano.acoes);
+          setRelatorioId(plano.relatorioId);
+          return;
+        }
+
+        // Gera plano inicial a partir das não conformidades do relatório
+        if (rel) {
+          setRelatorioId(rel.id);
+          const todosItens = [
+            ...CHECKLIST_BOAS_PRATICAS,
+            ...CHECKLIST_CEI_SESA_162,
+          ].flatMap((b) => b.itens);
+
+          const prazoDefault = (() => {
+            const d = new Date();
+            d.setDate(d.getDate() + 30);
+            return d.toISOString().slice(0, 10);
+          })();
+
+          const novasAcoes: AcaoCorretiva[] = todosItens
+            .filter((item) => rel.respostas[item.id] === 'nao_conforme')
+            .map((item) => ({
+              itemId: item.id,
+              itemTexto: item.texto,
+              acao: '',
+              responsavel: '',
+              prazo: prazoDefault,
+              status: 'pendente' as StatusAcao,
+              observacao: rel.observacoes[item.id] ?? '',
+            }));
+          setAcoes(novasAcoes);
+        }
+      } catch {
+        // Continua com estado vazio se houver erro de carregamento
+      } finally {
         setCarregando(false);
-        return;
       }
-
-      // Gera plano inicial a partir das não conformidades do relatório
-      if (rel) {
-        setRelatorioId(rel.id);
-        const todosItens = [
-          ...CHECKLIST_BOAS_PRATICAS,
-          ...CHECKLIST_CEI_SESA_162,
-        ].flatMap((b) => b.itens);
-
-        const prazoDefault = (() => {
-          const d = new Date();
-          d.setDate(d.getDate() + 30);
-          return d.toISOString().slice(0, 10);
-        })();
-
-        const novasAcoes: AcaoCorretiva[] = todosItens
-          .filter((item) => rel.respostas[item.id] === 'nao_conforme')
-          .map((item) => ({
-            itemId: item.id,
-            itemTexto: item.texto,
-            acao: '',
-            responsavel: '',
-            prazo: prazoDefault,
-            status: 'pendente' as StatusAcao,
-            observacao: rel.observacoes[item.id] ?? '',
-          }));
-        setAcoes(novasAcoes);
-      }
-      setCarregando(false);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteId]);
