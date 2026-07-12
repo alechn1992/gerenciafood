@@ -14,6 +14,7 @@ import { PaginaReceita } from './pages/PaginaReceita';
 import { PaginaInsumos } from './pages/PaginaInsumos';
 import { PaginaConfiguracoes } from './pages/PaginaConfiguracoes';
 import { PaginaSazonalidade } from './pages/PaginaSazonalidade';
+import { PaginaPlanoAcao } from './pages/PaginaPlanoAcao';
 
 function RotaProtegida({ children }: { children: React.ReactNode }) {
   const { session, carregando } = useAuth();
@@ -100,6 +101,7 @@ export function App() {
                   <Route path="/clientes/:id/cardapio" element={<PaginaCardapio />} />
                   <Route path="/cardapio" element={<PaginaMontagemCardapio />} />
                   <Route path="/clientes/:id/relatorio" element={<PaginaRelatorio />} />
+                  <Route path="/clientes/:id/plano-acao" element={<PaginaPlanoAcao />} />
                   <Route path="/relatorio" element={<PaginaRelatorioMenu />} />
                   <Route path="/pratos" element={<PaginaPratos />} />
                   <Route path="/pratos/:id/receita" element={<PaginaReceita />} />

@@ -535,6 +535,9 @@ export function PaginaRelatorio() {
         </div>
         <div className="acoes">
           <Link to="/clientes" className="btn secundario">← Voltar</Link>
+          <Link to={`/clientes/${cliente.id}/plano-acao`} className="btn secundario">
+            📋 Plano de Ação
+          </Link>
           <button className="btn" onClick={() => window.print()}>🖨️ Imprimir / PDF</button>
         </div>
       </div>

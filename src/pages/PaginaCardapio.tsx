@@ -110,6 +110,16 @@ export function MontagemCardapio({ cliente }: { cliente: Cliente }) {
   );
 }
 
+function copiarCardapio(origem: Cardapio, novaSemana: string): Cardapio {
+  return { ...origem, id: crypto.randomUUID(), semanaInicio: novaSemana, geradoEm: new Date().toISOString() };
+}
+
+function adicionarSemanas(data: string, n: number): string {
+  const d = new Date(`${data}T00:00:00`);
+  d.setDate(d.getDate() + n * 7);
+  return d.toISOString().slice(0, 10);
+}
+
 /** Fluxo original: um cardápio por cliente (sem turmas), semana a semana. */
 function CardapioSimples({ cliente }: { cliente: Cliente }) {
   const { pratos, tiposRefeicao, salvarCardapio, listarCardapios } = useData();
@@ -122,6 +132,8 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
   const [ufSazonalidade, setUfSazonalidade] = useState<string>(
     () => localStorage.getItem('sazonalidade_uf') ?? 'SP',
   );
+  const [copiandoId, setCopiandoId] = useState<string | null>(null);
+  const [semanaDestino, setSemanaDestino] = useState(segundaFeiraDaSemana());
 
   useEffect(() => {
     listarCardapios(cliente.id).then(setSalvos);
@@ -330,16 +342,43 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
                   <td>{new Date(c.geradoEm).toLocaleString('pt-BR')}</td>
                   <td>{c.itens.length}</td>
                   <td>
-                    <button
-                      className="btn pequeno secundario"
-                      onClick={() => {
-                        setAtual(c);
-                        setAvisos([]);
-                        setSemana(c.semanaInicio);
-                      }}
-                    >
-                      Ver
-                    </button>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button
+                        className="btn pequeno secundario"
+                        onClick={() => { setAtual(c); setAvisos([]); setSemana(c.semanaInicio); setCopiandoId(null); }}
+                      >
+                        Ver
+                      </button>
+                      <button
+                        className="btn pequeno secundario"
+                        onClick={() => { setCopiandoId(c.id); setSemanaDestino(adicionarSemanas(c.semanaInicio, 1)); }}
+                      >
+                        Copiar
+                      </button>
+                      {copiandoId === c.id && (
+                        <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                          <input
+                            type="date"
+                            value={semanaDestino}
+                            onChange={(e) => setSemanaDestino(e.target.value)}
+                            style={{ fontSize: 13 }}
+                          />
+                          <button
+                            className="btn pequeno"
+                            onClick={() => {
+                              const copia = copiarCardapio(c, semanaDestino);
+                              setAtual(copia);
+                              setSemana(semanaDestino);
+                              setAvisos([]);
+                              setCopiandoId(null);
+                            }}
+                          >
+                            OK
+                          </button>
+                          <button className="btn pequeno secundario" onClick={() => setCopiandoId(null)}>✕</button>
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -370,6 +409,28 @@ function CardapioPorTurmas({
   const [semana, setSemana] = useState(segundaFeiraDaSemana());
   const [semanasGeradas, setSemanasGeradas] = useState<SemanaGerada[]>([]);
   const [salvos, setSalvos] = useState<Cardapio[]>([]);
+  const [copiandoSemana, setCopiandoSemana] = useState<string | null>(null);
+  const [semanaDestinoCopia, setSemanaDestinoCopia] = useState(segundaFeiraDaSemana());
+
+  const copiarSemanas = (semanaOrigem: string, novaBase: string, quantas: number) => {
+    const novas: SemanaGerada[] = [];
+    for (let i = 0; i < quantas; i++) {
+      const de = adicionarSemanas(semanaOrigem, i);
+      const para = adicionarSemanas(novaBase, i);
+      const cardapiosDaSemana = salvos.filter((c) => c.semanaInicio === de && c.turmaId);
+      if (cardapiosDaSemana.length === 0) continue;
+      const porTurma: Record<string, Cardapio> = {};
+      cardapiosDaSemana.forEach((c) => {
+        if (c.turmaId) porTurma[c.turmaId] = copiarCardapio(c, para);
+      });
+      novas.push({ semanaInicio: para, porTurma, avisos: [] });
+    }
+    if (novas.length > 0) {
+      setSemanasGeradas(novas);
+      setSemana(novaBase);
+    }
+    setCopiandoSemana(null);
+  };
 
   const trocarPratoTurma = (semanaInicio: string, turmaId: string, itemIdx: number, novoPratoId: string) => {
     const novoPrato = pratos.find((p) => p.id === novoPratoId);
@@ -556,16 +617,39 @@ function CardapioPorTurmas({
               {semanasSalvas.map((semanaInicio) => (
                 <tr key={semanaInicio}>
                   <td>{formatarData(semanaInicio)}</td>
+                  <td>{salvosTurma.filter((c) => c.semanaInicio === semanaInicio).length}</td>
                   <td>
-                    {salvosTurma.filter((c) => c.semanaInicio === semanaInicio).length}
-                  </td>
-                  <td>
-                    <button
-                      className="btn pequeno secundario"
-                      onClick={() => verSemanaSalva(semanaInicio)}
-                    >
-                      Ver
-                    </button>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button
+                        className="btn pequeno secundario"
+                        onClick={() => { verSemanaSalva(semanaInicio); setCopiandoSemana(null); }}
+                      >
+                        Ver
+                      </button>
+                      <button
+                        className="btn pequeno secundario"
+                        onClick={() => { setCopiandoSemana(semanaInicio); setSemanaDestinoCopia(adicionarSemanas(semanaInicio, 1)); }}
+                      >
+                        Copiar
+                      </button>
+                      {copiandoSemana === semanaInicio && (
+                        <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <input
+                            type="date"
+                            value={semanaDestinoCopia}
+                            onChange={(e) => setSemanaDestinoCopia(e.target.value)}
+                            style={{ fontSize: 13 }}
+                          />
+                          <button className="btn pequeno" onClick={() => copiarSemanas(semanaInicio, semanaDestinoCopia, 1)}>
+                            1 semana
+                          </button>
+                          <button className="btn pequeno" onClick={() => copiarSemanas(semanaInicio, semanaDestinoCopia, 4)}>
+                            4 semanas
+                          </button>
+                          <button className="btn pequeno secundario" onClick={() => setCopiandoSemana(null)}>✕</button>
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
