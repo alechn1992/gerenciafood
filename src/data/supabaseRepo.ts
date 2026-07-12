@@ -13,6 +13,7 @@ import type {
   Relatorio,
   TipoRefeicao,
   Turma,
+  Visita,
 } from '../domain/types';
 import type { Repository } from './repo';
 
@@ -180,6 +181,34 @@ export class SupabaseRepository implements Repository {
       atualizadoEm: data.atualizado_em,
     };
   }
+
+  async listarVisitas(clienteId?: string): Promise<Visita[]> {
+    let query = this.db.from('visitas').select('*').order('data', { ascending: false });
+    if (clienteId) query = query.eq('cliente_id', clienteId);
+    const { data, error } = await query;
+    const rows = this.assert(data, error);
+    return rows.map(mapVisitaFromRow);
+  }
+
+  async salvarVisita(v: Visita): Promise<void> {
+    const { error } = await this.db.from('visitas').upsert({
+      id: v.id,
+      cliente_id: v.clienteId,
+      data: v.data,
+      consultor: v.consultor,
+      tipo: v.tipo,
+      observacoes: v.observacoes,
+      proxima_visita: v.proximaVisita ?? null,
+      relatorio_id: v.relatorioId ?? null,
+      criado_em: v.criadoEm,
+    });
+    if (error) throw error;
+  }
+
+  async removerVisita(id: string): Promise<void> {
+    const { error } = await this.db.from('visitas').delete().eq('id', id);
+    if (error) throw error;
+  }
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -310,6 +339,20 @@ function mapTurmaToRow(t: Turma) {
     ordem: t.ordem,
     refeicoes: t.refeicoes,
     restricoes: t.restricoes,
+  };
+}
+
+function mapVisitaFromRow(r: any): Visita {
+  return {
+    id: r.id,
+    clienteId: r.cliente_id,
+    data: r.data,
+    consultor: r.consultor ?? '',
+    tipo: r.tipo ?? 'auditoria',
+    observacoes: r.observacoes ?? '',
+    proximaVisita: r.proxima_visita ?? undefined,
+    relatorioId: r.relatorio_id ?? undefined,
+    criadoEm: r.criado_em,
   };
 }
 

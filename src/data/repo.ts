@@ -5,7 +5,7 @@
 // Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY), os dados passam a ser
 // persistidos no Postgres do Supabase.
 
-import type { Cardapio, Cliente, Insumo, PlanoAcao, Prato, Relatorio, TipoRefeicao, Turma } from '../domain/types';
+import type { Cardapio, Cliente, Insumo, PlanoAcao, Prato, Relatorio, TipoRefeicao, Turma, Visita } from '../domain/types';
 import { INSUMOS_PADRAO, PRATOS_PADRAO, TIPOS_REFEICAO_PADRAO } from './seed';
 import { supabase } from '../lib/supabase';
 import { SupabaseRepository } from './supabaseRepo';
@@ -31,6 +31,9 @@ export interface Repository {
   carregarRelatorio(clienteId: string): Promise<Relatorio | null>;
   salvarPlanoAcao(p: PlanoAcao): Promise<void>;
   carregarPlanoAcao(clienteId: string): Promise<PlanoAcao | null>;
+  listarVisitas(clienteId?: string): Promise<Visita[]>;
+  salvarVisita(v: Visita): Promise<void>;
+  removerVisita(id: string): Promise<void>;
 }
 
 const KEYS = {
@@ -42,6 +45,7 @@ const KEYS = {
   turmas: 'gf.turmas',
   relatorios: 'gf.relatorios',
   planos: 'gf.planos',
+  visitas: 'gf.visitas',
 };
 
 function ler<T>(key: string, fallback: T): T {
@@ -204,6 +208,24 @@ export class LocalRepository implements Repository {
   async carregarPlanoAcao(clienteId: string): Promise<PlanoAcao | null> {
     const todos = ler<PlanoAcao[]>(KEYS.planos, []);
     return todos.find((p) => p.clienteId === clienteId) ?? null;
+  }
+
+  async listarVisitas(clienteId?: string): Promise<Visita[]> {
+    const todas = ler<Visita[]>(KEYS.visitas, []);
+    const filtradas = clienteId ? todas.filter((v) => v.clienteId === clienteId) : todas;
+    return filtradas.sort((a, b) => b.data.localeCompare(a.data));
+  }
+
+  async salvarVisita(v: Visita): Promise<void> {
+    const todas = ler<Visita[]>(KEYS.visitas, []);
+    const idx = todas.findIndex((x) => x.id === v.id);
+    if (idx >= 0) todas[idx] = v; else todas.push(v);
+    escrever(KEYS.visitas, todas);
+  }
+
+  async removerVisita(id: string): Promise<void> {
+    const todas = ler<Visita[]>(KEYS.visitas, []);
+    escrever(KEYS.visitas, todas.filter((v) => v.id !== id));
   }
 }
 

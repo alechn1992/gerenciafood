@@ -9,6 +9,7 @@ export const TELAS_DISPONIVEIS = [
   { id: 'insumos',      label: 'Insumos' },
   { id: 'relatorio',    label: 'Relatório' },
   { id: 'sazonalidade', label: 'Sazonalidade' },
+  { id: 'visitas',      label: 'Visitas' },
 ] as const;
 
 export const TELAS_PADRAO = TELAS_DISPONIVEIS.map((t) => t.id);

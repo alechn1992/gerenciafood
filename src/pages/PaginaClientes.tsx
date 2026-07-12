@@ -75,6 +75,12 @@ export function PaginaClientes() {
                       >
                         Relatório
                       </Link>
+                      <Link
+                        to={`/visitas?cliente=${c.id}`}
+                        className="btn pequeno secundario"
+                      >
+                        Visitas
+                      </Link>
                       <button
                         className="btn pequeno secundario"
                         onClick={() => navigate(`/clientes/${c.id}/editar`)}

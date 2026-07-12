@@ -15,6 +15,7 @@ import { PaginaInsumos } from './pages/PaginaInsumos';
 import { PaginaConfiguracoes } from './pages/PaginaConfiguracoes';
 import { PaginaSazonalidade } from './pages/PaginaSazonalidade';
 import { PaginaPlanoAcao } from './pages/PaginaPlanoAcao';
+import { PaginaVisitas } from './pages/PaginaVisitas';
 
 function RotaProtegida({ children }: { children: React.ReactNode }) {
   const { session, carregando } = useAuth();
@@ -41,6 +42,7 @@ const NAV_ITENS = [
   { tela: 'insumos',      label: 'Insumos',          to: '/insumos' },
   { tela: 'relatorio',    label: 'Relatório',        to: '/relatorio' },
   { tela: 'sazonalidade', label: 'Sazonalidade',     to: '/sazonalidade' },
+  { tela: 'visitas',      label: 'Visitas',           to: '/visitas' },
 ];
 
 export function App() {
@@ -107,6 +109,7 @@ export function App() {
                   <Route path="/pratos/:id/receita" element={<PaginaReceita />} />
                   <Route path="/insumos" element={<PaginaInsumos />} />
                   <Route path="/sazonalidade" element={<PaginaSazonalidade />} />
+                  <Route path="/visitas" element={<PaginaVisitas />} />
                   <Route path="/configuracoes" element={<PaginaConfiguracoes />} />
                   <Route path="*" element={<Navigate to="/clientes" replace />} />
                 </Routes>
