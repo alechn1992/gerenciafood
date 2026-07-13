@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useData } from '../state/DataContext';
-import { UNIDADES_MEDIDA, type Insumo, type NutricaoInsumo, type UnidadeMedida } from '../domain/types';
+import { CATEGORIAS_INSUMO, UNIDADES_MEDIDA, type CategoriaInsumo, type Insumo, type NutricaoInsumo, type UnidadeMedida } from '../domain/types';
 import { TODAS_TABELAS, ROTULO_FONTE, COR_FONTE, type ItemTaco } from '../data/tabelasNutricao';
 
 // Unidades cujo peso em gramas é derivado automaticamente da quantidade.
@@ -256,6 +256,7 @@ function InsumoLinha({
   onSalvar: (i: Insumo) => Promise<void>;
   onRemover: (id: string) => Promise<void>;
 }) {
+  const nomeCat = CATEGORIAS_INSUMO.find((c) => c.valor === insumo.categoria)?.nome;
   const [qtd, setQtd] = useState(String(insumo.qtdEmbalagem));
   const [preco, setPreco] = useState(insumo.precoEmbalagem.toFixed(2).replace('.', ','));
   const [expandido, setExpandido] = useState(false);
@@ -290,7 +291,21 @@ function InsumoLinha({
   return (
     <>
       <tr>
-        <td>{insumo.nome}</td>
+        <td>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {insumo.nome}
+            {nomeCat && (
+              <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '1px 6px', borderRadius: 10, background: 'var(--verde-claro)', color: 'var(--verde-escuro)', whiteSpace: 'nowrap' }}>
+                {nomeCat}
+              </span>
+            )}
+            {insumo.codigoExterno && (
+              <span title={`Sincronizado em: ${insumo.sincronizadoEm ? new Date(insumo.sincronizadoEm).toLocaleString('pt-BR') : '?'}`} style={{ fontSize: '0.7rem', fontWeight: 600, padding: '1px 6px', borderRadius: 10, background: '#e0f0ff', color: '#0066cc', cursor: 'default', whiteSpace: 'nowrap' }}>
+                ⟳ API
+              </span>
+            )}
+          </div>
+        </td>
         <td>{siglaUnidade}</td>
         <td style={{ width: 120 }}>
           <input
@@ -386,6 +401,7 @@ export function PaginaInsumos() {
   const [unidade, setUnidade] = useState<UnidadeMedida>('kg');
   const [qtdEmbalagem, setQtdEmbalagem] = useState('1');
   const [precoEmbalagem, setPrecoEmbalagem] = useState('');
+  const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaInsumo | 'todos'>('todos');
 
   const qtdNum = Number(qtdEmbalagem.replace(',', '.')) || 1;
   const precoNum = Number(precoEmbalagem.replace(',', '.')) || 0;
@@ -409,7 +425,9 @@ export function PaginaInsumos() {
     setPrecoEmbalagem('');
   };
 
-  const listados = [...insumos].sort((a, b) => a.nome.localeCompare(b.nome));
+  const listados = [...insumos]
+    .filter((i) => categoriaFiltro === 'todos' || i.categoria === categoriaFiltro)
+    .sort((a, b) => a.nome.localeCompare(b.nome));
   const siglaUnidade = (u: UnidadeMedida) =>
     UNIDADES_MEDIDA.find((x) => x.valor === u)?.sigla ?? u;
 
@@ -499,11 +517,30 @@ export function PaginaInsumos() {
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Insumos cadastrados ({listados.length})</h3>
+        <h3 style={{ marginTop: 0 }}>Insumos cadastrados ({listados.length}{categoriaFiltro !== 'todos' ? ` de ${insumos.length}` : ''})</h3>
         <p className="subtitulo" style={{ margin: '0 0 12px' }}>
           Clique em <strong>🔬 Vincular</strong> para associar dados nutricionais da tabela TACO a um
           insumo.
         </p>
+
+        <div className="chips" style={{ marginBottom: 14 }}>
+          <span
+            className={`chip ${categoriaFiltro === 'todos' ? 'on' : ''}`}
+            onClick={() => setCategoriaFiltro('todos')}
+          >
+            Todos
+          </span>
+          {CATEGORIAS_INSUMO.map((c) => (
+            <span
+              key={c.valor}
+              className={`chip ${categoriaFiltro === c.valor ? 'on' : ''}`}
+              onClick={() => setCategoriaFiltro(c.valor)}
+            >
+              {c.nome}
+            </span>
+          ))}
+        </div>
+
         <div style={{ overflowX: 'auto' }}>
           <table>
             <thead>

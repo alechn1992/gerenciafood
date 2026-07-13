@@ -70,6 +70,17 @@ export interface NutricaoInsumo {
   sodio: number;
 }
 
+/** Categorias de insumo, usadas para filtrar e organizar após a importação via API. */
+export type CategoriaInsumo = 'mercado' | 'açougue' | 'varejão' | 'naturais' | 'outro';
+
+export const CATEGORIAS_INSUMO: { valor: CategoriaInsumo; nome: string }[] = [
+  { valor: 'mercado', nome: 'Mercado' },
+  { valor: 'açougue', nome: 'Açougue' },
+  { valor: 'varejão', nome: 'Varejão' },
+  { valor: 'naturais', nome: 'Naturais' },
+  { valor: 'outro', nome: 'Outro' },
+];
+
 /** Insumo (matéria-prima) cadastrado com preço, usado para custear receitas. */
 export interface Insumo {
   id: string;
@@ -89,6 +100,22 @@ export interface Insumo {
   pesoGramas?: number;
   /** Informação nutricional por 100 g (fonte: TACO ou manual). */
   nutricao?: NutricaoInsumo;
+  /** Categoria do insumo (mercado, açougue, varejão, naturais). */
+  categoria?: CategoriaInsumo;
+  /** ID do produto no sistema externo, para sincronização via API. */
+  codigoExterno?: string;
+  /** ISO timestamp da última sincronização com o sistema externo. */
+  sincronizadoEm?: string;
+}
+
+/** Configuração da integração com API externa de produtos/insumos. */
+export interface ConfiguracaoSync {
+  /** URL base da API externa (ex.: https://meu-sistema.com/api). */
+  urlBase: string;
+  /** Chave de autenticação enviada no header X-Api-Key. */
+  apiKey: string;
+  /** ISO timestamp da última sincronização bem-sucedida. */
+  ultimaSincronizacao?: string;
 }
 
 /** Um insumo e a quantidade usada dentro de uma receita, para cálculo de custo. */

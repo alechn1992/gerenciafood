@@ -5,7 +5,7 @@
 // Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY), os dados passam a ser
 // persistidos no Postgres do Supabase.
 
-import type { Cardapio, Cliente, Insumo, PlanoAcao, Prato, Profissional, Relatorio, TipoRefeicao, Turma, Visita, SecaoVisita } from '../domain/types';
+import type { Cardapio, Cliente, ConfiguracaoSync, Insumo, PlanoAcao, Prato, Profissional, Relatorio, TipoRefeicao, Turma, Visita, SecaoVisita } from '../domain/types';
 import { INSUMOS_PADRAO, PRATOS_PADRAO, TIPOS_REFEICAO_PADRAO } from './seed';
 import { supabase } from '../lib/supabase';
 import { SupabaseRepository } from './supabaseRepo';
@@ -38,6 +38,8 @@ export interface Repository {
   listarProfissionais(): Promise<Profissional[]>;
   salvarProfissional(p: Profissional): Promise<void>;
   removerProfissional(id: string): Promise<void>;
+  carregarConfiguracaoSync(): Promise<ConfiguracaoSync | null>;
+  salvarConfiguracaoSync(c: ConfiguracaoSync): Promise<void>;
 }
 
 const KEYS = {
@@ -51,6 +53,7 @@ const KEYS = {
   planos: 'gf.planos',
   visitas: 'gf.visitas',
   profissionais: 'gf.profissionais',
+  syncConfig: 'gf.syncconfig',
 };
 
 function ler<T>(key: string, fallback: T): T {
@@ -254,6 +257,14 @@ export class LocalRepository implements Repository {
 
   async removerProfissional(id: string): Promise<void> {
     escrever(KEYS.profissionais, ler<Profissional[]>(KEYS.profissionais, []).filter((p) => p.id !== id));
+  }
+
+  async carregarConfiguracaoSync(): Promise<ConfiguracaoSync | null> {
+    return ler<ConfiguracaoSync | null>(KEYS.syncConfig, null);
+  }
+
+  async salvarConfiguracaoSync(c: ConfiguracaoSync): Promise<void> {
+    escrever(KEYS.syncConfig, c);
   }
 }
 

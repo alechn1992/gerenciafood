@@ -4,7 +4,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   Cardapio,
+  CategoriaInsumo,
   Cliente,
+  ConfiguracaoSync,
   DiaSemana,
   Insumo,
   PlanoAcao,
@@ -252,6 +254,19 @@ export class SupabaseRepository implements Repository {
     const { error } = await this.db.from('profissionais').delete().eq('id', id);
     if (error) throw error;
   }
+
+  async carregarConfiguracaoSync(): Promise<ConfiguracaoSync | null> {
+    try {
+      const raw = localStorage.getItem('gf.syncconfig');
+      return raw ? (JSON.parse(raw) as ConfiguracaoSync) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async salvarConfiguracaoSync(c: ConfiguracaoSync): Promise<void> {
+    localStorage.setItem('gf.syncconfig', JSON.stringify(c));
+  }
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -335,6 +350,9 @@ function mapInsumoFromRow(r: any): Insumo {
     ativo: r.ativo ?? true,
     pesoGramas: r.peso_gramas != null ? Number(r.peso_gramas) : undefined,
     nutricao: r.nutricao ?? undefined,
+    categoria: (r.categoria as CategoriaInsumo) ?? undefined,
+    codigoExterno: r.codigo_externo ?? undefined,
+    sincronizadoEm: r.sincronizado_em ?? undefined,
   };
 }
 
@@ -349,6 +367,9 @@ function mapInsumoToRow(i: Insumo) {
     ativo: i.ativo,
     peso_gramas: i.pesoGramas ?? null,
     nutricao: i.nutricao ?? null,
+    categoria: i.categoria ?? null,
+    codigo_externo: i.codigoExterno ?? null,
+    sincronizado_em: i.sincronizadoEm ?? null,
   };
 }
 
