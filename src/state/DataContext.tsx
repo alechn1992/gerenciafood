@@ -42,6 +42,16 @@ interface DataState {
 
 const Ctx = createContext<DataState | null>(null);
 
+function descreverErro(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === 'object') {
+    const o = e as Record<string, unknown>;
+    const partes = [o.message, o.details, o.hint].filter(Boolean).map(String);
+    return partes.length > 0 ? partes.join(' — ') : JSON.stringify(e);
+  }
+  return String(e);
+}
+
 /** Formato esperado da API externa de produtos. */
 interface ProdutoExterno {
   id: string;
@@ -131,6 +141,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     let atualizados = 0;
     const erros: string[] = [];
     const agora = new Date().toISOString();
+    const contagemErros: Record<string, number> = {};
 
     for (const prod of produtos) {
       try {
@@ -164,14 +175,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
         await repo.salvarInsumo(insumo);
         if (existente) atualizados++; else importados++;
       } catch (e: unknown) {
-        erros.push(`"${prod.nome}": ${e instanceof Error ? e.message : String(e)}`);
+        const msg = descreverErro(e);
+        contagemErros[msg] = (contagemErros[msg] ?? 0) + 1;
       }
     }
 
-    const novaCfg: ConfiguracaoSync = { ...cfg, ultimaSincronizacao: agora };
-    await repo.salvarConfiguracaoSync(novaCfg);
-    setConfiguracaoSync(novaCfg);
-    await recarregarInsumos();
+    // Consolida erros repetidos (ex.: coluna inexistente afeta todos os produtos)
+    for (const [msg, qtd] of Object.entries(contagemErros)) {
+      const isMigration = msg.includes('column') && msg.includes('does not exist');
+      const sufixo = qtd > 1 ? ` (${qtd} produtos)` : '';
+      const dica = isMigration
+        ? ' → Execute a migration 0016 no Supabase Dashboard: ALTER TABLE insumos ADD COLUMN IF NOT EXISTS categoria text, ADD COLUMN IF NOT EXISTS codigo_externo text, ADD COLUMN IF NOT EXISTS sincronizado_em timestamptz;'
+        : '';
+      erros.push(`${msg}${sufixo}${dica}`);
+    }
+
+    if (importados + atualizados > 0) {
+      const novaCfg: ConfiguracaoSync = { ...cfg, ultimaSincronizacao: agora };
+      await repo.salvarConfiguracaoSync(novaCfg);
+      setConfiguracaoSync(novaCfg);
+      await recarregarInsumos();
+    }
     return { importados, atualizados, erros };
   };
 
