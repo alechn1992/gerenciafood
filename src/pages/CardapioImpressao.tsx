@@ -335,16 +335,43 @@ export function CardapioImpressao({
 
         /* ── Impressão ─────────────────────────────── */
         @media print {
-          @page { size: A4 landscape; margin: 10mm; }
+          @page { size: A4 landscape; margin: 8mm 10mm; }
 
           .cp-folha { max-width: none; }
           .cp-quebra { break-before: page; }
-          .cp-semana { padding: 0 0 8px; }
-          .cp-bloco { break-inside: avoid; page-break-inside: avoid; }
+          .cp-semana { padding: 0; }
+          .cp-bloco { break-inside: avoid; page-break-inside: avoid; margin-bottom: 12px; }
           .cp-tabela { break-inside: avoid; page-break-inside: avoid; }
 
-          .cp-titulo { font-size: 1.35rem; }
-          .cp-pratos li { font-size: 0.78rem; }
+          /* Layout compactado: uma semana precisa caber inteira numa folha,
+             com o rodapé assinado junto — é o que vai para as famílias. */
+          .cp-cabecalho { padding-bottom: 8px; margin-bottom: 11px; gap: 14px; }
+          .cp-logo { max-height: 52px; max-width: 120px; }
+          .cp-supertitulo { font-size: 0.62rem; letter-spacing: 0.14em; }
+          .cp-titulo { font-size: 1.2rem; margin: 1px 0 2px; }
+          .cp-periodo { font-size: 0.8rem; }
+
+          .cp-turma { font-size: 0.84rem; padding: 5px 10px; margin-bottom: 6px; }
+
+          .cp-tabela thead th { padding: 6px; }
+          .cp-dia-nome { font-size: 0.7rem; }
+          .cp-dia-data { font-size: 0.62rem; }
+          .cp-refeicao { font-size: 0.72rem; padding: 6px 8px; }
+          .cp-tabela tbody td { padding: 6px 8px; }
+          .cp-pratos li { font-size: 0.72rem; line-height: 1.32; padding: 0; }
+
+          /* O rodapé nunca se separa da tabela: a assinatura da nutricionista
+             e a ressalva precisam sair na mesma página do cardápio. */
+          .cp-rodape {
+            break-before: avoid;
+            page-break-before: avoid;
+            break-inside: avoid;
+            page-break-inside: avoid;
+            margin-top: 10px;
+            padding-top: 8px;
+          }
+          .cp-nota { font-size: 0.68rem; }
+          .cp-assinatura { font-size: 0.72rem; }
 
           /* Fundos coloridos precisam ser preservados na impressão. */
           .cp-tabela thead th,
