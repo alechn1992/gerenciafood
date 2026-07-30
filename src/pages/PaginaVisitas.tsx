@@ -73,6 +73,12 @@ export function PaginaVisitas() {
     setAdicionando(true);
   };
 
+  const editarVisita = (v: Visita) => {
+    setForm({ ...v });
+    setAdicionando(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // --- Gerência de seções ---
   const addSecao = () =>
     setForm((f) => f && { ...f, secoes: [...f.secoes, novaSecao()] });
@@ -207,10 +213,12 @@ export function PaginaVisitas() {
         </div>
       </div>
 
-      {/* Formulário nova visita */}
+      {/* Formulário nova/editar visita */}
       {adicionando && form && (
         <div className="card" style={{ border: '2px solid var(--primario)', marginBottom: 16 }}>
-          <h3 style={{ marginTop: 0, marginBottom: 16 }}>Nova visita</h3>
+          <h3 style={{ marginTop: 0, marginBottom: 16 }}>
+            {visitas.some((v) => v.id === form.id) ? 'Editar visita' : 'Nova visita'}
+          </h3>
 
           {/* Campos básicos */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
@@ -451,7 +459,13 @@ export function PaginaVisitas() {
                         className="btn pequeno secundario"
                         onClick={() => navigate(`/visitas/${v.id}`)}
                       >
-                        Ver relatório →
+                        Ver →
+                      </button>
+                      <button
+                        className="btn pequeno secundario"
+                        onClick={() => editarVisita(v)}
+                      >
+                        Editar
                       </button>
                       <button className="btn pequeno perigo" onClick={() => remover(v)} title="Remover">✕</button>
                     </div>

@@ -21,6 +21,7 @@ export interface Repository {
   listarTiposRefeicao(): Promise<TipoRefeicao[]>;
   listarCardapios(clienteId?: string): Promise<Cardapio[]>;
   salvarCardapio(cardapio: Cardapio): Promise<void>;
+  removerCardapio(id: string): Promise<void>;
   listarInsumos(): Promise<Insumo[]>;
   salvarInsumo(insumo: Insumo): Promise<void>;
   removerInsumo(id: string): Promise<void>;
@@ -146,6 +147,13 @@ export class LocalRepository implements Repository {
     if (idx >= 0) cardapios[idx] = cardapio;
     else cardapios.push(cardapio);
     escrever(KEYS.cardapios, cardapios);
+  }
+
+  async removerCardapio(id: string) {
+    escrever(
+      KEYS.cardapios,
+      (await this.listarCardapios()).filter((c) => c.id !== id),
+    );
   }
 
   async listarInsumos() {

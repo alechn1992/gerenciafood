@@ -93,6 +93,11 @@ export class SupabaseRepository implements Repository {
     if (error) throw error;
   }
 
+  async removerCardapio(id: string): Promise<void> {
+    const { error } = await this.db.from('cardapios').delete().eq('id', id);
+    if (error) throw error;
+  }
+
   async listarInsumos(): Promise<Insumo[]> {
     const { data, error } = await this.db.from('insumos').select('*').order('nome');
     const rows = this.assert(data, error);

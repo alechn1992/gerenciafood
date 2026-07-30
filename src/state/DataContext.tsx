@@ -30,6 +30,7 @@ interface DataState {
   removerPrato: (id: string) => Promise<void>;
   listarCardapios: (clienteId?: string) => Promise<Cardapio[]>;
   salvarCardapio: (c: Cardapio) => Promise<void>;
+  removerCardapio: (id: string) => Promise<void>;
   salvarInsumo: (i: Insumo) => Promise<void>;
   removerInsumo: (id: string) => Promise<void>;
   salvarTurma: (t: Turma) => Promise<void>;
@@ -233,6 +234,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     },
     listarCardapios: (clienteId) => repo.listarCardapios(clienteId),
     salvarCardapio: (c) => repo.salvarCardapio(c),
+    removerCardapio: (id) => repo.removerCardapio(id),
     salvarInsumo: async (i) => {
       await repo.salvarInsumo(i);
       await recarregarInsumos();

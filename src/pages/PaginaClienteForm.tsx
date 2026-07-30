@@ -58,6 +58,7 @@ export function PaginaClienteForm() {
     turmas,
     salvarTurma,
     removerTurma,
+    profissionais,
     carregando,
   } = useData();
 
@@ -264,7 +265,31 @@ export function PaginaClienteForm() {
           </div>
           <div>
             <label>Responsável / Nutricionista</label>
-            <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} />
+            {profissionais.length > 0 && (
+              <select
+                value={profissionais.find((p) => p.nome === responsavel)?.id ?? ''}
+                onChange={(e) => {
+                  const p = profissionais.find((x) => x.id === e.target.value);
+                  if (p) {
+                    setResponsavel(p.nome);
+                    if (!registroProfissional && p.registroCRN) setRegistroProfissional(p.registroCRN);
+                  }
+                }}
+                style={{ marginBottom: 4 }}
+              >
+                <option value="">— Selecionar dos profissionais cadastrados —</option>
+                {profissionais.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}{p.registroCRN ? ` (${p.registroCRN})` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+            <input
+              value={responsavel}
+              onChange={(e) => setResponsavel(e.target.value)}
+              placeholder="Nome do responsável"
+            />
           </div>
           <div>
             <label>Registro profissional (CRN / CFTA)</label>

@@ -76,6 +76,12 @@ export function PaginaClientes() {
                         Relatório
                       </Link>
                       <Link
+                        to={`/clientes/${c.id}/plano-acao`}
+                        className="btn pequeno secundario"
+                      >
+                        Plano de Ação
+                      </Link>
+                      <Link
                         to={`/visitas?cliente=${c.id}`}
                         className="btn pequeno secundario"
                       >
