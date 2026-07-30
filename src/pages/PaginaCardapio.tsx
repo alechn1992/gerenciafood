@@ -9,10 +9,12 @@ import {
   type ItemCardapio,
   type Prato,
   type RefeicaoConfig,
+  type TipoRefeicao,
   type Turma,
 } from '../domain/types';
 import { formatarData, segundaFeiraDaSemana } from '../lib/datas';
 import { UF_PARA_REGIAO } from '../data/sazonalidade';
+import { CardapioImpressao, type SemanaImpressao } from './CardapioImpressao';
 
 function CelulaEditavel({
   item,
@@ -110,6 +112,43 @@ export function MontagemCardapio({ cliente }: { cliente: Cliente }) {
   );
 }
 
+/** Tela cheia de pré-visualização do cardápio das famílias, com barra de ações. */
+function VisualizacaoImpressao({
+  cliente,
+  semanas,
+  tiposRefeicao,
+  onFechar,
+}: {
+  cliente: Cliente;
+  semanas: SemanaImpressao[];
+  tiposRefeicao: TipoRefeicao[];
+  onFechar: () => void;
+}) {
+  return (
+    <div>
+      <div className="linha no-print" style={{ marginBottom: 16 }}>
+        <div>
+          <h1 style={{ margin: 0 }}>Cardápio para as famílias</h1>
+          <p className="subtitulo" style={{ margin: '4px 0 0' }}>
+            Pré-visualização de como o cardápio será impresso ou enviado em PDF.
+          </p>
+        </div>
+        <div className="acoes">
+          <button className="btn secundario" onClick={onFechar}>← Voltar</button>
+          <button className="btn" onClick={() => window.print()}>🖨️ Imprimir / PDF</button>
+        </div>
+      </div>
+      <CardapioImpressao
+        cliente={cliente}
+        semanas={semanas}
+        tiposRefeicao={tiposRefeicao}
+        responsavel={cliente.responsavel}
+        registro={cliente.registroProfissional}
+      />
+    </div>
+  );
+}
+
 function copiarCardapio(origem: Cardapio, novaSemana: string): Cardapio {
   return { ...origem, id: crypto.randomUUID(), semanaInicio: novaSemana, geradoEm: new Date().toISOString() };
 }
@@ -135,6 +174,7 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
   );
   const [copiandoId, setCopiandoId] = useState<string | null>(null);
   const [semanaDestino, setSemanaDestino] = useState(segundaFeiraDaSemana());
+  const [imprimindo, setImprimindo] = useState<SemanaImpressao[] | null>(null);
 
   useEffect(() => {
     listarCardapios(cliente.id).then(setSalvos);
@@ -254,6 +294,17 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
     </div>
   );
 
+  if (imprimindo) {
+    return (
+      <VisualizacaoImpressao
+        cliente={cliente}
+        semanas={imprimindo}
+        tiposRefeicao={tiposRefeicao}
+        onFechar={() => setImprimindo(null)}
+      />
+    );
+  }
+
   return (
     <div>
       <div className="linha">
@@ -306,6 +357,21 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
             {atual && (
               <button className="btn secundario" onClick={salvar}>
                 Salvar
+              </button>
+            )}
+            {atual && (
+              <button
+                className="btn secundario"
+                onClick={() =>
+                  setImprimindo([
+                    {
+                      semanaInicio: atual.semanaInicio,
+                      blocos: [{ cardapio: atual, refeicoes: cliente.refeicoes }],
+                    },
+                  ])
+                }
+              >
+                👨‍👩‍👧 Cardápio para as famílias
               </button>
             )}
             {msgSalvo && (
@@ -393,6 +459,20 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
                         </span>
                       )}
                       <button
+                        className="btn pequeno secundario"
+                        title="Cardápio para as famílias"
+                        onClick={() =>
+                          setImprimindo([
+                            {
+                              semanaInicio: c.semanaInicio,
+                              blocos: [{ cardapio: c, refeicoes: cliente.refeicoes }],
+                            },
+                          ])
+                        }
+                      >
+                        🖨️
+                      </button>
+                      <button
                         className="btn pequeno perigo"
                         onClick={() => excluirSalvo(c)}
                         title="Excluir cardápio"
@@ -433,6 +513,20 @@ function CardapioPorTurmas({
   const [msgSalvo, setMsgSalvo] = useState<string | null>(null);
   const [copiandoSemana, setCopiandoSemana] = useState<string | null>(null);
   const [semanaDestinoCopia, setSemanaDestinoCopia] = useState(segundaFeiraDaSemana());
+  const [imprimindo, setImprimindo] = useState<SemanaImpressao[] | null>(null);
+
+  /** Converte as semanas em tela para o formato da folha das famílias. */
+  const paraImpressao = (fonte: SemanaGerada[]): SemanaImpressao[] =>
+    fonte.map((s) => ({
+      semanaInicio: s.semanaInicio,
+      blocos: turmasDoCliente
+        .filter((t) => s.porTurma[t.id])
+        .map((t) => ({
+          titulo: t.nome,
+          cardapio: s.porTurma[t.id],
+          refeicoes: t.refeicoes,
+        })),
+    }));
 
   const copiarSemanas = (semanaOrigem: string, novaBase: string, quantas: number) => {
     const novas: SemanaGerada[] = [];
@@ -551,6 +645,17 @@ function CardapioPorTurmas({
     setSemana(semanaInicio);
   };
 
+  if (imprimindo) {
+    return (
+      <VisualizacaoImpressao
+        cliente={cliente}
+        semanas={imprimindo}
+        tiposRefeicao={tiposRefeicao}
+        onFechar={() => setImprimindo(null)}
+      />
+    );
+  }
+
   return (
     <div>
       <div className="linha no-print">
@@ -566,8 +671,11 @@ function CardapioPorTurmas({
             ← Voltar
           </Link>
           {semanasGeradas.length > 0 && (
-            <button className="btn secundario" onClick={() => window.print()}>
-              🖨️ Imprimir / PDF
+            <button
+              className="btn"
+              onClick={() => setImprimindo(paraImpressao(semanasGeradas))}
+            >
+              👨‍👩‍👧 Cardápio para as famílias
             </button>
           )}
         </div>
@@ -684,6 +792,21 @@ function CardapioPorTurmas({
                           <button className="btn pequeno secundario" onClick={() => setCopiandoSemana(null)}>✕</button>
                         </span>
                       )}
+                      <button
+                        className="btn pequeno secundario"
+                        title="Cardápio para as famílias"
+                        onClick={() => {
+                          const porTurma: Record<string, Cardapio> = {};
+                          salvosTurma
+                            .filter((c) => c.semanaInicio === semanaInicio)
+                            .forEach((c) => {
+                              if (c.turmaId) porTurma[c.turmaId] = c;
+                            });
+                          setImprimindo(paraImpressao([{ semanaInicio, porTurma, avisos: [] }]));
+                        }}
+                      >
+                        🖨️
+                      </button>
                       <button
                         className="btn pequeno perigo"
                         onClick={() => excluirSemana(semanaInicio)}
