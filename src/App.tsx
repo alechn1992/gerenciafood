@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
 import { usePermissoes } from './auth/PermissoesContext';
 import { supabase } from './lib/supabase';
@@ -67,7 +67,6 @@ const NAV_ESTRUTURA: NavItem[] = [
 export function App() {
   const { user, session, carregando: carregandoAuth, sair } = useAuth();
   const { telas } = usePermissoes();
-  const navigate = useNavigate();
   const [gruposAbertos, setGruposAbertos] = useState<Set<string>>(new Set(['cadastro', 'relatorios']));
 
   function toggleGrupo(id: string) {
@@ -128,6 +127,10 @@ export function App() {
                   })}
                 </nav>
 
+                <NavLink to="/configuracoes" className={({ isActive }) => (isActive ? 'ativo' : '')}>
+                  ⚙️ Configurações
+                </NavLink>
+
                 <div className="sidebar-rodape">
                   {user && (
                     <div className="sidebar-usuario">
@@ -137,13 +140,6 @@ export function App() {
                       </button>
                     </div>
                   )}
-                  <button
-                    className="sidebar-config-btn"
-                    title="Configurações"
-                    onClick={() => navigate('/configuracoes')}
-                  >
-                    ⚙️
-                  </button>
                 </div>
               </aside>
 

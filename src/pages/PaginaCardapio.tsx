@@ -122,12 +122,13 @@ function adicionarSemanas(data: string, n: number): string {
 
 /** Fluxo original: um cardápio por cliente (sem turmas), semana a semana. */
 function CardapioSimples({ cliente }: { cliente: Cliente }) {
-  const { pratos, tiposRefeicao, salvarCardapio, listarCardapios } = useData();
+  const { pratos, tiposRefeicao, salvarCardapio, listarCardapios, removerCardapio } = useData();
 
   const [semana, setSemana] = useState(segundaFeiraDaSemana());
   const [atual, setAtual] = useState<Cardapio | null>(null);
   const [avisos, setAvisos] = useState<string[]>([]);
   const [salvos, setSalvos] = useState<Cardapio[]>([]);
+  const [msgSalvo, setMsgSalvo] = useState<string | null>(null);
   const [priorizarSazonais, setPriorizarSazonais] = useState(false);
   const [ufSazonalidade, setUfSazonalidade] = useState<string>(
     () => localStorage.getItem('sazonalidade_uf') ?? 'SP',
@@ -161,7 +162,15 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
     if (!atual) return;
     await salvarCardapio(atual);
     setSalvos(await listarCardapios(cliente.id));
-    alert('Cardápio salvo.');
+    setMsgSalvo('Cardápio salvo com sucesso.');
+    setTimeout(() => setMsgSalvo(null), 4000);
+  };
+
+  const excluirSalvo = async (c: Cardapio) => {
+    if (!confirm(`Excluir cardápio da semana de ${formatarData(c.semanaInicio)}?`)) return;
+    await removerCardapio(c.id);
+    if (atual?.id === c.id) { setAtual(null); setAvisos([]); }
+    setSalvos(await listarCardapios(cliente.id));
   };
 
   const nomeTipo = (tipoId: string) =>
@@ -299,6 +308,11 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
                 Salvar
               </button>
             )}
+            {msgSalvo && (
+              <span className="login-aviso sucesso" style={{ alignSelf: 'center' }}>
+                ✓ {msgSalvo}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -378,6 +392,13 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
                           <button className="btn pequeno secundario" onClick={() => setCopiandoId(null)}>✕</button>
                         </span>
                       )}
+                      <button
+                        className="btn pequeno perigo"
+                        onClick={() => excluirSalvo(c)}
+                        title="Excluir cardápio"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -404,11 +425,12 @@ function CardapioPorTurmas({
   cliente: Cliente;
   turmasDoCliente: Turma[];
 }) {
-  const { pratos, tiposRefeicao, salvarCardapio, listarCardapios } = useData();
+  const { pratos, tiposRefeicao, salvarCardapio, listarCardapios, removerCardapio } = useData();
 
   const [semana, setSemana] = useState(segundaFeiraDaSemana());
   const [semanasGeradas, setSemanasGeradas] = useState<SemanaGerada[]>([]);
   const [salvos, setSalvos] = useState<Cardapio[]>([]);
+  const [msgSalvo, setMsgSalvo] = useState<string | null>(null);
   const [copiandoSemana, setCopiandoSemana] = useState<string | null>(null);
   const [semanaDestinoCopia, setSemanaDestinoCopia] = useState(segundaFeiraDaSemana());
 
@@ -498,13 +520,21 @@ function CardapioPorTurmas({
 
   const salvarTudo = async () => {
     const cardapios = semanasGeradas.flatMap((s) => Object.values(s.porTurma));
-    // Gravações sequenciais: o repositório local faz leitura-modificação-escrita
-    // sobre um único array no localStorage; chamadas concorrentes se sobrescreveriam.
     for (const c of cardapios) {
       await salvarCardapio(c);
     }
     setSalvos(await listarCardapios(cliente.id));
-    alert('Cardápio(s) salvo(s).');
+    setMsgSalvo(`${cardapios.length} cardápio(s) salvo(s).`);
+    setTimeout(() => setMsgSalvo(null), 4000);
+  };
+
+  const excluirSemana = async (semanaInicio: string) => {
+    const nomes = formatarData(semanaInicio);
+    if (!confirm(`Excluir todos os cardápios da semana de ${nomes}?`)) return;
+    const ids = salvos.filter((c) => c.semanaInicio === semanaInicio).map((c) => c.id);
+    for (const id of ids) await removerCardapio(id);
+    setSemanasGeradas((prev) => prev.filter((s) => s.semanaInicio !== semanaInicio));
+    setSalvos(await listarCardapios(cliente.id));
   };
 
   const salvosTurma = salvos.filter((c) => c.turmaId);
@@ -560,6 +590,11 @@ function CardapioPorTurmas({
               <button className="btn secundario" onClick={salvarTudo}>
                 Salvar
               </button>
+            )}
+            {msgSalvo && (
+              <span className="login-aviso sucesso" style={{ alignSelf: 'center' }}>
+                ✓ {msgSalvo}
+              </span>
             )}
           </div>
         </div>
@@ -649,6 +684,13 @@ function CardapioPorTurmas({
                           <button className="btn pequeno secundario" onClick={() => setCopiandoSemana(null)}>✕</button>
                         </span>
                       )}
+                      <button
+                        className="btn pequeno perigo"
+                        onClick={() => excluirSemana(semanaInicio)}
+                        title="Excluir esta semana"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </td>
                 </tr>
