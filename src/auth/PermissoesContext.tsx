@@ -9,6 +9,7 @@ export const TELAS_DISPONIVEIS = [
   { id: 'cardapio',      label: 'Cardápio' },
   { id: 'pratos',        label: 'Receituário' },
   { id: 'sazonalidade',  label: 'Sazonalidade' },
+  { id: 'importar',      label: 'Importar Excel' },
   { id: 'relatorio',     label: 'Checklist de Boas Práticas' },
   { id: 'visitas',       label: 'Visitas' },
 ] as const;

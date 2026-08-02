@@ -20,6 +20,7 @@ import { PaginaVisitas } from './pages/PaginaVisitas';
 import { PaginaVisitaDetalhe } from './pages/PaginaVisitaDetalhe';
 import { PaginaProfissionais } from './pages/PaginaProfissionais';
 import { PaginaProfissionalForm } from './pages/PaginaProfissionalForm';
+import { PaginaImportarCardapio } from './pages/PaginaImportarCardapio';
 
 function RotaProtegida({ children }: { children: React.ReactNode }) {
   const { session, carregando } = useAuth();
@@ -47,6 +48,7 @@ const NAV_ESTRUTURA: NavItem[] = [
   { tipo: 'link',  tela: 'cardapio',     label: 'Cardápio',      to: '/cardapio' },
   { tipo: 'link',  tela: 'pratos',       label: 'Receituário',   to: '/pratos' },
   { tipo: 'link',  tela: 'sazonalidade', label: 'Sazonalidade',  to: '/sazonalidade' },
+  { tipo: 'link',  tela: 'importar',     label: '📥 Importar Excel', to: '/importar-cardapio' },
   {
     tipo: 'grupo', id: 'cadastro', label: 'Cadastro',
     filhos: [
@@ -163,6 +165,7 @@ export function App() {
                   <Route path="/sazonalidade" element={<PaginaSazonalidade />} />
                   <Route path="/visitas" element={<PaginaVisitas />} />
                   <Route path="/visitas/:id" element={<PaginaVisitaDetalhe />} />
+                  <Route path="/importar-cardapio" element={<PaginaImportarCardapio />} />
                   <Route path="/configuracoes" element={<PaginaConfiguracoes />} />
                   <Route path="*" element={<Navigate to="/clientes" replace />} />
                 </Routes>
