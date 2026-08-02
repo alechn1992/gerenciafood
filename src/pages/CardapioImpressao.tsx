@@ -89,23 +89,54 @@ export function CardapioImpressao({
   const dias = DIAS_SEMANA.filter((d) => cliente.diasOperacao.includes(d.valor));
   const nomeTipo = (id: string) => tiposRefeicao.find((t) => t.id === id)?.nome ?? id;
 
+  function Cabecalho({ semanaInicio }: { semanaInicio: string }) {
+    return (
+      <header className="cp-cabecalho">
+        {cliente.logo && <img className="cp-logo" src={cliente.logo} alt={cliente.nome} />}
+        <div className="cp-cabecalho-texto">
+          <p className="cp-supertitulo">Cardápio semanal</p>
+          <h1 className="cp-titulo">{cliente.nome}</h1>
+          <p className="cp-periodo">
+            {rotuloPeriodo(semanaInicio, dias.map((d) => d.valor))}
+          </p>
+        </div>
+      </header>
+    );
+  }
+
+  function Rodape() {
+    return (
+      <footer className="cp-rodape">
+        <p className="cp-nota">
+          Cardápio sujeito a alterações conforme a disponibilidade e a qualidade
+          dos alimentos.
+        </p>
+        {(responsavel || registro) && (
+          <p className="cp-assinatura">
+            {responsavel}
+            {responsavel && registro ? ' — ' : ''}
+            {registro}
+          </p>
+        )}
+      </footer>
+    );
+  }
+
   return (
     <div className="cp-folha">
       {semanas.map((semana, si) => (
         <section key={semana.semanaInicio} className={si > 0 ? 'cp-semana cp-quebra' : 'cp-semana'}>
-          <header className="cp-cabecalho">
-            {cliente.logo && <img className="cp-logo" src={cliente.logo} alt={cliente.nome} />}
-            <div className="cp-cabecalho-texto">
-              <p className="cp-supertitulo">Cardápio semanal</p>
-              <h1 className="cp-titulo">{cliente.nome}</h1>
-              <p className="cp-periodo">
-                {rotuloPeriodo(semana.semanaInicio, dias.map((d) => d.valor))}
-              </p>
-            </div>
-          </header>
+          {/* Cabeçalho exibido na tela (antes de todos os blocos) */}
+          <Cabecalho semanaInicio={semana.semanaInicio} />
 
-          {semana.blocos.map((bloco) => (
-            <div key={bloco.cardapio.id} className="cp-bloco">
+          {semana.blocos.map((bloco, bi) => (
+            <div
+              key={bloco.cardapio.id}
+              className={bi > 0 ? 'cp-bloco cp-bloco-nova-folha' : 'cp-bloco'}
+            >
+              {/* Cabeçalho por folha — visível apenas na impressão (repetido em cada turma) */}
+              <Cabecalho semanaInicio={semana.semanaInicio} />
+
               {bloco.titulo && <h2 className="cp-turma">{bloco.titulo}</h2>}
 
               <table className="cp-tabela">
@@ -157,22 +188,14 @@ export function CardapioImpressao({
                   ))}
                 </tbody>
               </table>
+
+              {/* Rodapé por folha — visível apenas na impressão */}
+              <Rodape />
             </div>
           ))}
 
-          <footer className="cp-rodape">
-            <p className="cp-nota">
-              Cardápio sujeito a alterações conforme a disponibilidade e a qualidade
-              dos alimentos.
-            </p>
-            {(responsavel || registro) && (
-              <p className="cp-assinatura">
-                {responsavel}
-                {responsavel && registro ? ' — ' : ''}
-                {registro}
-              </p>
-            )}
-          </footer>
+          {/* Rodapé exibido na tela (após todos os blocos) */}
+          <Rodape />
         </section>
       ))}
 
@@ -333,18 +356,37 @@ export function CardapioImpressao({
           white-space: nowrap;
         }
 
+        /* ── Ocultar duplicatas na tela ───────────── */
+        /* O primeiro filho de cp-bloco é sempre o cp-cabecalho "por folha";
+           o último filho é sempre o cp-rodape "por folha". Na tela eles ficam
+           escondidos porque cp-semana já exibe o cabeçalho e rodapé únicos. */
+        .cp-bloco > .cp-cabecalho { display: none; }
+        .cp-bloco > .cp-rodape    { display: none; }
+
         /* ── Impressão ─────────────────────────────── */
         @media print {
           @page { size: A4 landscape; margin: 8mm 10mm; }
 
           .cp-folha { max-width: none; }
-          .cp-quebra { break-before: page; }
+
+          /* Cada turma ocupa sua própria folha */
+          .cp-bloco-nova-folha {
+            break-before: page;
+            page-break-before: always;
+          }
+
+          /* Na impressão: oculta cabeçalho/rodapé únicos da semana (ficam por folha) */
+          .cp-semana > .cp-cabecalho { display: none; }
+          .cp-semana > .cp-rodape    { display: none; }
+
+          /* Cabeçalho e rodapé dentro de cada bloco aparecem na impressão */
+          .cp-bloco > .cp-cabecalho { display: flex; }
+          .cp-bloco > .cp-rodape    { display: flex; }
+
           .cp-semana { padding: 0; }
           .cp-bloco { break-inside: avoid; page-break-inside: avoid; margin-bottom: 12px; }
           .cp-tabela { break-inside: avoid; page-break-inside: avoid; }
 
-          /* Layout compactado: uma semana precisa caber inteira numa folha,
-             com o rodapé assinado junto — é o que vai para as famílias. */
           .cp-cabecalho { padding-bottom: 8px; margin-bottom: 11px; gap: 14px; }
           .cp-logo { max-height: 52px; max-width: 120px; }
           .cp-supertitulo { font-size: 0.62rem; letter-spacing: 0.14em; }
@@ -360,8 +402,6 @@ export function CardapioImpressao({
           .cp-tabela tbody td { padding: 6px 8px; }
           .cp-pratos li { font-size: 0.72rem; line-height: 1.32; padding: 0; }
 
-          /* O rodapé nunca se separa da tabela: a assinatura da nutricionista
-             e a ressalva precisam sair na mesma página do cardápio. */
           .cp-rodape {
             break-before: avoid;
             page-break-before: avoid;
