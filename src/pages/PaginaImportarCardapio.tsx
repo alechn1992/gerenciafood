@@ -147,6 +147,11 @@ function dateToIso(cell: unknown): string | null {
     const d = cell.getUTCDate();
     return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   }
+  // Fallback: células sem formato de data retornam número serial do Excel
+  if (typeof cell === 'number' && cell > 40000 && cell < 55000) {
+    const d = new Date(Math.round((cell - 25569) * 86400 * 1000));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  }
   return null;
 }
 
@@ -265,6 +270,126 @@ function parsearSheetSemana(ws: XLSX.WorkSheet): SemanaExcel | null {
   return { semanaInicio, label: formatarPeriodo(semanaInicio), turmas };
 }
 
+/**
+ * Lê abas no formato "SEM LACTOSE": uma única turma com todas as semanas
+ * empilhadas verticalmente (estrutura invertida em relação às abas SEMANA).
+ * Cada bloco começa com uma linha de cabeçalho de dias (col B = "SEGUNDA").
+ */
+function parsearSheetSemLactose(ws: XLSX.WorkSheet): SemanaExcel[] {
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, {
+    header: 1,
+    defval: null,
+  }) as Linhas;
+
+  if (rows.length < 6) return [];
+
+  // Localiza blocos semanais: linhas onde coluna B contém um nome de dia
+  const weekHeaderRows: number[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    if (diaFromHeader(rows[i]?.[1]) !== null) weekHeaderRows.push(i);
+  }
+  if (weekHeaderRows.length === 0) return [];
+
+  const semanas: SemanaExcel[] = [];
+
+  for (let w = 0; w < weekHeaderRows.length; w++) {
+    const headerRow = weekHeaderRows[w];
+    const dateRowIdx = headerRow + 1;
+    const nextHeader = w + 1 < weekHeaderRows.length ? weekHeaderRows[w + 1] : rows.length;
+
+    // Mapeia coluna → DiaSemana
+    const colToDia = new Map<number, DiaSemana>();
+    const headerData = rows[headerRow] ?? [];
+    for (let col = 1; col < headerData.length; col++) {
+      const dia = diaFromHeader(headerData[col]);
+      if (dia !== null) colToDia.set(col, dia);
+    }
+    if (colToDia.size === 0) continue;
+
+    // Determina a segunda-feira da semana
+    const dateRow = rows[dateRowIdx] ?? [];
+    let semanaInicio = '';
+    for (let col = 1; col <= 7; col++) {
+      const iso = dateToIso(dateRow[col]);
+      if (iso) {
+        const d = new Date(iso + 'T12:00:00');
+        const dow = d.getDay();
+        const diff = dow === 0 ? -6 : 1 - dow;
+        d.setDate(d.getDate() + diff);
+        semanaInicio = d.toISOString().slice(0, 10);
+        break;
+      }
+    }
+    if (!semanaInicio) continue;
+
+    // Parseia as linhas de refeição do bloco
+    const refeicoes: RefeicaoExcel[] = [];
+    let currentRefeicaoId: string | null = null;
+    let currentItems: Map<DiaSemana, string[]> = new Map();
+
+    const commitRef = () => {
+      if (!currentRefeicaoId || currentItems.size === 0) return;
+      const dias: DiaCelula[] = [];
+      for (const [dia, nomes] of currentItems) {
+        const filtrados = nomes.filter((n) => !ehVazio(n));
+        const total = filtrados.length;
+        const pratos = filtrados.map((nome, idx) => ({
+          nome,
+          categoria: atribuirCategoria(currentRefeicaoId!, idx, total),
+        }));
+        if (pratos.length > 0) dias.push({ dia, pratos });
+      }
+      if (dias.length > 0) refeicoes.push({ tipoId: currentRefeicaoId, dias });
+    };
+
+    for (let r = dateRowIdx + 1; r < nextHeader; r++) {
+      const row = rows[r] ?? [];
+      const cellA = row[0];
+      const textoA = str(cellA);
+
+      if (textoA !== '' && cellA !== null) {
+        const refId = detectarRefeicao(cellA);
+        if (refId) {
+          commitRef();
+          currentRefeicaoId = refId;
+          currentItems = new Map();
+          for (const [col, dia] of colToDia) {
+            const val = row[col];
+            if (!ehVazio(val)) {
+              if (!currentItems.has(dia)) currentItems.set(dia, []);
+              currentItems.get(dia)!.push(str(val));
+            }
+          }
+          continue;
+        }
+      }
+
+      // Linha de continuação (col A vazia)
+      if ((cellA === null || textoA === '') && currentRefeicaoId) {
+        for (const [col, dia] of colToDia) {
+          const val = row[col];
+          if (!ehVazio(val)) {
+            if (!currentItems.has(dia)) currentItems.set(dia, []);
+            currentItems.get(dia)!.push(str(val));
+          }
+        }
+      }
+    }
+
+    commitRef();
+
+    if (refeicoes.length > 0) {
+      semanas.push({
+        semanaInicio,
+        label: formatarPeriodo(semanaInicio),
+        turmas: [{ nome: 'Sem Lactose', refeicoes }],
+      });
+    }
+  }
+
+  return semanas;
+}
+
 async function parsearArquivo(file: File): Promise<DadosParseados> {
   const data = await file.arrayBuffer();
   const wb = XLSX.read(data, { type: 'array', cellDates: true });
@@ -279,11 +404,36 @@ async function parsearArquivo(file: File): Promise<DadosParseados> {
     );
   }
 
-  const semanas: SemanaExcel[] = [];
+  // Acumula semanas por data de início para permitir merge de turmas
+  const semanaMap = new Map<string, SemanaExcel>();
+
   for (const sheetName of semanaSheets) {
     const parsed = parsearSheetSemana(wb.Sheets[sheetName]);
-    if (parsed) semanas.push(parsed);
+    if (!parsed) continue;
+    if (semanaMap.has(parsed.semanaInicio)) {
+      semanaMap.get(parsed.semanaInicio)!.turmas.push(...parsed.turmas);
+    } else {
+      semanaMap.set(parsed.semanaInicio, parsed);
+    }
   }
+
+  // Processa abas "SEM LACTOSE" (formato invertido: semanas empilhadas por turma)
+  const lactoseSheets = wb.SheetNames.filter((n) =>
+    n.trim().toUpperCase().includes('LACTOSE'),
+  );
+  for (const sheetName of lactoseSheets) {
+    for (const semana of parsearSheetSemLactose(wb.Sheets[sheetName])) {
+      if (semanaMap.has(semana.semanaInicio)) {
+        semanaMap.get(semana.semanaInicio)!.turmas.push(...semana.turmas);
+      } else {
+        semanaMap.set(semana.semanaInicio, semana);
+      }
+    }
+  }
+
+  const semanas = Array.from(semanaMap.values()).sort((a, b) =>
+    a.semanaInicio.localeCompare(b.semanaInicio),
+  );
 
   if (semanas.length === 0) {
     throw new Error('Não foi possível extrair dados das abas SEMANA. Verifique o formato do arquivo.');
