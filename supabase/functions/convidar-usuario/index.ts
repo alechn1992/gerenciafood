@@ -40,8 +40,15 @@ Deno.serve(async (req) => {
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey)
 
-  // Envia convite por e-mail
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email)
+  // Envia convite por e-mail.
+  // Sem redirectTo explícito o Supabase usa o Site URL do projeto — que por
+  // padrão é http://localhost:3000 e gera um link quebrado para o convidado.
+  // O destino ainda precisa constar na allow-list de Redirect URLs do projeto.
+  const siteUrl = Deno.env.get('SITE_URL') ?? 'https://gerenciafood.vercel.app'
+
+  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo: `${siteUrl}/definir-senha`,
+  })
   if (error) return respJSON({ error: error.message }, 400)
 
   const telasPadrao = ['clientes', 'cardapio', 'pratos', 'insumos', 'relatorio']

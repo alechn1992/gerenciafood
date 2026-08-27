@@ -42,7 +42,7 @@ export function PaginaLogin() {
     limpar();
     setCarregando(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/`,
+      redirectTo: `${window.location.origin}/definir-senha`,
     });
     setCarregando(false);
     if (error) { setErro(traduzirErro(error.message)); return; }

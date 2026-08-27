@@ -4,6 +4,7 @@ import { useAuth } from './auth/AuthContext';
 import { usePermissoes } from './auth/PermissoesContext';
 import { supabase } from './lib/supabase';
 import { PaginaLogin } from './pages/PaginaLogin';
+import { PaginaDefinirSenha } from './pages/PaginaDefinirSenha';
 import { PaginaClientes } from './pages/PaginaClientes';
 import { PaginaClienteForm } from './pages/PaginaClienteForm';
 import { PaginaPratos } from './pages/PaginaPratos';
@@ -89,6 +90,8 @@ export function App() {
             : <PaginaLogin />
         }
       />
+      {/* Fora da rota protegida: o convidado chega aqui sem perfil ainda */}
+      <Route path="/definir-senha" element={<PaginaDefinirSenha />} />
       <Route
         path="/*"
         element={
