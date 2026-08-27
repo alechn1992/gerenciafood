@@ -90,7 +90,7 @@ export function PaginaConfiguracoes() {
     if (!supabase || !novoEmail.trim()) return;
     setConvidando(true);
     setMsgConvite(null);
-    const { error } = await supabase.functions.invoke('convidar-usuario', {
+    const { data, error } = await supabase.functions.invoke('convidar-usuario', {
       body: { email: novoEmail.trim(), telas: novasTelas },
     });
     if (error) {
@@ -101,7 +101,13 @@ export function PaginaConfiguracoes() {
       } catch { /* ignora */ }
       setMsgConvite({ tipo: 'erro', texto: msg });
     } else {
-      setMsgConvite({ tipo: 'ok', texto: `Convite enviado para ${novoEmail.trim()}.` });
+      const destino = novoEmail.trim();
+      setMsgConvite({
+        tipo: 'ok',
+        texto: data?.reenviado
+          ? `${destino} já tinha cadastro. Enviamos um link para definir a senha e atualizamos as permissões.`
+          : `Convite enviado para ${destino}.`,
+      });
       setNovoEmail('');
       setNovasTelas(TELAS_PADRAO);
       await carregarUsuarios();
