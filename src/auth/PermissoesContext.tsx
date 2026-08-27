@@ -23,6 +23,7 @@ interface Permissoes {
 }
 
 const ACESSO_TOTAL: Permissoes = { telas: TELAS_PADRAO, admin: true, carregando: false };
+const SEM_ACESSO: Permissoes = { telas: [], admin: false, carregando: false };
 
 const Ctx = createContext<Permissoes>(ACESSO_TOTAL);
 
@@ -50,14 +51,10 @@ export function PermissoesProvider({ children }: { children: ReactNode }) {
         if (data) {
           setPerm({ telas: data.telas ?? TELAS_PADRAO, admin: data.admin ?? false, carregando: false });
         } else {
-          // Usuário existente sem perfil: acesso total; cria perfil como admin
-          setPerm(ACESSO_TOTAL);
-          supabase!.from('perfis').upsert({
-            id: user.id,
-            email: user.email ?? '',
-            telas: TELAS_PADRAO,
-            admin: true,
-          }).then(() => {});
+          // Sem perfil: nega em vez de liberar. O perfil é criado pelo convite
+          // (função convidar-usuario) ou pelo trigger on_auth_user_created —
+          // conceder acesso aqui permitiria a qualquer conta virar admin.
+          setPerm(SEM_ACESSO);
         }
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
