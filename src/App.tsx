@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
 import { usePermissoes } from './auth/PermissoesContext';
-import { supabase } from './lib/supabase';
+import { hashInicial, supabase } from './lib/supabase';
 import { PaginaLogin } from './pages/PaginaLogin';
 import { PaginaDefinirSenha } from './pages/PaginaDefinirSenha';
 import { PaginaClientes } from './pages/PaginaClientes';
@@ -67,10 +67,32 @@ const NAV_ESTRUTURA: NavItem[] = [
   },
 ];
 
+/**
+ * Links de convite e de recuperação carregam `type=invite`/`type=recovery` no
+ * hash. Se o destino pedido não estiver na allow-list de Redirect URLs, o
+ * Supabase ignora o caminho e joga o usuário na raiz — que aqui é a área
+ * logada, sem senha definida e sem pista do que fazer.
+ *
+ * Este desvio garante que o fluxo termine em /definir-senha mesmo nesse caso,
+ * evitando depender de a allow-list estar configurada com o caminho exato.
+ */
+function useDesvioDefinirSenha() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (pathname === '/definir-senha') return;
+    if (!/[#&]type=(invite|recovery)\b/.test(hashInicial)) return;
+    navigate('/definir-senha', { replace: true });
+  }, [pathname, navigate]);
+}
+
 export function App() {
   const { user, session, carregando: carregandoAuth, sair } = useAuth();
   const { telas } = usePermissoes();
   const [gruposAbertos, setGruposAbertos] = useState<Set<string>>(new Set(['cadastro', 'relatorios']));
+
+  useDesvioDefinirSenha();
 
   function toggleGrupo(id: string) {
     setGruposAbertos((prev) => {
