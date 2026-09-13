@@ -1,0 +1,59 @@
+name: Supabase keepalive
+
+# O projeto Supabase Free pausa após ~7 dias sem atividade de API. O cron
+# diário do Vercel (api/keepalive.js) tenta evitar isso, mas roda uma única
+# vez por dia sem horário garantido — se aquela chamada falhar, o projeto
+# pausa e fica pausado até alguém restaurar manualmente pelo painel.
+#
+# Este workflow roda a cada 4 horas, fora do Vercel (sem o limite de 1x/dia
+# do plano Hobby), e faz duas coisas:
+#   1. Pinga a API REST — mantém o projeto ativo na maioria das vezes.
+#   2. Verifica o status via API de gerenciamento do Supabase e, se já
+#      pausou, chama o restore automaticamente — a diferença real em
+#      relação ao cron do Vercel, que só previne e não desfaz a pausa.
+#
+# Requer o secret SUPABASE_ACCESS_TOKEN (repo → Settings → Secrets and
+# variables → Actions → New repository secret), gerado em
+# supabase.com/dashboard/account/tokens.
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_REF: tfedrfuchnqgebnfenuk
+      SUPABASE_URL: https://tfedrfuchnqgebnfenuk.supabase.co
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Ping API REST (previne a pausa)
+        run: |
+          curl -sS -o /dev/null -w 'ping: %{http_code}\n' \
+            "$SUPABASE_URL/rest/v1/insumos?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" || true
+
+      - name: Verificar status e restaurar se pausado
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+        run: |
+          status=$(curl -sS "https://api.supabase.com/v1/projects/$PROJECT_REF" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" | python3 -c "import json,sys; print(json.load(sys.stdin).get('status','?'))")
+          echo "status atual: $status"
+
+          if [ "$status" = "INACTIVE" ] || [ "$status" = "PAUSED" ]; then
+            echo "projeto pausado — restaurando..."
+            curl -sS -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/restore" \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{}'
+            echo "restore disparado."
+          fi
+
+      - name: Aviso se o secret de restauração não está configurado
+        if: env.SUPABASE_ACCESS_TOKEN == ''
+        run: |
+          echo "::warning::SUPABASE_ACCESS_TOKEN não configurado — este workflow só previne a pausa, não a desfaz automaticamente. Veja o comentário no topo do arquivo."
