@@ -6,49 +6,15 @@ import { useState, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { Link } from 'react-router-dom';
 import { useData } from '../state/DataContext';
+import { parsearPlanilha, type DadosParseados } from '../domain/importacaoExcel';
 import type {
   CategoriaPrato,
-  DiaSemana,
   Cardapio,
   Turma,
   Prato,
   ItemCardapio,
   RefeicaoConfig,
 } from '../domain/types';
-
-// ── Tipos internos ──────────────────────────────────────────────────────────
-
-interface ItemParsed {
-  nome: string;
-  categoria: CategoriaPrato;
-}
-
-interface DiaCelula {
-  dia: DiaSemana;
-  pratos: ItemParsed[];
-}
-
-interface RefeicaoExcel {
-  tipoId: string;
-  dias: DiaCelula[];
-}
-
-interface TurmaExcel {
-  nome: string;
-  refeicoes: RefeicaoExcel[];
-}
-
-interface SemanaExcel {
-  semanaInicio: string;
-  label: string;
-  turmas: TurmaExcel[];
-}
-
-interface DadosParseados {
-  semanas: SemanaExcel[];
-  turmasEncontradas: string[];
-  totalItens: number;
-}
 
 interface ResultadoImportacao {
   turmasCriadas: number;
@@ -57,406 +23,9 @@ interface ResultadoImportacao {
   clienteId: string;
 }
 
-// ── Constantes de mapeamento ────────────────────────────────────────────────
-
-const DIAS_MAP: Record<string, DiaSemana> = {
-  SEGUNDA: 1, 'SEGUNDA-FEIRA': 1,
-  TERÇA: 2, TERCA: 2, 'TERÇA-FEIRA': 2, 'TERCA-FEIRA': 2,
-  QUARTA: 3, 'QUARTA-FEIRA': 3,
-  QUINTA: 4, 'QUINTA-FEIRA': 4,
-  SEXTA: 5, 'SEXTA-FEIRA': 5,
-  SÁBADO: 6, SABADO: 6,
-  DOMINGO: 0,
-};
-
-const MESES_PT = [
-  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
-];
-
-const REFEICOES_MAPA: { pattern: RegExp; id: string }[] = [
-  { pattern: /lanche.{1,10}manh/i, id: 'cafe' },
-  { pattern: /almo/i, id: 'almoco' },
-  { pattern: /lanche.{1,10}tarde/i, id: 'lanche_tarde' },
-  { pattern: /jantar/i, id: 'jantar' },
-];
-
-// ── Funções de parsing ──────────────────────────────────────────────────────
-
-function str(val: unknown): string {
-  return String(val ?? '').trim();
-}
-
-function ehVazio(val: unknown): boolean {
-  const s = str(val);
-  return s === '' || s === '-' || s === '--' || s.toLowerCase() === 'n/a';
-}
-
-function diaFromHeader(cell: unknown): DiaSemana | null {
-  const key = str(cell).toUpperCase().replace(/-FEIRA$/, '').trim();
-  return Object.prototype.hasOwnProperty.call(DIAS_MAP, key)
-    ? DIAS_MAP[key]
-    : null;
-}
-
-function detectarTurma(cell: unknown): string | null {
-  const t = str(cell).toUpperCase();
-  if (/BABY\s*1/.test(t)) return 'Baby 1 (4-6 meses)';
-  if (/BABY\s*2/.test(t)) return 'Baby 2 (6 meses)';
-  if (/BABY\s*3/.test(t)) return 'Baby 3 (7-8 meses)';
-  if (/BABY\s*4/.test(t)) return 'Baby 4 (9-11 meses)';
-  if (/BABY\s*5/.test(t)) return 'Baby 5 (12 meses)';
-  if (/INFANTIS/.test(t)) return 'Infantis';
-  return null;
-}
-
-function detectarRefeicao(cell: unknown): string | null {
-  const t = str(cell);
-  for (const { pattern, id } of REFEICOES_MAPA) {
-    if (pattern.test(t)) return id;
-  }
-  return null;
-}
-
-function atribuirCategoria(
-  tipoId: string,
-  posicao: number,
-  totalItens: number,
-): CategoriaPrato {
-  if (tipoId === 'almoco') {
-    if (totalItens <= 2) return 'proteina';
-    switch (posicao) {
-      case 0: return 'acompanhamento'; // arroz
-      case 1: return 'acompanhamento'; // feijão
-      case 2: return 'proteina';
-      case 3: return 'guarnicao';
-      case 4: return 'salada';
-      default: return 'outro';
-    }
-  }
-  if (tipoId === 'cafe' || tipoId === 'lanche_tarde') {
-    return posicao === 1 ? 'sobremesa' : 'lanche';
-  }
-  return 'outro'; // jantar
-}
-
-function dateToIso(cell: unknown): string | null {
-  if (cell instanceof Date) {
-    const y = cell.getUTCFullYear();
-    const m = cell.getUTCMonth();
-    const d = cell.getUTCDate();
-    return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  }
-  // Fallback: células sem formato de data retornam número serial do Excel
-  if (typeof cell === 'number' && cell > 40000 && cell < 55000) {
-    const d = new Date(Math.round((cell - 25569) * 86400 * 1000));
-    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-  }
-  return null;
-}
-
-function formatarPeriodo(semanaInicio: string): string {
-  const ini = new Date(semanaInicio + 'T12:00:00');
-  const fim = new Date(ini);
-  fim.setDate(ini.getDate() + 4);
-  return `${ini.getDate()} a ${fim.getDate()} de ${MESES_PT[fim.getMonth()]} de ${fim.getFullYear()}`;
-}
-
-type Linhas = unknown[][];
-
-function parsearSheetSemana(ws: XLSX.WorkSheet): SemanaExcel | null {
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, {
-    header: 1,
-    defval: null,
-  }) as Linhas;
-
-  if (rows.length < 3) return null;
-
-  const headerRow = rows[0];
-  const dateRow = rows[1];
-
-  // Mapeia coluna → DiaSemana
-  const colToDia = new Map<number, DiaSemana>();
-  for (let col = 1; col < headerRow.length; col++) {
-    const dia = diaFromHeader(headerRow[col]);
-    if (dia !== null) colToDia.set(col, dia);
-  }
-  if (colToDia.size === 0) return null;
-
-  // Determina a segunda-feira da semana
-  let semanaInicio = '';
-  for (let col = 1; col <= 7; col++) {
-    const iso = dateToIso(dateRow[col]);
-    if (iso) {
-      const d = new Date(iso + 'T12:00:00');
-      const dow = d.getDay();
-      const diff = dow === 0 ? -6 : 1 - dow;
-      d.setDate(d.getDate() + diff);
-      semanaInicio = d.toISOString().slice(0, 10);
-      break;
-    }
-  }
-  if (!semanaInicio) return null;
-
-  const turmas: TurmaExcel[] = [];
-  let currentTurma: TurmaExcel | null = null;
-  let currentRefeicaoId: string | null = null;
-  let currentItems: Map<DiaSemana, string[]> = new Map();
-
-  function commitRefeicao() {
-    if (!currentTurma || !currentRefeicaoId || currentItems.size === 0) return;
-    const dias: DiaCelula[] = [];
-    for (const [dia, nomes] of currentItems) {
-      const filtrados = nomes.filter((n) => !ehVazio(n));
-      const total = filtrados.length;
-      const pratos = filtrados.map((nome, idx) => ({
-        nome,
-        categoria: atribuirCategoria(currentRefeicaoId!, idx, total),
-      }));
-      if (pratos.length > 0) dias.push({ dia, pratos });
-    }
-    if (dias.length > 0) {
-      currentTurma.refeicoes.push({ tipoId: currentRefeicaoId, dias });
-    }
-  }
-
-  for (const row of rows.slice(2)) {
-    const cellA = row[0];
-    const textoA = str(cellA);
-
-    if (textoA !== '' && cellA !== null) {
-      const turma = detectarTurma(cellA);
-      if (turma) {
-        commitRefeicao();
-        currentRefeicaoId = null;
-        currentItems = new Map();
-        currentTurma = { nome: turma, refeicoes: [] };
-        turmas.push(currentTurma);
-        continue;
-      }
-
-      const refId = detectarRefeicao(cellA);
-      if (refId && currentTurma) {
-        commitRefeicao();
-        currentRefeicaoId = refId;
-        currentItems = new Map();
-        for (const [col, dia] of colToDia) {
-          const val = row[col];
-          if (!ehVazio(val)) {
-            if (!currentItems.has(dia)) currentItems.set(dia, []);
-            currentItems.get(dia)!.push(str(val));
-          }
-        }
-        continue;
-      }
-    }
-
-    // Linha de continuação (col A vazia)
-    if ((cellA === null || textoA === '') && currentRefeicaoId && currentTurma) {
-      for (const [col, dia] of colToDia) {
-        const val = row[col];
-        if (!ehVazio(val)) {
-          if (!currentItems.has(dia)) currentItems.set(dia, []);
-          currentItems.get(dia)!.push(str(val));
-        }
-      }
-    }
-  }
-
-  commitRefeicao();
-
-  if (turmas.length === 0) return null;
-
-  return { semanaInicio, label: formatarPeriodo(semanaInicio), turmas };
-}
-
-/**
- * Lê abas no formato "SEM LACTOSE": uma única turma com todas as semanas
- * empilhadas verticalmente (estrutura invertida em relação às abas SEMANA).
- * Cada bloco começa com uma linha de cabeçalho de dias (col B = "SEGUNDA").
- */
-function parsearSheetSemLactose(ws: XLSX.WorkSheet): SemanaExcel[] {
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, {
-    header: 1,
-    defval: null,
-  }) as Linhas;
-
-  if (rows.length < 6) return [];
-
-  // Localiza blocos semanais: linhas onde coluna B contém um nome de dia
-  const weekHeaderRows: number[] = [];
-  for (let i = 0; i < rows.length; i++) {
-    if (diaFromHeader(rows[i]?.[1]) !== null) weekHeaderRows.push(i);
-  }
-  if (weekHeaderRows.length === 0) return [];
-
-  const semanas: SemanaExcel[] = [];
-
-  for (let w = 0; w < weekHeaderRows.length; w++) {
-    const headerRow = weekHeaderRows[w];
-    const dateRowIdx = headerRow + 1;
-    const nextHeader = w + 1 < weekHeaderRows.length ? weekHeaderRows[w + 1] : rows.length;
-
-    // Mapeia coluna → DiaSemana
-    const colToDia = new Map<number, DiaSemana>();
-    const headerData = rows[headerRow] ?? [];
-    for (let col = 1; col < headerData.length; col++) {
-      const dia = diaFromHeader(headerData[col]);
-      if (dia !== null) colToDia.set(col, dia);
-    }
-    if (colToDia.size === 0) continue;
-
-    // Determina a segunda-feira da semana
-    const dateRow = rows[dateRowIdx] ?? [];
-    let semanaInicio = '';
-    for (let col = 1; col <= 7; col++) {
-      const iso = dateToIso(dateRow[col]);
-      if (iso) {
-        const d = new Date(iso + 'T12:00:00');
-        const dow = d.getDay();
-        const diff = dow === 0 ? -6 : 1 - dow;
-        d.setDate(d.getDate() + diff);
-        semanaInicio = d.toISOString().slice(0, 10);
-        break;
-      }
-    }
-    if (!semanaInicio) continue;
-
-    // Parseia as linhas de refeição do bloco
-    const refeicoes: RefeicaoExcel[] = [];
-    let currentRefeicaoId: string | null = null;
-    let currentItems: Map<DiaSemana, string[]> = new Map();
-
-    const commitRef = () => {
-      if (!currentRefeicaoId || currentItems.size === 0) return;
-      const dias: DiaCelula[] = [];
-      for (const [dia, nomes] of currentItems) {
-        const filtrados = nomes.filter((n) => !ehVazio(n));
-        const total = filtrados.length;
-        const pratos = filtrados.map((nome, idx) => ({
-          nome,
-          categoria: atribuirCategoria(currentRefeicaoId!, idx, total),
-        }));
-        if (pratos.length > 0) dias.push({ dia, pratos });
-      }
-      if (dias.length > 0) refeicoes.push({ tipoId: currentRefeicaoId, dias });
-    };
-
-    for (let r = dateRowIdx + 1; r < nextHeader; r++) {
-      const row = rows[r] ?? [];
-      const cellA = row[0];
-      const textoA = str(cellA);
-
-      if (textoA !== '' && cellA !== null) {
-        const refId = detectarRefeicao(cellA);
-        if (refId) {
-          commitRef();
-          currentRefeicaoId = refId;
-          currentItems = new Map();
-          for (const [col, dia] of colToDia) {
-            const val = row[col];
-            if (!ehVazio(val)) {
-              if (!currentItems.has(dia)) currentItems.set(dia, []);
-              currentItems.get(dia)!.push(str(val));
-            }
-          }
-          continue;
-        }
-      }
-
-      // Linha de continuação (col A vazia)
-      if ((cellA === null || textoA === '') && currentRefeicaoId) {
-        for (const [col, dia] of colToDia) {
-          const val = row[col];
-          if (!ehVazio(val)) {
-            if (!currentItems.has(dia)) currentItems.set(dia, []);
-            currentItems.get(dia)!.push(str(val));
-          }
-        }
-      }
-    }
-
-    commitRef();
-
-    if (refeicoes.length > 0) {
-      semanas.push({
-        semanaInicio,
-        label: formatarPeriodo(semanaInicio),
-        turmas: [{ nome: 'Sem Lactose', refeicoes }],
-      });
-    }
-  }
-
-  return semanas;
-}
-
 async function parsearArquivo(file: File): Promise<DadosParseados> {
   const data = await file.arrayBuffer();
-  const wb = XLSX.read(data, { type: 'array', cellDates: true });
-
-  const semanaSheets = wb.SheetNames.filter((n) =>
-    n.trim().toUpperCase().startsWith('SEMANA'),
-  );
-
-  if (semanaSheets.length === 0) {
-    throw new Error(
-      'Nenhuma aba "SEMANA" encontrada. O arquivo precisa ter abas chamadas "SEMANA 1", "SEMANA 2" etc.',
-    );
-  }
-
-  // Acumula semanas por data de início para permitir merge de turmas
-  const semanaMap = new Map<string, SemanaExcel>();
-
-  for (const sheetName of semanaSheets) {
-    const parsed = parsearSheetSemana(wb.Sheets[sheetName]);
-    if (!parsed) continue;
-    if (semanaMap.has(parsed.semanaInicio)) {
-      semanaMap.get(parsed.semanaInicio)!.turmas.push(...parsed.turmas);
-    } else {
-      semanaMap.set(parsed.semanaInicio, parsed);
-    }
-  }
-
-  // Processa abas "SEM LACTOSE" (formato invertido: semanas empilhadas por turma)
-  const lactoseSheets = wb.SheetNames.filter((n) =>
-    n.trim().toUpperCase().includes('LACTOSE'),
-  );
-  for (const sheetName of lactoseSheets) {
-    for (const semana of parsearSheetSemLactose(wb.Sheets[sheetName])) {
-      if (semanaMap.has(semana.semanaInicio)) {
-        semanaMap.get(semana.semanaInicio)!.turmas.push(...semana.turmas);
-      } else {
-        semanaMap.set(semana.semanaInicio, semana);
-      }
-    }
-  }
-
-  const semanas = Array.from(semanaMap.values()).sort((a, b) =>
-    a.semanaInicio.localeCompare(b.semanaInicio),
-  );
-
-  if (semanas.length === 0) {
-    throw new Error('Não foi possível extrair dados das abas SEMANA. Verifique o formato do arquivo.');
-  }
-
-  const turmasSet = new Set<string>();
-  let totalItens = 0;
-  for (const semana of semanas) {
-    for (const turma of semana.turmas) {
-      turmasSet.add(turma.nome);
-      for (const ref of turma.refeicoes) {
-        for (const dia of ref.dias) {
-          totalItens += dia.pratos.length;
-        }
-      }
-    }
-  }
-
-  return {
-    semanas,
-    turmasEncontradas: Array.from(turmasSet),
-    totalItens,
-  };
+  return parsearPlanilha(XLSX.read(data, { type: 'array', cellDates: true }));
 }
 
 // ── Componente ──────────────────────────────────────────────────────────────
@@ -578,6 +147,16 @@ export function PaginaImportarCardapio() {
       const agora = new Date().toISOString();
       let cardapiosSalvos = 0;
 
+      // Reimportar substitui o cardápio da mesma turma e semana. Sem isso cada
+      // importação somava um registro novo, e a tela escolhia arbitrariamente
+      // entre as cópias — inclusive uma vazia ou de uma importação com defeito.
+      const existentes = new Map<string, Cardapio[]>();
+      for (const c of await repo.listarCardapios(clienteId)) {
+        if (!c.turmaId) continue;
+        const chave = `${c.turmaId}|${c.semanaInicio}`;
+        existentes.set(chave, [...(existentes.get(chave) ?? []), c]);
+      }
+
       for (const semana of dados.semanas) {
         for (const turmaData of semana.turmas) {
           const turmaId = turmaIds.get(turmaData.nome);
@@ -600,14 +179,17 @@ export function PaginaImportarCardapio() {
             }
           }
 
+          const [anterior, ...duplicatas] =
+            existentes.get(`${turmaId}|${semana.semanaInicio}`) ?? [];
           const cardapio: Cardapio = {
-            id: crypto.randomUUID(),
+            id: anterior?.id ?? crypto.randomUUID(),
             clienteId, turmaId,
             semanaInicio: semana.semanaInicio,
             itens,
             geradoEm: agora,
           };
           await repo.salvarCardapio(cardapio);
+          for (const d of duplicatas) await repo.removerCardapio(d.id);
           cardapiosSalvos++;
         }
       }
@@ -696,6 +278,9 @@ export function PaginaImportarCardapio() {
             <strong>Mapeamento de refeições:</strong> "Lanche da manhã" → Café da manhã &nbsp;·&nbsp;
             "Almoço" → Almoço &nbsp;·&nbsp; "Lanche da tarde" → Lanche da tarde &nbsp;·&nbsp;
             "Jantar" → Jantar
+            <br />
+            <strong>Reimportação:</strong> cardápios já salvos destas semanas, para as mesmas
+            turmas, serão substituídos pelos da planilha.
           </div>
 
           <div className="imp-cliente-sel">
