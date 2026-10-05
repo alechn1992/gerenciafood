@@ -647,6 +647,27 @@ th {
   border-radius: 8px;
 }
 
+.sidebar-versao {
+  margin-top: 8px;
+  font-size: 0.66rem;
+  color: #8fbfa6;
+  opacity: 0.85;
+}
+
+.aviso-versao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid #e8d96a;
+  border-radius: 8px;
+  background: #fffbea;
+  font-size: 0.9rem;
+}
+
 .sidebar-email {
   font-size: 0.72rem;
   color: #bfe0cf;
