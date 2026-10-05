@@ -3,8 +3,10 @@ import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import { gerarCardapio, rotuloCategoria } from '../domain/gerador';
 import {
+  CATEGORIAS_PRATO,
   DIAS_SEMANA,
   type Cardapio,
+  type CategoriaPrato,
   type Cliente,
   type ItemCardapio,
   type Prato,
@@ -593,10 +595,32 @@ function CardapioPorTurmas({
   };
 
   const gerar = (quantasSemanas: number) => {
-    const novas = somarSemanas(semana, quantasSemanas).map((semanaInicio, w) => {
+    const alvo = somarSemanas(semana, quantasSemanas);
+    const jaSalvas = alvo.filter((s) => salvos.some((c) => c.turmaId && c.semanaInicio === s));
+    if (
+      jaSalvas.length > 0 &&
+      !confirm(
+        `${jaSalvas.map(formatarData).join(', ')} já ${jaSalvas.length > 1 ? 'têm' : 'tem'} cardápio salvo ` +
+          '(por exemplo, importado da planilha).\n\n' +
+          '"Gerar" monta um cardápio automático novo, sorteando pratos — não é o cardápio salvo. ' +
+          'Para ver ou imprimir o salvo, cancele e use "Semanas salvas".\n\nGerar mesmo assim?',
+      )
+    ) {
+      return;
+    }
+
+    const novas = alvo.map((semanaInicio, w) => {
       const porTurma: Record<string, Cardapio> = {};
       const avisos: string[] = [];
       turmasDoCliente.forEach((turma, idx) => {
+        // Turmas criadas pela importação vêm sem composição: o gerador não tem o
+        // que sortear e devolveria a grade vazia sem explicar por quê.
+        if (turma.refeicoes.every((r) => r.composicao.length === 0)) {
+          avisos.push(
+            `${turma.nome}: sem composição de pratos configurada, nada foi gerado. ` +
+              'Use o cardápio importado em "Semanas salvas" ou configure a composição no cadastro do cliente.',
+          );
+        }
         const { cardapio, avisos: av } = gerarCardapio({
           cliente,
           turma,
@@ -615,7 +639,12 @@ function CardapioPorTurmas({
   const salvarTudo = async () => {
     const cardapios = semanasGeradas.flatMap((s) => Object.values(s.porTurma));
     for (const c of cardapios) {
-      await salvarCardapio(c);
+      // Substitui o salvo da mesma turma e semana em vez de criar outra cópia ao
+      // lado — com duas, a tela escolhia uma delas arbitrariamente.
+      const mesmos = salvos.filter((s) => s.turmaId === c.turmaId && s.semanaInicio === c.semanaInicio);
+      const mantido = mesmos.find((s) => s.id === c.id) ?? mesmos[0];
+      await salvarCardapio(mantido ? { ...c, id: mantido.id } : c);
+      for (const d of mesmos) if (d.id !== mantido?.id) await removerCardapio(d.id);
     }
     setSalvos(await listarCardapios(cliente.id));
     setMsgSalvo(`${cardapios.length} cardápio(s) salvo(s).`);
@@ -644,6 +673,15 @@ function CardapioPorTurmas({
     setSemanasGeradas([{ semanaInicio, porTurma, avisos: [] }]);
     setSemana(semanaInicio);
   };
+
+  // Com nada na tela, a semana selecionada abre direto no cardápio salvo (por
+  // exemplo, o importado da planilha), em vez de exigir um "Gerar" que sortearia
+  // outro cardápio no lugar dele.
+  useEffect(() => {
+    if (semanasGeradas.length > 0) return;
+    if (salvos.some((c) => c.turmaId && c.semanaInicio === semana)) verSemanaSalva(semana);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [salvos, semana]);
 
   if (imprimindo) {
     return (
@@ -864,6 +902,17 @@ function GradeTurma({
     );
   };
 
+  // Uma linha por categoria da composição. Turmas criadas pela importação vêm
+  // sem composição — aí a grade não tinha linha nenhuma e o cardápio salvo
+  // ficava invisível; as linhas passam a sair das categorias dos próprios itens.
+  const categoriasDaLinha = (ref: RefeicaoConfig): CategoriaPrato[] => {
+    if (ref.composicao.length > 0) return ref.composicao.map((c) => c.categoria);
+    const presentes = new Set(
+      cardapio.itens.filter((i) => i.tipoRefeicaoId === ref.tipoRefeicaoId).map((i) => i.categoria),
+    );
+    return CATEGORIAS_PRATO.map((c) => c.valor).filter((c) => presentes.has(c));
+  };
+
   return (
     <div className="cardapio-grid">
       <p style={{ fontSize: 12, color: 'var(--cinza)', margin: '0 0 8px' }}>
@@ -880,15 +929,15 @@ function GradeTurma({
         </thead>
         <tbody>
           {refeicoes.map((ref) =>
-            ref.composicao.map((comp, ci) => (
-              <tr key={`${ref.tipoRefeicaoId}-${comp.categoria}-${ci}`}>
+            categoriasDaLinha(ref).map((categoria, ci) => (
+              <tr key={`${ref.tipoRefeicaoId}-${categoria}-${ci}`}>
                 <td>
                   {ci === 0 && <strong>{nomeTipo(ref.tipoRefeicaoId)}</strong>}
-                  <div className="cat">{rotuloCategoria(comp.categoria)}</div>
+                  <div className="cat">{rotuloCategoria(categoria)}</div>
                 </td>
                 {diasVisiveis.map((d) => (
                   <td key={d.valor}>
-                    {renderCelula(d.valor, ref.tipoRefeicaoId, comp.categoria)}
+                    {renderCelula(d.valor, ref.tipoRefeicaoId, categoria)}
                   </td>
                 ))}
               </tr>
