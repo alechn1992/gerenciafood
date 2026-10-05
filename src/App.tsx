@@ -3,6 +3,7 @@ import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
 import { usePermissoes } from './auth/PermissoesContext';
 import { supabase } from './lib/supabase';
+import { rotuloVersao, useNovaVersaoDisponivel } from './lib/versao';
 import { PaginaLogin } from './pages/PaginaLogin';
 import { PaginaDefinirSenha } from './pages/PaginaDefinirSenha';
 import { PaginaClientes } from './pages/PaginaClientes';
@@ -70,6 +71,7 @@ const NAV_ESTRUTURA: NavItem[] = [
 export function App() {
   const { user, session, carregando: carregandoAuth, sair } = useAuth();
   const { telas } = usePermissoes();
+  const novaVersao = useNovaVersaoDisponivel();
   const [gruposAbertos, setGruposAbertos] = useState<Set<string>>(new Set(['cadastro', 'relatorios']));
 
   function toggleGrupo(id: string) {
@@ -145,10 +147,23 @@ export function App() {
                       </button>
                     </div>
                   )}
+                  <div className="sidebar-versao" title="Versão do sistema em uso nesta aba">
+                    Versão {rotuloVersao()}
+                  </div>
                 </div>
               </aside>
 
               <main className="conteudo">
+                {novaVersao && (
+                  <div className="aviso-versao no-print" role="status">
+                    <span>
+                      Há uma versão nova do GerenciaFood. Atualize para usar as últimas correções.
+                    </span>
+                    <button className="btn pequeno" onClick={() => window.location.reload()}>
+                      Atualizar agora
+                    </button>
+                  </div>
+                )}
                 <Routes>
                   <Route path="/" element={<Navigate to="/clientes" replace />} />
                   <Route path="/profissionais" element={<PaginaProfissionais />} />
