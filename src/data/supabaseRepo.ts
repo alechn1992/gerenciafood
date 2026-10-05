@@ -88,6 +88,7 @@ export class SupabaseRepository implements Repository {
       turma_id: cardapio.turmaId ?? null,
       semana_inicio: cardapio.semanaInicio,
       itens: cardapio.itens,
+      avisos: cardapio.avisos ?? [],
       gerado_em: cardapio.geradoEm,
     });
     if (error) throw error;
@@ -385,6 +386,7 @@ function mapCardapioFromRow(r: any): Cardapio {
     turmaId: r.turma_id ?? undefined,
     semanaInicio: r.semana_inicio,
     itens: r.itens ?? [],
+    avisos: r.avisos ?? [],
     geradoEm: r.gerado_em,
   };
 }

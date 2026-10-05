@@ -152,7 +152,8 @@ function VisualizacaoImpressao({
 }
 
 function copiarCardapio(origem: Cardapio, novaSemana: string): Cardapio {
-  return { ...origem, id: crypto.randomUUID(), semanaInicio: novaSemana, geradoEm: new Date().toISOString() };
+  // Os avisos (feriado, recesso) são das datas da semana de origem, não da nova.
+  return { ...origem, id: crypto.randomUUID(), semanaInicio: novaSemana, avisos: [], geradoEm: new Date().toISOString() };
 }
 
 function adicionarSemanas(data: string, n: number): string {
@@ -922,9 +923,19 @@ function GradeTurma({
         <thead>
           <tr>
             <th>Refeição</th>
-            {diasVisiveis.map((d) => (
-              <th key={d.valor}>{d.nome}</th>
-            ))}
+            {diasVisiveis.map((d) => {
+              const aviso = cardapio.avisos?.find((a) => a.dia === d.valor)?.texto;
+              return (
+                <th key={d.valor}>
+                  {d.nome}
+                  {aviso && (
+                    <div style={{ marginTop: 4, color: '#8a4b00', background: '#fff4e0', borderRadius: 4, padding: '1px 6px', fontSize: 11, display: 'inline-block' }}>
+                      {aviso}
+                    </div>
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>

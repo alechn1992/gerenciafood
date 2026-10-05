@@ -232,6 +232,15 @@ export interface ItemCardapio {
 }
 
 /** Cardápio gerado para um cliente (ou uma turma do cliente) numa semana. */
+/**
+ * Aviso que marca o dia no cardápio, como vem da planilha (ex.: "FERIADO",
+ * "RECESSO"). Para muitas famílias o cardápio é onde descobrem que não haverá aula.
+ */
+export interface AvisoDia {
+  dia: DiaSemana;
+  texto: string;
+}
+
 export interface Cardapio {
   id: string;
   clienteId: string;
@@ -240,6 +249,8 @@ export interface Cardapio {
   /** Data (ISO) da segunda-feira de referência da semana. */
   semanaInicio: string;
   itens: ItemCardapio[];
+  /** Específicos das datas desta semana — não acompanham cópias para outras semanas. */
+  avisos?: AvisoDia[];
   geradoEm: string;
 }
 

@@ -48,6 +48,11 @@ function pratosDe(dados: DadosParseados, semana: string, turma: string) {
   );
 }
 
+function avisosDe(dados: DadosParseados, semana: string, turma: string) {
+  const t = dados.semanas.find((s) => s.semanaInicio === semana)?.turmas.find((x) => x.nome === turma);
+  return t?.avisos.map((a) => `${a.dia}:${a.texto}`);
+}
+
 describe('parsearPlanilha — aba SEM LACTOSE', () => {
   it('lê todas as semanas empilhadas no formato padrão', () => {
     const dados = planilha({
@@ -81,6 +86,9 @@ describe('parsearPlanilha — aba SEM LACTOSE', () => {
 
     // E a semana anterior não absorve nada da seguinte.
     expect(pratosDe(dados, '2026-09-28', 'Sem Lactose')).toHaveLength(10);
+
+    // Rótulo FERIADO com cardápio servido no dia: o cardápio prevalece, sem aviso.
+    expect(avisosDe(dados, '2026-10-05', 'Sem Lactose')).toEqual([]);
   });
 
   it('não importa marcadores de feriado, nomes de dia nem datas como prato', () => {
@@ -107,6 +115,23 @@ describe('parsearPlanilha — aba SEM LACTOSE', () => {
       'almoco:2:Carne', 'almoco:3:Frango', 'jantar:2:Sopa de carne', 'jantar:3:Sopa de frango',
     ]);
   });
+
+  it('guarda FERIADO e RECESSO como aviso do dia, como vêm da planilha', () => {
+    const dados = planilha({
+      'SEMANA 1': abaSemana('2026-10-12', DIAS, ['Arroz', 'Arroz', 'Arroz', 'Arroz', 'Arroz']),
+      'SEM LACTOSE.': [
+        ['CARDÁPIO INFANTIL'],
+        ...blocoSemLactose('2026-10-05', DIAS, ['Frango', 'Carne', 'Ovo', 'Peixe', 'Frango']),
+        ...blocoSemLactose(
+          '2026-10-12',
+          ['FERIADO', 'TERÇA ', 'QUARTA', 'FERIADO', 'FERIADO'],
+          ['FERIADO', 'Carne', 'Frango', 'FERIADO', 'RECESSO'],
+        ),
+      ],
+    });
+
+    expect(avisosDe(dados, '2026-10-12', 'Sem Lactose')).toEqual(['1:FERIADO', '4:FERIADO', '5:RECESSO']);
+  });
 });
 
 describe('parsearPlanilha — abas SEMANA', () => {
@@ -117,5 +142,14 @@ describe('parsearPlanilha — abas SEMANA', () => {
 
     // A segunda tem refeição apesar do rótulo: antes a coluna inteira era descartada.
     expect(pratosDe(dados, '2026-10-12', 'Infantis')).toContain('almoco:1:Arroz');
+    expect(avisosDe(dados, '2026-10-12', 'Infantis')).toEqual([]);
+  });
+
+  it('usa o rótulo do cabeçalho como aviso de dia sem nenhuma refeição', () => {
+    const dados = planilha({
+      'SEMANA 3': abaSemana('2026-10-12', ['FERIADO', 'TERÇA ', 'QUARTA', 'QUINTA', 'SEXTA'], [null as unknown as string, 'Feijão', 'Carne', 'Ovo', 'Peixe']),
+    });
+
+    expect(avisosDe(dados, '2026-10-12', 'Infantis')).toEqual(['1:FERIADO']);
   });
 });

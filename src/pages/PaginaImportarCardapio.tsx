@@ -186,6 +186,7 @@ export function PaginaImportarCardapio() {
             clienteId, turmaId,
             semanaInicio: semana.semanaInicio,
             itens,
+            avisos: turmaData.avisos,
             geradoEm: agora,
           };
           await repo.salvarCardapio(cardapio);

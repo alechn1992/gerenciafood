@@ -129,7 +129,14 @@ export function CardapioImpressao({
           {/* Cabeçalho exibido na tela (antes de todos os blocos) */}
           <Cabecalho semanaInicio={semana.semanaInicio} />
 
-          {semana.blocos.map((bloco, bi) => (
+          {semana.blocos.map((bloco, bi) => {
+            const avisoDo = (dia: DiaSemana) =>
+              bloco.cardapio.avisos?.find((a) => a.dia === dia)?.texto;
+            // Dia só com aviso (feriado, recesso): a coluna inteira vira o aviso,
+            // que é o que a família precisa ver — naquele dia não haverá aula.
+            const soAviso = (dia: DiaSemana) =>
+              !!avisoDo(dia) && !bloco.cardapio.itens.some((i) => i.dia === dia);
+            return (
             <div
               key={bloco.cardapio.id}
               className={bi > 0 ? 'cp-bloco cp-bloco-nova-folha' : 'cp-bloco'}
@@ -151,18 +158,28 @@ export function CardapioImpressao({
                           <span className="cp-dia-data">
                             {doisDigitos(data.getDate())}/{doisDigitos(data.getMonth() + 1)}
                           </span>
+                          {avisoDo(d.valor) && !soAviso(d.valor) && (
+                            <span className="cp-dia-aviso">{avisoDo(d.valor)}</span>
+                          )}
                         </th>
                       );
                     })}
                   </tr>
                 </thead>
                 <tbody>
-                  {bloco.refeicoes.map((ref) => (
+                  {bloco.refeicoes.map((ref, ri) => (
                     <tr key={ref.tipoRefeicaoId}>
                       <th scope="row" className="cp-refeicao">
                         {nomeTipo(ref.tipoRefeicaoId)}
                       </th>
                       {dias.map((d) => {
+                        if (soAviso(d.valor)) {
+                          return ri === 0 ? (
+                            <td key={d.valor} rowSpan={bloco.refeicoes.length} className="cp-aviso-dia">
+                              {avisoDo(d.valor)}
+                            </td>
+                          ) : null;
+                        }
                         const pratos = pratosDaCelula(
                           bloco.cardapio.itens,
                           d.valor,
@@ -192,7 +209,8 @@ export function CardapioImpressao({
               {/* Rodapé por folha — visível apenas na impressão */}
               <Rodape />
             </div>
-          ))}
+            );
+          })}
 
           {/* Rodapé exibido na tela (após todos os blocos) */}
           <Rodape />
@@ -332,6 +350,32 @@ export function CardapioImpressao({
         .cp-principal { font-weight: 600; }
         .cp-vazio { color: #b7c4bd; }
 
+        /* ── Dia sem aula (feriado, recesso…) ──── */
+        .cp-tabela td.cp-aviso-dia {
+          background: #fff4e0;
+          color: #8a4b00;
+          text-align: center;
+          vertical-align: middle;
+          font-size: 0.95rem;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          line-height: 1.3;
+          border-right: 1px solid #f1dcb4;
+        }
+        .cp-dia-aviso {
+          display: inline-block;
+          margin-top: 4px;
+          padding: 1px 6px;
+          border-radius: 4px;
+          background: #fff4e0;
+          color: #8a4b00;
+          font-size: 0.62rem;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
         /* ── Rodapé ────────────────────────────────── */
         .cp-rodape {
           margin-top: 18px;
@@ -416,7 +460,9 @@ export function CardapioImpressao({
           /* Fundos coloridos precisam ser preservados na impressão. */
           .cp-tabela thead th,
           .cp-refeicao,
-          .cp-turma {
+          .cp-turma,
+          .cp-aviso-dia,
+          .cp-dia-aviso {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
