@@ -3,7 +3,7 @@
 // tocar em repositório nem em UI.
 
 import * as XLSX from 'xlsx';
-import type { CategoriaPrato, DiaSemana } from './types';
+import type { AvisoDia, CategoriaPrato, DiaSemana } from './types';
 
 // ── Tipos internos ──────────────────────────────────────────────────────────
 
@@ -25,6 +25,8 @@ export interface RefeicaoExcel {
 export interface TurmaExcel {
   nome: string;
   refeicoes: RefeicaoExcel[];
+  /** Dias marcados como FERIADO, RECESSO etc. em vez de refeição. */
+  avisos: AvisoDia[];
 }
 
 export interface SemanaExcel {
@@ -81,6 +83,53 @@ function ehVazio(val: unknown): boolean {
     s === '' || s === '-' || s === '--' || s.toLowerCase() === 'n/a' ||
     MARCADOR_SEM_REFEICAO.test(s)
   );
+}
+
+/** Texto do marcador de dia (FERIADO, RECESSO...), como vem da planilha. */
+function marcadorDe(val: unknown): string | null {
+  if (val instanceof Date) return null;
+  const s = str(val).replace(/\s+/g, ' ');
+  return MARCADOR_SEM_REFEICAO.test(s) ? s : null;
+}
+
+/** Lê a célula de um dia: marcador vira aviso do dia; o resto, item da refeição. */
+function registrarCelula(
+  itens: Map<DiaSemana, string[]>,
+  marcadores: Map<DiaSemana, string>,
+  dia: DiaSemana,
+  val: unknown,
+) {
+  const marcador = marcadorDe(val);
+  if (marcador) {
+    if (!marcadores.has(dia)) marcadores.set(dia, marcador);
+    return;
+  }
+  if (ehVazio(val)) return;
+  if (!itens.has(dia)) itens.set(dia, []);
+  itens.get(dia)!.push(str(val));
+}
+
+/**
+ * Avisos da semana: os marcadores achados nas células e, só para dias sem
+ * nenhum prato, o rótulo do cabeçalho. O cabeçalho sozinho não é confiável:
+ * a aba Sem Lactose de outubro rotula a segunda 05/10 como FERIADO e serve
+ * um cardápio completo nela.
+ */
+function montarAvisos(
+  refeicoes: RefeicaoExcel[],
+  marcadores: Map<DiaSemana, string>,
+  headerRow: unknown[],
+  colToDia: Map<number, DiaSemana>,
+): AvisoDia[] {
+  const comPratos = new Set(refeicoes.flatMap((r) => r.dias.map((d) => d.dia)));
+  const avisos = new Map(marcadores);
+  for (const [col, dia] of colToDia) {
+    const doCabecalho = marcadorDe(headerRow[col]);
+    if (doCabecalho && !avisos.has(dia) && !comPratos.has(dia)) avisos.set(dia, doCabecalho);
+  }
+  return [...avisos]
+    .sort(([a], [b]) => a - b)
+    .map(([dia, texto]) => ({ dia, texto }));
 }
 
 function diaFromHeader(cell: unknown): DiaSemana | null {
@@ -216,6 +265,8 @@ function parsearSheetSemana(ws: XLSX.WorkSheet): SemanaExcel | null {
   let currentTurma: TurmaExcel | null = null;
   let currentRefeicaoId: string | null = null;
   let currentItems: Map<DiaSemana, string[]> = new Map();
+  let marcadores = new Map<DiaSemana, string>();
+  const marcadoresDaTurma = new Map<TurmaExcel, Map<DiaSemana, string>>();
 
   function commitRefeicao() {
     if (!currentTurma || !currentRefeicaoId || currentItems.size === 0) return;
@@ -244,7 +295,9 @@ function parsearSheetSemana(ws: XLSX.WorkSheet): SemanaExcel | null {
         commitRefeicao();
         currentRefeicaoId = null;
         currentItems = new Map();
-        currentTurma = { nome: turma, refeicoes: [] };
+        currentTurma = { nome: turma, refeicoes: [], avisos: [] };
+        marcadores = new Map();
+        marcadoresDaTurma.set(currentTurma, marcadores);
         turmas.push(currentTurma);
         continue;
       }
@@ -255,11 +308,7 @@ function parsearSheetSemana(ws: XLSX.WorkSheet): SemanaExcel | null {
         currentRefeicaoId = refId;
         currentItems = new Map();
         for (const [col, dia] of colToDia) {
-          const val = row[col];
-          if (!ehVazio(val)) {
-            if (!currentItems.has(dia)) currentItems.set(dia, []);
-            currentItems.get(dia)!.push(str(val));
-          }
+          registrarCelula(currentItems, marcadores, dia, row[col]);
         }
         continue;
       }
@@ -268,11 +317,7 @@ function parsearSheetSemana(ws: XLSX.WorkSheet): SemanaExcel | null {
     // Linha de continuação (col A vazia)
     if ((cellA === null || textoA === '') && currentRefeicaoId && currentTurma) {
       for (const [col, dia] of colToDia) {
-        const val = row[col];
-        if (!ehVazio(val)) {
-          if (!currentItems.has(dia)) currentItems.set(dia, []);
-          currentItems.get(dia)!.push(str(val));
-        }
+        registrarCelula(currentItems, marcadores, dia, row[col]);
       }
     }
   }
@@ -280,6 +325,10 @@ function parsearSheetSemana(ws: XLSX.WorkSheet): SemanaExcel | null {
   commitRefeicao();
 
   if (turmas.length === 0) return null;
+
+  for (const turma of turmas) {
+    turma.avisos = montarAvisos(turma.refeicoes, marcadoresDaTurma.get(turma)!, headerRow, colToDia);
+  }
 
   return { semanaInicio, label: formatarPeriodo(semanaInicio), turmas };
 }
@@ -326,6 +375,7 @@ function parsearSheetSemLactose(ws: XLSX.WorkSheet): SemanaExcel[] {
     const refeicoes: RefeicaoExcel[] = [];
     let currentRefeicaoId: string | null = null;
     let currentItems: Map<DiaSemana, string[]> = new Map();
+    const marcadores = new Map<DiaSemana, string>();
 
     const commitRef = () => {
       if (!currentRefeicaoId || currentItems.size === 0) return;
@@ -354,11 +404,7 @@ function parsearSheetSemLactose(ws: XLSX.WorkSheet): SemanaExcel[] {
           currentRefeicaoId = refId;
           currentItems = new Map();
           for (const [col, dia] of colToDia) {
-            const val = row[col];
-            if (!ehVazio(val)) {
-              if (!currentItems.has(dia)) currentItems.set(dia, []);
-              currentItems.get(dia)!.push(str(val));
-            }
+            registrarCelula(currentItems, marcadores, dia, row[col]);
           }
           continue;
         }
@@ -367,22 +413,20 @@ function parsearSheetSemLactose(ws: XLSX.WorkSheet): SemanaExcel[] {
       // Linha de continuação (col A vazia)
       if ((cellA === null || textoA === '') && currentRefeicaoId) {
         for (const [col, dia] of colToDia) {
-          const val = row[col];
-          if (!ehVazio(val)) {
-            if (!currentItems.has(dia)) currentItems.set(dia, []);
-            currentItems.get(dia)!.push(str(val));
-          }
+          registrarCelula(currentItems, marcadores, dia, row[col]);
         }
       }
     }
 
     commitRef();
 
-    if (refeicoes.length > 0) {
+    const avisos = montarAvisos(refeicoes, marcadores, rows[dateRowIdx - 1] ?? [], colToDia);
+    // Uma semana inteira de recesso não tem prato, mas ainda precisa aparecer.
+    if (refeicoes.length > 0 || avisos.length > 0) {
       semanas.push({
         semanaInicio,
         label: formatarPeriodo(semanaInicio),
-        turmas: [{ nome: 'Sem Lactose', refeicoes }],
+        turmas: [{ nome: 'Sem Lactose', refeicoes, avisos }],
       });
     }
   }
