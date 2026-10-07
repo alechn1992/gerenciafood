@@ -720,70 +720,6 @@ function CardapioPorTurmas({
         </div>
       </div>
 
-      <div className="card no-print">
-        <div className="linha">
-          <div>
-            <label>Semana inicial (segunda-feira de referência)</label>
-            <input type="date" value={semana} onChange={(e) => setSemana(e.target.value)} />
-          </div>
-          <div className="acoes" style={{ marginTop: 20 }}>
-            <button className="btn secundario" onClick={() => gerar(1)}>
-              ⚙️ Gerar semana
-            </button>
-            <button className="btn" onClick={() => gerar(4)}>
-              📅 Gerar mês (4 semanas)
-            </button>
-            {semanasGeradas.length > 0 && (
-              <button className="btn secundario" onClick={salvarTudo}>
-                Salvar
-              </button>
-            )}
-            {msgSalvo && (
-              <span className="login-aviso sucesso" style={{ alignSelf: 'center' }}>
-                ✓ {msgSalvo}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {semanasGeradas.map((s) => (
-        <div key={s.semanaInicio} className="semana-print-quebra">
-          <h2 style={{ margin: '20px 0 8px' }}>Semana de {formatarData(s.semanaInicio)}</h2>
-          {s.avisos.length > 0 && (
-            <div className="aviso no-print">
-              <strong>Atenção:</strong>
-              <ul style={{ margin: '6px 0 0' }}>
-                {s.avisos.map((a, i) => (
-                  <li key={i}>{a}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {turmasDoCliente.map((turma) => {
-            const cardapio = s.porTurma[turma.id];
-            if (!cardapio) return null;
-            return (
-              <div key={turma.id} className="card">
-                <h3 style={{ marginTop: 0 }}>{turma.nome}</h3>
-                <GradeTurma
-                  cardapio={cardapio}
-                  refeicoes={turma.refeicoes}
-                  diasVisiveis={diasVisiveis}
-                  nomeTipo={(tipoId) =>
-                    tiposRefeicao.find((t) => t.id === tipoId)?.nome ?? tipoId
-                  }
-                  pratos={pratos}
-                  onTrocar={(itemIdx, novoPratoId) =>
-                    trocarPratoTurma(s.semanaInicio, turma.id, itemIdx, novoPratoId)
-                  }
-                />
-              </div>
-            );
-          })}
-        </div>
-      ))}
-
       {semanasSalvas.length > 0 && (
         <div className="card no-print">
           <h3 style={{ marginTop: 0 }}>Semanas salvas</h3>
@@ -861,6 +797,70 @@ function CardapioPorTurmas({
           </table>
         </div>
       )}
+
+      <div className="card no-print">
+        <div className="linha">
+          <div>
+            <label>Semana inicial (segunda-feira de referência)</label>
+            <input type="date" value={semana} onChange={(e) => setSemana(e.target.value)} />
+          </div>
+          <div className="acoes" style={{ marginTop: 20 }}>
+            <button className="btn secundario" onClick={() => gerar(1)}>
+              ⚙️ Gerar semana
+            </button>
+            <button className="btn" onClick={() => gerar(4)}>
+              📅 Gerar mês (4 semanas)
+            </button>
+            {semanasGeradas.length > 0 && (
+              <button className="btn secundario" onClick={salvarTudo}>
+                Salvar
+              </button>
+            )}
+            {msgSalvo && (
+              <span className="login-aviso sucesso" style={{ alignSelf: 'center' }}>
+                ✓ {msgSalvo}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {semanasGeradas.map((s) => (
+        <div key={s.semanaInicio} className="semana-print-quebra">
+          <h2 style={{ margin: '20px 0 8px' }}>Semana de {formatarData(s.semanaInicio)}</h2>
+          {s.avisos.length > 0 && (
+            <div className="aviso no-print">
+              <strong>Atenção:</strong>
+              <ul style={{ margin: '6px 0 0' }}>
+                {s.avisos.map((a, i) => (
+                  <li key={i}>{a}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {turmasDoCliente.map((turma) => {
+            const cardapio = s.porTurma[turma.id];
+            if (!cardapio) return null;
+            return (
+              <div key={turma.id} className="card">
+                <h3 style={{ marginTop: 0 }}>{turma.nome}</h3>
+                <GradeTurma
+                  cardapio={cardapio}
+                  refeicoes={turma.refeicoes}
+                  diasVisiveis={diasVisiveis}
+                  nomeTipo={(tipoId) =>
+                    tiposRefeicao.find((t) => t.id === tipoId)?.nome ?? tipoId
+                  }
+                  pratos={pratos}
+                  onTrocar={(itemIdx, novoPratoId) =>
+                    trocarPratoTurma(s.semanaInicio, turma.id, itemIdx, novoPratoId)
+                  }
+                />
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
