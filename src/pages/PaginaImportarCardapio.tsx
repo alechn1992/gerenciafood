@@ -214,6 +214,8 @@ export function PaginaImportarCardapio() {
           <p className="imp-desc">
             Selecione um arquivo <strong>.xlsx</strong> com as abas "SEMANA 1", "SEMANA 2" etc.
             no formato padrão (turmas agrupadas em seções, colunas para cada dia da semana).
+            Abas "SEM LACTOSE" e com "APLV" no nome (ex.: "BABY 3 (7-8 MESES) APLV") também são
+            importadas, cada uma como uma turma própria.
           </p>
 
           <label
