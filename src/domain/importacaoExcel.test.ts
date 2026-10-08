@@ -153,3 +153,52 @@ describe('parsearPlanilha — abas SEMANA', () => {
     expect(avisosDe(dados, '2026-10-12', 'Infantis')).toEqual(['1:FERIADO']);
   });
 });
+
+describe('parsearPlanilha — aba APLV', () => {
+  const abaAplv = (): unknown[][] => [
+    ['ESCOLA PONTE DO SABER'],
+    ['BABY 3 (7-8 MESES) APLV'],
+    [null, ...DIAS],
+    [null, ...datasDaSemana('2026-10-19')],
+    ['Lanche da manhã', ...Array(5).fill('Fórmula especial APLV')],
+    [null, 'Banana amassada', 'Melão raspado', 'Melancia', 'Banana amassada', 'Mamão amassado'],
+    ['Almoço', 'Ovos mexidos', 'Papinha de carne', 'Papinha de frango', 'Escondidinho', 'Batata doce'],
+    ['Jantar', 'Sopa de feijão', 'Macarrão', 'Canja', 'Carreteiro', 'Sopa de macarrão'],
+    [null, ...DIAS],
+    [null, ...datasDaSemana('2026-10-12')],
+    ['Lanche da manhã', 'FERIADO', 'Fórmula especial APLV', 'Fórmula especial APLV', 'FERIADO', 'RECESSO'],
+    ['Almoço', null, 'Polenta', 'Frango ensopado', null, null],
+    [null, null, null, null, null, null],
+    ['O cardápio não contém adição de açúcar.'],
+    ['Observações: o cardápio poderá sofrer alterações.'],
+    [null, 'CAROLINE CHOMA Nutricionista - CRN8: 11166'],
+  ];
+
+  it('cria a turma APLV com o nome da faixa etária da aba', () => {
+    const dados = planilha({
+      'SEMANA 1': abaSemana('2026-10-19', DIAS, ['Arroz', 'Arroz', 'Arroz', 'Arroz', 'Arroz']),
+      'BABY 3 (7-8 MESES) APLV': abaAplv(),
+    });
+
+    expect(dados.turmasEncontradas).toContain('Baby 3 (7-8 meses) APLV');
+    const pratos = pratosDe(dados, '2026-10-19', 'Baby 3 (7-8 meses) APLV');
+    expect(pratos).toContain('cafe:1:Fórmula especial APLV');
+    expect(pratos).toContain('cafe:1:Banana amassada');
+    expect(pratos).toContain('almoco:4:Escondidinho');
+    expect(avisosDe(dados, '2026-10-12', 'Baby 3 (7-8 meses) APLV')).toEqual(['1:FERIADO', '4:FERIADO', '5:RECESSO']);
+  });
+
+  it('não lê o rodapé (observações e assinatura) como prato', () => {
+    const dados = planilha({ 'BABY 3 (7-8 MESES) APLV': abaAplv() });
+    const pratos = pratosDe(dados, '2026-10-12', 'Baby 3 (7-8 meses) APLV') ?? [];
+    expect(pratos.some((p) => /CAROLINE|Observa|açúcar/.test(p))).toBe(false);
+  });
+
+  it('não confunde a aba BABY 3 comum com a APLV', () => {
+    const dados = planilha({
+      'BABY 3 (7-8 MESES)': abaAplv(),
+      'BABY 3 (7-8 MESES) APLV': abaAplv(),
+    });
+    expect(dados.turmasEncontradas).toEqual(['Baby 3 (7-8 meses) APLV']);
+  });
+});
