@@ -63,7 +63,9 @@ jobs:
 
           # Chave anon: do secret ou, na falta dele, do site publicado.
           key="$SUPABASE_ANON_KEY"
+          origem="secret"
           if [ -z "$key" ]; then
+            origem="site"
             for js in $(curl -sSL -m 30 "$SITE_URL/" | grep -oE '/assets/[^"]+\.js' | sort -u || true); do
               key=$(curl -sSL -m 30 "$SITE_URL$js" | grep -oE 'eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+' \
                 | while read -r jwt; do
@@ -82,7 +84,7 @@ jobs:
             code=$(curl -sS -m 60 -o /dev/null -w '%{http_code}' \
               "$SUPABASE_URL/rest/v1/insumos?select=id&limit=1" \
               -H "apikey: $key" -H "Authorization: Bearer $key" || echo 000)
-            echo "::notice::Consulta direta ao banco: HTTP $code (chave: ${SUPABASE_ANON_KEY:+secret}${SUPABASE_ANON_KEY:-site})"
+            echo "::notice::Consulta direta ao banco: HTTP $code (chave do $origem)"
             [ "$code" = "200" ] && ok=1
           else
             echo "::warning::Chave anon não encontrada (nem secret SUPABASE_ANON_KEY, nem no site $SITE_URL)."
