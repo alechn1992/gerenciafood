@@ -82,7 +82,7 @@ jobs:
             code=$(curl -sS -m 60 -o /dev/null -w '%{http_code}' \
               "$SUPABASE_URL/rest/v1/insumos?select=id&limit=1" \
               -H "apikey: $key" -H "Authorization: Bearer $key" || echo 000)
-            echo "consulta direta: HTTP $code"
+            echo "::notice::Consulta direta ao banco: HTTP $code (chave: ${SUPABASE_ANON_KEY:+secret}${SUPABASE_ANON_KEY:-site})"
             [ "$code" = "200" ] && ok=1
           else
             echo "::warning::Chave anon não encontrada (nem secret SUPABASE_ANON_KEY, nem no site $SITE_URL)."
@@ -90,7 +90,7 @@ jobs:
 
           # Segunda via: a função do Vercel, que usa as variáveis de ambiente de lá.
           resp=$(curl -sS -m 60 "$SITE_URL/api/keepalive" || true)
-          echo "função do Vercel: $resp"
+          echo "::notice::Função /api/keepalive do Vercel: $(echo "$resp" | head -c 200)"
           echo "$resp" | grep -q '"ok":true' && ok=1
 
           if [ "$ok" = "1" ]; then
