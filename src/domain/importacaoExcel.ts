@@ -334,16 +334,17 @@ function parsearSheetSemana(ws: XLSX.WorkSheet): SemanaExcel | null {
 }
 
 /**
- * Lê abas no formato "SEM LACTOSE": uma única turma com todas as semanas
- * empilhadas verticalmente (estrutura invertida em relação às abas SEMANA).
- * Cada bloco é uma linha de dias seguida de uma linha de datas.
+ * Lê abas de cardápio especial ("SEM LACTOSE", "BABY 3 ... APLV"): uma única
+ * turma com todas as semanas empilhadas verticalmente (estrutura invertida em
+ * relação às abas SEMANA). Cada bloco é uma linha de dias seguida de uma linha
+ * de datas.
  *
  * Os blocos são localizados pela linha de datas, não pelo texto "SEGUNDA":
  * em semanas com feriado a planilha escreve "FERIADO" no lugar do dia, e a
  * semana inteira deixava de ser reconhecida — o conteúdo dela era despejado,
  * junto com os cabeçalhos, dentro da semana anterior.
  */
-function parsearSheetSemLactose(ws: XLSX.WorkSheet): SemanaExcel[] {
+function parsearSheetEmpilhada(ws: XLSX.WorkSheet, nomeTurma: string): SemanaExcel[] {
   const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, {
     header: 1,
     defval: null,
@@ -408,6 +409,13 @@ function parsearSheetSemLactose(ws: XLSX.WorkSheet): SemanaExcel[] {
           }
           continue;
         }
+        // Texto que não é refeição (rodapé com observações) encerra a
+        // refeição: senão a assinatura da nutricionista, que fica na coluna
+        // B, entrava como prato do jantar de segunda.
+        commitRef();
+        currentRefeicaoId = null;
+        currentItems = new Map();
+        continue;
       }
 
       // Linha de continuação (col A vazia)
@@ -426,7 +434,7 @@ function parsearSheetSemLactose(ws: XLSX.WorkSheet): SemanaExcel[] {
       semanas.push({
         semanaInicio,
         label: formatarPeriodo(semanaInicio),
-        turmas: [{ nome: 'Sem Lactose', refeicoes, avisos }],
+        turmas: [{ nome: nomeTurma, refeicoes, avisos }],
       });
     }
   }
@@ -434,14 +442,33 @@ function parsearSheetSemLactose(ws: XLSX.WorkSheet): SemanaExcel[] {
   return semanas;
 }
 
+/** Nome da turma de uma aba APLV: "BABY 3 (7-8 MESES) APLV" → "Baby 3 (7-8 meses) APLV". */
+function nomeTurmaAplv(nomeAba: string): string {
+  const base = detectarTurma(nomeAba);
+  return base ? `${base} APLV` : 'APLV';
+}
+
+/** Abas de cardápio especial, no formato de semanas empilhadas. */
+function abasEmpilhadas(nomes: string[]): { aba: string; turma: string }[] {
+  const abas: { aba: string; turma: string }[] = [];
+  for (const aba of nomes) {
+    const t = aba.trim().toUpperCase();
+    if (/\bAPLV\b/.test(t)) abas.push({ aba, turma: nomeTurmaAplv(aba) });
+    else if (t.includes('LACTOSE')) abas.push({ aba, turma: 'Sem Lactose' });
+  }
+  return abas;
+}
+
 export function parsearPlanilha(wb: XLSX.WorkBook): DadosParseados {
   const semanaSheets = wb.SheetNames.filter((n) =>
     n.trim().toUpperCase().startsWith('SEMANA'),
   );
+  const especiais = abasEmpilhadas(wb.SheetNames);
 
-  if (semanaSheets.length === 0) {
+  if (semanaSheets.length === 0 && especiais.length === 0) {
     throw new Error(
-      'Nenhuma aba "SEMANA" encontrada. O arquivo precisa ter abas chamadas "SEMANA 1", "SEMANA 2" etc.',
+      'Nenhuma aba de cardápio encontrada. O arquivo precisa ter abas chamadas "SEMANA 1", "SEMANA 2" etc., ' +
+        '"SEM LACTOSE" ou com "APLV" no nome.',
     );
   }
 
@@ -458,12 +485,9 @@ export function parsearPlanilha(wb: XLSX.WorkBook): DadosParseados {
     }
   }
 
-  // Processa abas "SEM LACTOSE" (formato invertido: semanas empilhadas por turma)
-  const lactoseSheets = wb.SheetNames.filter((n) =>
-    n.trim().toUpperCase().includes('LACTOSE'),
-  );
-  for (const sheetName of lactoseSheets) {
-    for (const semana of parsearSheetSemLactose(wb.Sheets[sheetName])) {
+  // Abas "SEM LACTOSE" e "APLV" (formato invertido: semanas empilhadas por turma)
+  for (const { aba, turma } of especiais) {
+    for (const semana of parsearSheetEmpilhada(wb.Sheets[aba], turma)) {
       if (semanaMap.has(semana.semanaInicio)) {
         semanaMap.get(semana.semanaInicio)!.turmas.push(...semana.turmas);
       } else {
@@ -477,7 +501,7 @@ export function parsearPlanilha(wb: XLSX.WorkBook): DadosParseados {
   );
 
   if (semanas.length === 0) {
-    throw new Error('Não foi possível extrair dados das abas SEMANA. Verifique o formato do arquivo.');
+    throw new Error('Não foi possível extrair dados das abas de cardápio. Verifique o formato do arquivo.');
   }
 
   const turmasSet = new Set<string>();
