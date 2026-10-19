@@ -201,4 +201,24 @@ describe('parsearPlanilha — aba APLV', () => {
     });
     expect(dados.turmasEncontradas).toEqual(['Baby 3 (7-8 meses) APLV']);
   });
+
+  it('classifica a fórmula como bebida, não como prato do almoço', () => {
+    const formula = 'Leite materno/Fórmula Infantil';
+    const dados = planilha({
+      'SEMANA 1': [
+        [null, ...DIAS],
+        [null, ...datasDaSemana('2026-10-19')],
+        ['CARDÁPIO BABY 1 (4 - 6 MESES)', null],
+        ['Lanche da manhã', ...Array(5).fill(formula)],
+        [null, 'Banana', 'Maçã', 'Manga', 'Melão', 'Laranja'],
+        ['Almoço', ...Array(5).fill(formula)],
+      ],
+    });
+    const t = dados.semanas[0].turmas.find((x) => x.nome === 'Baby 1 (4-6 meses)')!;
+    const cats = t.refeicoes.flatMap((r) => r.dias.flatMap((d) => d.pratos.map((p) => `${r.tipoId}:${p.nome}:${p.categoria}`)));
+    expect(cats).toContain(`almoco:${formula}:bebida`);
+    expect(cats).toContain(`cafe:${formula}:bebida`);
+    expect(cats).toContain('cafe:Banana:sobremesa');
+  });
 });
+
