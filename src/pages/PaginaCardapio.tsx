@@ -597,7 +597,17 @@ function CardapioPorTurmas({
 
   const gerar = (quantasSemanas: number) => {
     const alvo = somarSemanas(semana, quantasSemanas);
-    const jaSalvas = alvo.filter((s) => salvos.some((c) => c.turmaId && c.semanaInicio === s));
+    // Turmas criadas pela importação vêm sem composição: o gerador não tem o
+    // que sortear. Para elas, "Gerar" abre o cardápio salvo (importado) da
+    // semana; antes a grade saía vazia, com um aviso por turma.
+    const semComposicao = (t: Turma) => t.refeicoes.every((r) => r.composicao.length === 0);
+    const salvoDe = (turmaId: string, semanaInicio: string) =>
+      salvos.find((c) => c.turmaId === turmaId && c.semanaInicio === semanaInicio);
+
+    // Só pergunta quando o sorteio vai mesmo substituir um cardápio salvo.
+    const jaSalvas = alvo.filter((s) =>
+      turmasDoCliente.some((t) => !semComposicao(t) && salvoDe(t.id, s)),
+    );
     if (
       jaSalvas.length > 0 &&
       !confirm(
@@ -613,14 +623,13 @@ function CardapioPorTurmas({
     const novas = alvo.map((semanaInicio, w) => {
       const porTurma: Record<string, Cardapio> = {};
       const avisos: string[] = [];
+      const semCardapio: string[] = [];
       turmasDoCliente.forEach((turma, idx) => {
-        // Turmas criadas pela importação vêm sem composição: o gerador não tem o
-        // que sortear e devolveria a grade vazia sem explicar por quê.
-        if (turma.refeicoes.every((r) => r.composicao.length === 0)) {
-          avisos.push(
-            `${turma.nome}: sem composição de pratos configurada, nada foi gerado. ` +
-              'Use o cardápio importado em "Semanas salvas" ou configure a composição no cadastro do cliente.',
-          );
+        if (semComposicao(turma)) {
+          const salvo = salvoDe(turma.id, semanaInicio);
+          if (salvo) porTurma[turma.id] = salvo;
+          else semCardapio.push(turma.nome);
+          return;
         }
         const { cardapio, avisos: av } = gerarCardapio({
           cliente,
@@ -632,6 +641,12 @@ function CardapioPorTurmas({
         porTurma[turma.id] = cardapio;
         if (av.length > 0) avisos.push(`${turma.nome}: ${av.join(' ')}`);
       });
+      if (semCardapio.length > 0) {
+        avisos.unshift(
+          `Nenhum cardápio importado para a semana de ${formatarData(semanaInicio)} em: ` +
+            `${semCardapio.join(', ')}. Importe a planilha desse mês em "Importar cardápio".`,
+        );
+      }
       return { semanaInicio, porTurma, avisos };
     });
     setSemanasGeradas(novas);
