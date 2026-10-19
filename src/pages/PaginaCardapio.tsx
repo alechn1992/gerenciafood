@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import { gerarCardapio, rotuloCategoria } from '../domain/gerador';
+import { gerarPorHistorico } from '../domain/geradorHistorico';
 import {
   CATEGORIAS_PRATO,
   DIAS_SEMANA,
@@ -597,38 +598,45 @@ function CardapioPorTurmas({
 
   const gerar = (quantasSemanas: number) => {
     const alvo = somarSemanas(semana, quantasSemanas);
-    // Turmas criadas pela importação vêm sem composição: o gerador não tem o
-    // que sortear. Para elas, "Gerar" abre o cardápio salvo (importado) da
-    // semana; antes a grade saía vazia, com um aviso por turma.
-    const semComposicao = (t: Turma) => t.refeicoes.every((r) => r.composicao.length === 0);
-    const salvoDe = (turmaId: string, semanaInicio: string) =>
-      salvos.find((c) => c.turmaId === turmaId && c.semanaInicio === semanaInicio);
-
-    // Só pergunta quando o sorteio vai mesmo substituir um cardápio salvo.
-    const jaSalvas = alvo.filter((s) =>
-      turmasDoCliente.some((t) => !semComposicao(t) && salvoDe(t.id, s)),
-    );
+    const jaSalvas = alvo.filter((s) => salvos.some((c) => c.turmaId && c.semanaInicio === s));
     if (
       jaSalvas.length > 0 &&
       !confirm(
         `${jaSalvas.map(formatarData).join(', ')} já ${jaSalvas.length > 1 ? 'têm' : 'tem'} cardápio salvo ` +
           '(por exemplo, importado da planilha).\n\n' +
-          '"Gerar" monta um cardápio automático novo, sorteando pratos — não é o cardápio salvo. ' +
+          '"Gerar" monta um cardápio novo no lugar dele — o salvo só é substituído se você clicar em "Salvar". ' +
           'Para ver ou imprimir o salvo, cancele e use "Semanas salvas".\n\nGerar mesmo assim?',
       )
     ) {
       return;
     }
 
+    const dias = diasVisiveis.map((d) => d.valor);
+    // No "Gerar mês", cada semana nova entra no histórico da seguinte, para
+    // não repetir os pratos da semana que acabou de ser gerada.
+    const historico = [...salvos];
     const novas = alvo.map((semanaInicio, w) => {
       const porTurma: Record<string, Cardapio> = {};
       const avisos: string[] = [];
-      const semCardapio: string[] = [];
       turmasDoCliente.forEach((turma, idx) => {
-        if (semComposicao(turma)) {
-          const salvo = salvoDe(turma.id, semanaInicio);
-          if (salvo) porTurma[turma.id] = salvo;
-          else semCardapio.push(turma.nome);
+        const seed = Date.now() + w * 1000 + idx;
+        // Turmas criadas pela importação vêm sem composição: o gerador padrão
+        // não tem o que sortear, então a semana nova sai do histórico da turma.
+        if (turma.refeicoes.every((r) => r.composicao.length === 0)) {
+          const r = gerarPorHistorico({
+            clienteId: cliente.id,
+            turma,
+            dias,
+            historico,
+            pratos,
+            semanaInicio,
+            seed,
+          });
+          if (r.cardapio) {
+            porTurma[turma.id] = r.cardapio;
+            historico.push(r.cardapio);
+          }
+          avisos.push(...r.avisos);
           return;
         }
         const { cardapio, avisos: av } = gerarCardapio({
@@ -636,17 +644,11 @@ function CardapioPorTurmas({
           turma,
           pratos,
           semanaInicio,
-          seed: Date.now() + w * 1000 + idx,
+          seed,
         });
         porTurma[turma.id] = cardapio;
         if (av.length > 0) avisos.push(`${turma.nome}: ${av.join(' ')}`);
       });
-      if (semCardapio.length > 0) {
-        avisos.unshift(
-          `Nenhum cardápio importado para a semana de ${formatarData(semanaInicio)} em: ` +
-            `${semCardapio.join(', ')}. Importe a planilha desse mês em "Importar cardápio".`,
-        );
-      }
       return { semanaInicio, porTurma, avisos };
     });
     setSemanasGeradas(novas);

@@ -23,7 +23,7 @@ import { DIAS_SEMANA } from './types';
 import { pratoEhSazonal, UF_PARA_REGIAO, type RegiaoClimatica } from '../data/sazonalidade';
 
 /** Gerador pseudoaleatório determinístico (mulberry32). */
-function criarRng(seed: number): () => number {
+export function criarRng(seed: number): () => number {
   let a = seed >>> 0;
   return function () {
     a |= 0;
@@ -35,7 +35,7 @@ function criarRng(seed: number): () => number {
 }
 
 /** Embaralha uma cópia do array usando o RNG fornecido (Fisher–Yates). */
-function embaralhar<T>(itens: T[], rng: () => number): T[] {
+export function embaralhar<T>(itens: T[], rng: () => number): T[] {
   const copia = itens.slice();
   for (let i = copia.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
