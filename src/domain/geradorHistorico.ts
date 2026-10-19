@@ -6,6 +6,8 @@
 // turma: cada refeição é vista como uma sequência de posições ("linhas" da
 // planilha), e cada posição tem os pratos que já apareceram nela.
 //
+//  - Itens de ocasião (bolo dos aniversariantes, dia da culinária) não são
+//    sorteados para outras semanas.
 //  - Posição com um prato dominante (ex.: "Arroz", "Saladas", "Leite
 //    materno/Fórmula Infantil") é fixa: repete todos os dias.
 //  - As demais giram entre os pratos já servidos naquela posição, sem repetir
@@ -14,6 +16,7 @@
 
 import type { Cardapio, CategoriaPrato, DiaSemana, ItemCardapio, Prato, Turma } from './types';
 import { criarRng, embaralhar } from './gerador';
+import { ehFormula, ehItemDeEvento } from './pratosEspeciais';
 
 export interface OpcoesHistorico {
   clienteId: string;
@@ -110,7 +113,12 @@ export function gerarPorHistorico(op: OpcoesHistorico): ResultadoHistorico {
       for (const it of c.itens) {
         if (it.tipoRefeicaoId !== tipo) continue;
         if (!porDia.has(it.dia)) porDia.set(it.dia, []);
-        porDia.get(it.dia)!.push({ ...it, semanaInicio: c.semanaInicio });
+        porDia.get(it.dia)!.push({
+          ...it,
+          // Semanas importadas antes desta regra guardam a fórmula como "Proteína".
+          categoria: ehFormula(it.pratoNome) ? 'bebida' : it.categoria,
+          semanaInicio: c.semanaInicio,
+        });
       }
       diasServidos.push(...porDia.values());
     }
@@ -119,7 +127,9 @@ export function gerarPorHistorico(op: OpcoesHistorico): ResultadoHistorico {
     const posicoes = moda(diasServidos.map((d) => d.length)) ?? 0;
 
     for (let pos = 0; pos < posicoes; pos++) {
-      const naPosicao = diasServidos.map((d) => d[pos]).filter((o): o is Ocorrencia => !!o && ativos.has(o.pratoId));
+      const naPosicao = diasServidos
+        .map((d) => d[pos])
+        .filter((o): o is Ocorrencia => !!o && ativos.has(o.pratoId) && !ehItemDeEvento(o.pratoNome));
       if (naPosicao.length === 0) continue;
 
       const vezes = new Map<string, number>();

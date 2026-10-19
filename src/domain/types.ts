@@ -39,9 +39,9 @@ export const CATEGORIAS_PRATO: { valor: CategoriaPrato; nome: string }[] = [
   { valor: 'guarnicao', nome: 'Guarnição' },
   { valor: 'acompanhamento', nome: 'Acompanhamento' },
   { valor: 'salada', nome: 'Salada' },
-  { valor: 'sobremesa', nome: 'Sobremesa' },
   { valor: 'bebida', nome: 'Bebida' },
   { valor: 'lanche', nome: 'Lanche' },
+  { valor: 'sobremesa', nome: 'Sobremesa' },
   { valor: 'outro', nome: 'Outro' },
 ];
 

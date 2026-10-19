@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import { gerarCardapio, rotuloCategoria } from '../domain/gerador';
 import { gerarPorHistorico } from '../domain/geradorHistorico';
+import { ehFormula } from '../domain/pratosEspeciais';
 import {
   CATEGORIAS_PRATO,
   DIAS_SEMANA,
@@ -923,6 +924,15 @@ function GradeTurma({
   // Uma linha por categoria da composição. Turmas criadas pela importação vêm
   // sem composição — aí a grade não tinha linha nenhuma e o cardápio salvo
   // ficava invisível; as linhas passam a sair das categorias dos próprios itens.
+  // Linha só de leite materno/fórmula: "Bebida" (ou "Proteína", em semanas
+  // importadas antes) fazia a mamada do berçário parecer prato.
+  const rotuloLinha = (tipoRefeicaoId: string, categoria: CategoriaPrato) => {
+    const daLinha = cardapio.itens.filter((i) => i.tipoRefeicaoId === tipoRefeicaoId && i.categoria === categoria);
+    return daLinha.length > 0 && daLinha.every((i) => ehFormula(i.pratoNome))
+      ? 'Fórmula / leite'
+      : rotuloCategoria(categoria);
+  };
+
   const categoriasDaLinha = (ref: RefeicaoConfig): CategoriaPrato[] => {
     if (ref.composicao.length > 0) return ref.composicao.map((c) => c.categoria);
     const presentes = new Set(
@@ -961,7 +971,7 @@ function GradeTurma({
               <tr key={`${ref.tipoRefeicaoId}-${categoria}-${ci}`}>
                 <td>
                   {ci === 0 && <strong>{nomeTipo(ref.tipoRefeicaoId)}</strong>}
-                  <div className="cat">{rotuloCategoria(categoria)}</div>
+                  <div className="cat">{rotuloLinha(ref.tipoRefeicaoId, categoria)}</div>
                 </td>
                 {diasVisiveis.map((d) => (
                   <td key={d.valor}>

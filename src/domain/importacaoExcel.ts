@@ -4,6 +4,7 @@
 
 import * as XLSX from 'xlsx';
 import type { AvisoDia, CategoriaPrato, DiaSemana } from './types';
+import { ehFormula } from './pratosEspeciais';
 
 // ── Tipos internos ──────────────────────────────────────────────────────────
 
@@ -162,7 +163,10 @@ function atribuirCategoria(
   tipoId: string,
   posicao: number,
   totalItens: number,
+  nome = '',
 ): CategoriaPrato {
+  // Fórmula/leite materno não é prato: no almoço do Baby 1 virava "Proteína".
+  if (ehFormula(nome)) return 'bebida';
   if (tipoId === 'almoco') {
     if (totalItens <= 2) return 'proteina';
     switch (posicao) {
@@ -276,7 +280,7 @@ function parsearSheetSemana(ws: XLSX.WorkSheet): SemanaExcel | null {
       const total = filtrados.length;
       const pratos = filtrados.map((nome, idx) => ({
         nome,
-        categoria: atribuirCategoria(currentRefeicaoId!, idx, total),
+        categoria: atribuirCategoria(currentRefeicaoId!, idx, total, nome),
       }));
       if (pratos.length > 0) dias.push({ dia, pratos });
     }
@@ -386,7 +390,7 @@ function parsearSheetEmpilhada(ws: XLSX.WorkSheet, nomeTurma: string): SemanaExc
         const total = filtrados.length;
         const pratos = filtrados.map((nome, idx) => ({
           nome,
-          categoria: atribuirCategoria(currentRefeicaoId!, idx, total),
+          categoria: atribuirCategoria(currentRefeicaoId!, idx, total, nome),
         }));
         if (pratos.length > 0) dias.push({ dia, pratos });
       }

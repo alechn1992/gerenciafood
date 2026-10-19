@@ -94,4 +94,20 @@ describe('gerarPorHistorico', () => {
   it('é determinístico pelo seed', () => {
     expect(gerar({ seed: 7 }).cardapio!.itens).toEqual(gerar({ seed: 7 }).cardapio!.itens);
   });
+
+  it('não sorteia itens de evento (ex.: bolo dos aniversariantes) para outras semanas', () => {
+    const lanches = ['Banana', 'Maçã', 'Bolo dos Aniversariantes + Maçã raspada', 'Melão', 'Laranja'];
+    const h = [semana('2026-10-05', proteinas.slice(0, 5).map((p) => ['Arroz', p]), lanches.map((l) => ['Chá', l]))];
+    const { cardapio } = gerar({ historico: h, pratos: catalogo(['Arroz', 'Chá', ...proteinas, ...lanches]) });
+    expect(cardapio!.itens.map((i) => i.pratoNome).some((n) => /Aniversariantes/.test(n))).toBe(false);
+  });
+
+  it('trata leite materno/fórmula como bebida, mesmo em semanas importadas como "Proteína"', () => {
+    const formula = 'Leite materno/Fórmula Infantil';
+    const h = [semana('2026-10-05', DIAS.map(() => [formula]), DIAS.map((_, i) => [formula, ['Banana', 'Maçã', 'Manga', 'Melão', 'Laranja'][i]]))];
+    const { cardapio } = gerar({ historico: h, pratos: catalogo([formula, 'Banana', 'Maçã', 'Manga', 'Melão', 'Laranja']) });
+    const doAlmoco = cardapio!.itens.filter((i) => i.tipoRefeicaoId === 'almoco');
+    expect(doAlmoco.every((i) => i.pratoNome === formula && i.categoria === 'bebida')).toBe(true);
+    expect(cardapio!.itens.filter((i) => i.pratoNome === formula).every((i) => i.categoria === 'bebida')).toBe(true);
+  });
 });
