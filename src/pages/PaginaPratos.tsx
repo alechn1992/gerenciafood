@@ -13,12 +13,22 @@ import {
   type RegiaoClimatica,
 } from '../data/sazonalidade';
 
+/** Minúsculas e sem acento, para a busca. */
+function semAcento(texto: string): string {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
 export function PaginaPratos() {
   const { pratos, salvarPrato, removerPrato, restricoesDisponiveis } = useData();
   const [nome, setNome] = useState('');
   const [categoria, setCategoria] = useState<CategoriaPrato>('proteina');
   const [restricoes, setRestricoes] = useState<string[]>([]);
   const [filtro, setFiltro] = useState<CategoriaPrato | 'todas'>('todas');
+  const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState<'todos' | 'ativos' | 'inativos'>('todos');
+  const [filtroRestricao, setFiltroRestricao] = useState('todas');
+  const [filtroReceita, setFiltroReceita] = useState<'todos' | 'com' | 'sem'>('todos');
+  const [soSafra, setSoSafra] = useState(false);
   /** Prato em edição no formulário do topo; null = cadastrando um novo. */
   const [editando, setEditando] = useState<Prato | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -83,8 +93,32 @@ export function PaginaPratos() {
     limparFormulario();
   };
 
+  // Busca sem acento e sem maiúsculas: "feijao" encontra "Feijão preto", e
+  // várias palavras precisam aparecer todas ("frango molho").
+  const termos = semAcento(busca).split(/\s+/).filter(Boolean);
+  const filtrosAtivos =
+    termos.length > 0 ||
+    filtro !== 'todas' ||
+    filtroStatus !== 'todos' ||
+    filtroRestricao !== 'todas' ||
+    filtroReceita !== 'todos' ||
+    soSafra;
+  const limparFiltros = () => {
+    setBusca('');
+    setFiltro('todas');
+    setFiltroStatus('todos');
+    setFiltroRestricao('todas');
+    setFiltroReceita('todos');
+    setSoSafra(false);
+  };
+
   const listados = pratos
     .filter((p) => filtro === 'todas' || p.categoria === filtro)
+    .filter((p) => termos.every((t) => semAcento(`${p.nome} ${p.tags.join(' ')}`).includes(t)))
+    .filter((p) => filtroStatus === 'todos' || (filtroStatus === 'ativos') === p.ativo)
+    .filter((p) => filtroRestricao === 'todas' || p.restricoes.includes(filtroRestricao))
+    .filter((p) => filtroReceita === 'todos' || (filtroReceita === 'com') === !!p.receita)
+    .filter((p) => !soSafra || idsSazonais.has(p.id))
     .sort((a, b) => a.nome.localeCompare(b.nome));
 
   return (
@@ -151,12 +185,25 @@ export function PaginaPratos() {
 
       <div className="card">
         <div className="linha" style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: 0 }}>Pratos cadastrados ({listados.length})</h3>
-          <select
-            value={filtro}
-            style={{ width: 200 }}
-            onChange={(e) => setFiltro(e.target.value as CategoriaPrato | 'todas')}
-          >
+          <h3 style={{ margin: 0 }}>
+            Pratos cadastrados ({filtrosAtivos ? `${listados.length} de ${pratos.length}` : pratos.length})
+          </h3>
+          {filtrosAtivos && (
+            <button className="btn pequeno secundario" onClick={limparFiltros}>
+              Limpar filtros
+            </button>
+          )}
+        </div>
+        <div className="filtros-pratos">
+          <input
+            type="search"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="🔍 Buscar prato pelo nome…"
+            aria-label="Buscar prato"
+            className="filtros-pratos-busca"
+          />
+          <select value={filtro} onChange={(e) => setFiltro(e.target.value)} aria-label="Categoria">
             <option value="todas">Todas as categorias</option>
             {categoriasDisponiveis().map((c) => (
               <option key={c.valor} value={c.valor}>
@@ -164,7 +211,46 @@ export function PaginaPratos() {
               </option>
             ))}
           </select>
+          <select
+            value={filtroRestricao}
+            onChange={(e) => setFiltroRestricao(e.target.value)}
+            aria-label="Restrição atendida"
+          >
+            <option value="todas">Todas as restrições</option>
+            {restricoesDisponiveis.map((r) => (
+              <option key={r.valor} value={r.valor}>
+                {r.nome}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filtroStatus}
+            onChange={(e) => setFiltroStatus(e.target.value as typeof filtroStatus)}
+            aria-label="Status"
+          >
+            <option value="todos">Ativos e inativos</option>
+            <option value="ativos">Só ativos</option>
+            <option value="inativos">Só inativos</option>
+          </select>
+          <select
+            value={filtroReceita}
+            onChange={(e) => setFiltroReceita(e.target.value as typeof filtroReceita)}
+            aria-label="Receita"
+          >
+            <option value="todos">Com e sem receita</option>
+            <option value="com">Com receita</option>
+            <option value="sem">Sem receita</option>
+          </select>
+          <label className="filtros-pratos-safra">
+            <input type="checkbox" checked={soSafra} onChange={(e) => setSoSafra(e.target.checked)} />
+            🌱 Só da safra
+          </label>
         </div>
+        {listados.length === 0 && (
+          <p className="subtitulo" style={{ margin: '8px 0' }}>
+            Nenhum prato encontrado com esses filtros.
+          </p>
+        )}
         <table>
           <thead>
             <tr>
