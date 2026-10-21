@@ -148,6 +148,12 @@ export function PaginaClienteForm() {
     e.target.value = '';
   }
 
+  // Refeições que podem receber combinado: as do cliente e as de cada turma.
+  const tiposDosCombinados = [
+    ...refeicoes.map((r) => r.tipoRefeicaoId),
+    ...(usaTurmas ? turmasEdit.flatMap((t) => t.refeicoes.map((r) => r.tipoRefeicaoId)) : []),
+  ].filter((t, i, todos) => todos.indexOf(t) === i);
+
   const salvar = async () => {
     if (!nome.trim()) {
       alert('Informe o nome do cliente.');
@@ -509,13 +515,14 @@ export function PaginaClienteForm() {
         )}
       </div>
 
-      {/* Pratos fixos por dia (combinados) */}
+      {/* Pratos fixos (combinados) */}
       <div className="card">
         <div className="linha">
           <div>
-            <h3 style={{ margin: 0 }}>Pratos fixos por dia</h3>
+            <h3 style={{ margin: 0 }}>Pratos fixos (combinados)</h3>
             <p className="subtitulo" style={{ margin: '4px 0 0' }}>
-              Acordos pré-definidos: o gerador sempre coloca este prato neste slot.
+              O gerador sempre coloca este prato nesta refeição: num dia ou em todos os dias, e para
+              todas as turmas ou só as escolhidas (ex.: fórmula/leite no café do berçário).
             </p>
           </div>
           <button
@@ -524,14 +531,15 @@ export function PaginaClienteForm() {
             onClick={() => {
               const dia = diasOperacao[0] ?? 1;
               const refeicao = refeicoes[0];
-              const categoria = refeicao?.composicao[0]?.categoria ?? 'proteina';
+              const categoria = refeicao?.composicao[0]?.categoria ?? 'bebida';
               const pratosCategoria = pratos.filter((p) => p.ativo && p.categoria === categoria);
               if (pratosCategoria.length === 0) return;
               setPratosFixos((prev) => [
                 ...prev,
                 {
                   diaId: dia,
-                  tipoRefeicaoId: refeicao?.tipoRefeicaoId ?? 'almoco',
+                  todosOsDias: true,
+                  tipoRefeicaoId: refeicao?.tipoRefeicaoId ?? tiposDosCombinados[0] ?? 'cafe',
                   categoria,
                   pratoId: pratosCategoria[0].id,
                   pratoNome: pratosCategoria[0].nome,
@@ -553,25 +561,29 @@ export function PaginaClienteForm() {
           return (
             <div
               key={idx}
+              className="combinado-linha"
               style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 8,
-                alignItems: 'center',
-                padding: '8px 0',
                 borderBottom: idx < pratosFixos.length - 1 ? '1px solid var(--borda)' : undefined,
               }}
             >
               {/* Dia */}
               <select
-                value={pf.diaId}
+                value={pf.todosOsDias ? 'todos' : pf.diaId}
                 onChange={(e) =>
                   setPratosFixos((prev) =>
-                    prev.map((f, i) => i === idx ? { ...f, diaId: Number(e.target.value) as DiaSemana } : f),
+                    prev.map((f, i) =>
+                      i !== idx
+                        ? f
+                        : e.target.value === 'todos'
+                          ? { ...f, todosOsDias: true }
+                          : { ...f, todosOsDias: false, diaId: Number(e.target.value) as DiaSemana },
+                    ),
                   )
                 }
                 style={{ minWidth: 140 }}
+                aria-label="Dia"
               >
+                <option value="todos">Todos os dias</option>
                 {DIAS_SEMANA.filter((d) => diasOperacao.includes(d.valor)).map((d) => (
                   <option key={d.valor} value={d.valor}>
                     {d.nome}
@@ -588,14 +600,11 @@ export function PaginaClienteForm() {
                 }
                 style={{ minWidth: 140 }}
               >
-                {refeicoes.map((r) => {
-                  const tipo = tiposRefeicao.find((t) => t.id === r.tipoRefeicaoId);
-                  return (
-                    <option key={r.tipoRefeicaoId} value={r.tipoRefeicaoId}>
-                      {tipo?.nome ?? r.tipoRefeicaoId}
-                    </option>
-                  );
-                })}
+                {tiposDosCombinados.map((tipoId) => (
+                  <option key={tipoId} value={tipoId}>
+                    {tiposRefeicao.find((t) => t.id === tipoId)?.nome ?? tipoId}
+                  </option>
+                ))}
               </select>
               {/* Categoria */}
               <select
@@ -652,9 +661,41 @@ export function PaginaClienteForm() {
                 className="btn pequeno perigo"
                 type="button"
                 onClick={() => setPratosFixos((prev) => prev.filter((_, i) => i !== idx))}
+                title="Remover combinado"
               >
                 ×
               </button>
+              {usaTurmas && turmasEdit.length > 0 && (
+                <div className="chips" style={{ flexBasis: '100%', marginTop: 2 }}>
+                  <span style={{ fontSize: 13, color: 'var(--cinza)', alignSelf: 'center' }}>Turmas:</span>
+                  <span
+                    className={`chip ${!pf.turmaIds?.length ? 'on' : ''}`}
+                    onClick={() =>
+                      setPratosFixos((prev) => prev.map((f, i) => (i === idx ? { ...f, turmaIds: undefined } : f)))
+                    }
+                  >
+                    Todas
+                  </span>
+                  {turmasEdit.map((t) => (
+                    <span
+                      key={t.id}
+                      className={`chip ${pf.turmaIds?.includes(t.id) ? 'on' : ''}`}
+                      onClick={() =>
+                        setPratosFixos((prev) =>
+                          prev.map((f, i) => {
+                            if (i !== idx) return f;
+                            const atuais = f.turmaIds ?? [];
+                            const novas = atuais.includes(t.id) ? atuais.filter((x) => x !== t.id) : [...atuais, t.id];
+                            return { ...f, turmaIds: novas.length > 0 ? novas : undefined };
+                          }),
+                        )
+                      }
+                    >
+                      {t.nome || 'Turma sem nome'}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}

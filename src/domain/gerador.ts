@@ -13,13 +13,13 @@ import type {
   Cardapio,
   Cliente,
   ItemCardapio,
-  PratoFixoCliente,
   Prato,
   RefeicaoConfig,
   Turma,
 } from './types';
 import { DIAS_SEMANA } from './types';
 import { rotuloCategoria } from './categorias';
+import { fixoDaCelula } from './pratosFixos';
 import { pratoEhSazonal, UF_PARA_REGIAO, type RegiaoClimatica } from '../data/sazonalidade';
 
 /** Gerador pseudoaleatório determinístico (mulberry32). */
@@ -133,11 +133,7 @@ export function gerarCardapio(opcoes: OpcoesGeracao): ResultadoGeracao {
   const refeicoesPorId = new Map<string, RefeicaoConfig>();
   refeicoes.forEach((r) => refeicoesPorId.set(r.tipoRefeicaoId, r));
 
-  // Mapa de pratos fixos: chave = "diaId-tipoRefeicaoId-categoria"
-  const pratosFixosMap = new Map<string, PratoFixoCliente>();
-  for (const f of cliente.pratosFixos ?? []) {
-    pratosFixosMap.set(`${f.diaId}-${f.tipoRefeicaoId}-${f.categoria}`, f);
-  }
+  const pratosFixos = cliente.pratosFixos ?? [];
 
   const mesAtual = opcoes.mesSazonalidade ?? new Date().getMonth() + 1;
   const regiao = opcoes.ufSazonalidade
@@ -176,10 +172,15 @@ export function gerarCardapio(opcoes: OpcoesGeracao): ResultadoGeracao {
           let prato = sequencia[idx];
           if (!prato) return;
 
-          // Na primeira posição, aplica prato fixo se configurado para este slot.
+          // Na primeira posição, aplica o prato combinado para a célula (do dia
+          // ou de todos os dias, e desta turma).
           if (pos === 0) {
-            const chave = `${dia}-${refeicao.tipoRefeicaoId}-${comp.categoria}`;
-            const fixo = pratosFixosMap.get(chave);
+            const fixo = fixoDaCelula(pratosFixos, {
+              dia,
+              tipoRefeicaoId: refeicao.tipoRefeicaoId,
+              categoria: comp.categoria,
+              turmaId: turma?.id,
+            });
             if (fixo) {
               const pratoFixado = pratosAtivos.find((p) => p.id === fixo.pratoId);
               if (pratoFixado) prato = pratoFixado;

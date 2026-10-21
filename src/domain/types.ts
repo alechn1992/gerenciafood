@@ -211,11 +211,16 @@ export interface Turma {
  * na primeira posição daquele slot, independente da aleatoriedade.
  */
 export interface PratoFixoCliente {
+  /** Dia do combinado; ignorado quando `todosOsDias` é true. */
   diaId: DiaSemana;
+  /** Vale para todos os dias de operação (ex.: fórmula/leite no café). */
+  todosOsDias?: boolean;
   tipoRefeicaoId: string;
   categoria: CategoriaPrato;
   pratoId: string;
   pratoNome: string;
+  /** Turmas em que vale; ausente ou vazio = todas as turmas (e o cliente sem turmas). */
+  turmaIds?: string[];
 }
 
 /** Cliente e suas particularidades. */

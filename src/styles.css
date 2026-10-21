@@ -794,3 +794,13 @@ th {
 .status-semana.concluido { background: #e3f4ea; color: #1e6b3f; }
 .status-semana.pendente { background: #fde8e4; color: #9a2f1c; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Linha de um prato fixo (combinado) no cadastro do cliente */
+.combinado-linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+}
+.combinado-linha > select { width: auto; flex: 1 1 150px; min-width: 0; }
