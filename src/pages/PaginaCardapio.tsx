@@ -5,6 +5,13 @@ import { gerarCardapio, rotuloCategoria } from '../domain/gerador';
 import { gerarPorHistorico } from '../domain/geradorHistorico';
 import { ehFormula } from '../domain/pratosEspeciais';
 import { aplicarCalendario, avisosDaSemana } from '../domain/calendario';
+import {
+  aceitaConsistencia,
+  aplicarConsistencia,
+  consistenciaDe,
+  consistenciaSugerida,
+  type Consistencia,
+} from '../domain/consistencia';
 import { useCalendario } from '../state/useCalendario';
 import {
   DIAS_SEMANA,
@@ -591,6 +598,35 @@ function CardapioPorTurmas({
     setCopiandoSemana(null);
   };
 
+  /** Muda o nome exibido dos itens (consistência da fruta) sem trocar o prato. */
+  const renomearItensTurma = (semanaInicio: string, turmaId: string, mudancas: { idx: number; nome: string }[]) => {
+    const porIdx = new Map(mudancas.map((m) => [m.idx, m.nome]));
+    const alvo = semanasGeradas.find((s) => s.semanaInicio === semanaInicio)?.porTurma[turmaId];
+    if (!alvo || !alvo.itens.some((it, i) => porIdx.has(i) && porIdx.get(i) !== it.pratoNome)) return;
+    setPendente(true);
+    setSemanasGeradas((prev) =>
+      prev.map((s) => {
+        const cardapio = s.porTurma[turmaId];
+        if (s.semanaInicio !== semanaInicio || !cardapio) return s;
+        return {
+          ...s,
+          porTurma: {
+            ...s.porTurma,
+            [turmaId]: {
+              ...cardapio,
+              itens: cardapio.itens.map((item, i) => {
+                const nome = porIdx.get(i);
+                return nome === undefined || nome === item.pratoNome
+                  ? item
+                  : { ...item, pratoNome: nome, alteradoManualmente: true };
+              }),
+            },
+          },
+        };
+      }),
+    );
+  };
+
   const trocarPratoTurma = (semanaInicio: string, turmaId: string, itemIdx: number, novoPratoId: string) => {
     const novoPrato = pratos.find((p) => p.id === novoPratoId);
     if (!novoPrato) return;
@@ -1043,6 +1079,7 @@ function CardapioPorTurmas({
                   onTrocar={(itemIdx, novoPratoId) =>
                     trocarPratoTurma(s.semanaInicio, turma.id, itemIdx, novoPratoId)
                   }
+                  onRenomear={(mudancas) => renomearItensTurma(s.semanaInicio, turma.id, mudancas)}
                 />
               </div>
             );
@@ -1060,6 +1097,7 @@ function GradeTurma({
   nomeTipo,
   pratos,
   onTrocar,
+  onRenomear,
 }: {
   cardapio: Cardapio;
   refeicoes: RefeicaoConfig[];
@@ -1067,7 +1105,15 @@ function GradeTurma({
   nomeTipo: (tipoId: string) => string;
   pratos: Prato[];
   onTrocar: (itemIdx: number, novoPratoId: string) => void;
+  /** Muda só o nome exibido de itens (ex.: consistência da fruta), mantendo o prato. */
+  onRenomear?: (mudancas: { idx: number; nome: string }[]) => void;
 }) {
+  const frutas = cardapio.itens
+    .map((item, idx) => ({ item, idx }))
+    .filter(({ item }) => aceitaConsistencia(item));
+  const marcarConsistencia = (idx: number, nome: string, c: Consistencia, marcado: boolean) =>
+    onRenomear?.([{ idx, nome: aplicarConsistencia(nome, marcado ? c : null) }]);
+
   const renderCelula = (dia: number, tipoId: string, categoria: string) => {
     const com = cardapio.itens
       .map((item, idx) => ({ item, idx }))
@@ -1085,6 +1131,20 @@ function GradeTurma({
               pratosCategoria={pratosCategoria}
               onTrocar={onTrocar}
             />
+            {onRenomear && aceitaConsistencia(item) && (
+              <span className="consistencia no-print">
+                {(['amassada', 'raspada'] as const).map((c) => (
+                  <label key={c} title={`Servir ${c}`}>
+                    <input
+                      type="checkbox"
+                      checked={consistenciaDe(item.pratoNome) === c}
+                      onChange={(e) => marcarConsistencia(idx, item.pratoNome, c, e.target.checked)}
+                    />
+                    {c}
+                  </label>
+                ))}
+              </span>
+            )}
           </span>
         ))}
       </>
@@ -1115,6 +1175,34 @@ function GradeTurma({
     <div className="cardapio-grid">
       <p style={{ fontSize: 12, color: 'var(--cinza)', margin: '0 0 8px' }}>
         Clique em qualquer prato para trocar manualmente.
+        {onRenomear && frutas.length > 0 && (
+          <span className="no-print" style={{ marginLeft: 10 }}>
+            Frutas:{' '}
+            <button
+              type="button"
+              className="btn-link"
+              title="Maçã, pera, melão e goiaba raspadas; as demais amassadas (cítricos ficam como estão)"
+              onClick={() =>
+                onRenomear(
+                  frutas.flatMap(({ item, idx }) => {
+                    const c = consistenciaSugerida(item.pratoNome);
+                    return c ? [{ idx, nome: aplicarConsistencia(item.pratoNome, c) }] : [];
+                  }),
+                )
+              }
+            >
+              amassar/raspar todas
+            </button>
+            {' · '}
+            <button
+              type="button"
+              className="btn-link"
+              onClick={() => onRenomear(frutas.map(({ item, idx }) => ({ idx, nome: aplicarConsistencia(item.pratoNome, null) })))}
+            >
+              tirar de todas
+            </button>
+          </span>
+        )}
       </p>
       <table>
         <thead>

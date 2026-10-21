@@ -804,3 +804,32 @@ th {
   padding: 10px 0;
 }
 .combinado-linha > select { width: auto; flex: 1 1 150px; min-width: 0; }
+
+/* Consistência da fruta (amassada / raspada) na grade do cardápio */
+.consistencia {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--cinza);
+}
+.consistencia label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+  font-weight: normal;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.consistencia input { width: auto; margin: 0; }
+.btn-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--verde, #1e6b3f);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
