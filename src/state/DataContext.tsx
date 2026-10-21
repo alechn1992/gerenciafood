@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { Cardapio, CategoriaInsumo, Cliente, ConfiguracaoSync, Insumo, Prato, PreferenciaAlimentar, Profissional, TipoRefeicao, Turma, UnidadeMedida } from '../domain/types';
+import type { Cardapio, CategoriaCadastrada, CategoriaInsumo, Cliente, ConfiguracaoSync, Insumo, Prato, PreferenciaAlimentar, Profissional, TipoRefeicao, Turma, UnidadeMedida } from '../domain/types';
 import { getRepository, type Repository } from '../data/repo';
+import { definirCategoriasCadastradas } from '../domain/categorias';
 import { RESTRICOES_DISPONIVEIS, TIPOS_REFEICAO_PADRAO } from '../data/seed';
 
 export interface ResultadoSync {
@@ -23,6 +24,9 @@ interface DataState {
   restricoesDisponiveis: { valor: string; nome: string }[];
   /** Erro ao ler as preferências (ex.: tabela ainda não criada no banco). */
   erroPreferencias: string | null;
+  /** Categorias de prato cadastradas pela nutricionista (sem as padrão). */
+  categorias: CategoriaCadastrada[];
+  erroCategorias: string | null;
   carregando: boolean;
   configuracaoSync: ConfiguracaoSync | null;
   recarregarClientes: () => Promise<void>;
@@ -45,6 +49,8 @@ interface DataState {
   removerProfissional: (id: string) => Promise<void>;
   salvarPreferencia: (p: PreferenciaAlimentar) => Promise<void>;
   removerPreferencia: (valor: string) => Promise<void>;
+  salvarCategoria: (c: CategoriaCadastrada) => Promise<void>;
+  removerCategoria: (valor: string) => Promise<void>;
   salvarConfiguracaoSync: (c: ConfiguracaoSync) => Promise<void>;
   sincronizarInsumos: () => Promise<ResultadoSync>;
 }
@@ -82,6 +88,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [preferencias, setPreferencias] = useState<PreferenciaAlimentar[]>([]);
   const [erroPreferencias, setErroPreferencias] = useState<string | null>(null);
+  const [categorias, setCategorias] = useState<CategoriaCadastrada[]>([]);
+  const [erroCategorias, setErroCategorias] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [configuracaoSync, setConfiguracaoSync] = useState<ConfiguracaoSync | null>(null);
 
@@ -102,8 +110,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Como as preferências: sem a tabela, valem só as categorias padrão.
+  const recarregarCategorias = async () => {
+    try {
+      const lista = await repo.listarCategorias();
+      definirCategoriasCadastradas(lista);
+      setCategorias(lista);
+      setErroCategorias(null);
+    } catch (err) {
+      console.error('[GerenciaFood] Erro ao carregar categorias de prato:', err);
+      setErroCategorias(descreverErro(err));
+    }
+  };
+
   useEffect(() => {
     recarregarPreferencias();
+    recarregarCategorias();
     (async () => {
       try {
         const [c, p, t, i, tu, pr, cfg] = await Promise.all([
@@ -236,6 +258,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...preferencias.filter((p) => !RESTRICOES_DISPONIVEIS.some((r) => r.valor === p.valor)),
     ],
     erroPreferencias,
+    categorias,
+    erroCategorias,
     carregando,
     configuracaoSync,
     recarregarClientes,
@@ -294,6 +318,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     removerPreferencia: async (valor) => {
       await repo.removerPreferencia(valor);
       await recarregarPreferencias();
+    },
+    salvarCategoria: async (c) => {
+      await repo.salvarCategoria(c);
+      await recarregarCategorias();
+    },
+    removerCategoria: async (valor) => {
+      await repo.removerCategoria(valor);
+      await recarregarCategorias();
     },
     salvarConfiguracaoSync,
     sincronizarInsumos,

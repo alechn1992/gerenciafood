@@ -5,7 +5,6 @@ import { gerarCardapio, rotuloCategoria } from '../domain/gerador';
 import { gerarPorHistorico } from '../domain/geradorHistorico';
 import { ehFormula } from '../domain/pratosEspeciais';
 import {
-  CATEGORIAS_PRATO,
   DIAS_SEMANA,
   type Cardapio,
   type CategoriaPrato,
@@ -16,6 +15,7 @@ import {
   type TipoRefeicao,
   type Turma,
 } from '../domain/types';
+import { categoriasDisponiveis } from '../domain/categorias';
 import { formatarData, segundaFeiraDaSemana } from '../lib/datas';
 import { UF_PARA_REGIAO } from '../data/sazonalidade';
 import { CardapioImpressao, type SemanaImpressao } from './CardapioImpressao';
@@ -938,7 +938,7 @@ function GradeTurma({
     const presentes = new Set(
       cardapio.itens.filter((i) => i.tipoRefeicaoId === ref.tipoRefeicaoId).map((i) => i.categoria),
     );
-    return CATEGORIAS_PRATO.map((c) => c.valor).filter((c) => presentes.has(c));
+    return categoriasDisponiveis().map((c) => c.valor).filter((c) => presentes.has(c));
   };
 
   return (

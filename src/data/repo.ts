@@ -5,7 +5,7 @@
 // Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY), os dados passam a ser
 // persistidos no Postgres do Supabase.
 
-import type { Cardapio, Cliente, ConfiguracaoSync, Insumo, PlanoAcao, Prato, PreferenciaAlimentar, Profissional, Relatorio, TipoRefeicao, Turma, Visita, SecaoVisita } from '../domain/types';
+import type { Cardapio, CategoriaCadastrada, Cliente, ConfiguracaoSync, Insumo, PlanoAcao, Prato, PreferenciaAlimentar, Profissional, Relatorio, TipoRefeicao, Turma, Visita, SecaoVisita } from '../domain/types';
 import { INSUMOS_PADRAO, PRATOS_PADRAO, TIPOS_REFEICAO_PADRAO } from './seed';
 import { supabase } from '../lib/supabase';
 import { SupabaseRepository } from './supabaseRepo';
@@ -42,6 +42,9 @@ export interface Repository {
   listarPreferencias(): Promise<PreferenciaAlimentar[]>;
   salvarPreferencia(p: PreferenciaAlimentar): Promise<void>;
   removerPreferencia(valor: string): Promise<void>;
+  listarCategorias(): Promise<CategoriaCadastrada[]>;
+  salvarCategoria(c: CategoriaCadastrada): Promise<void>;
+  removerCategoria(valor: string): Promise<void>;
   carregarConfiguracaoSync(): Promise<ConfiguracaoSync | null>;
   salvarConfiguracaoSync(c: ConfiguracaoSync): Promise<void>;
 }
@@ -58,6 +61,7 @@ const KEYS = {
   visitas: 'gf.visitas',
   profissionais: 'gf.profissionais',
   preferencias: 'gf.preferencias',
+  categorias: 'gf.categorias',
   syncConfig: 'gf.syncconfig',
 };
 
@@ -282,6 +286,19 @@ export class LocalRepository implements Repository {
 
   async removerPreferencia(valor: string): Promise<void> {
     escrever(KEYS.preferencias, ler<PreferenciaAlimentar[]>(KEYS.preferencias, []).filter((p) => p.valor !== valor));
+  }
+
+  async listarCategorias(): Promise<CategoriaCadastrada[]> {
+    return ler<CategoriaCadastrada[]>(KEYS.categorias, []).sort((a, b) => a.nome.localeCompare(b.nome));
+  }
+
+  async salvarCategoria(c: CategoriaCadastrada): Promise<void> {
+    const todas = ler<CategoriaCadastrada[]>(KEYS.categorias, []).filter((x) => x.valor !== c.valor);
+    escrever(KEYS.categorias, [...todas, c]);
+  }
+
+  async removerCategoria(valor: string): Promise<void> {
+    escrever(KEYS.categorias, ler<CategoriaCadastrada[]>(KEYS.categorias, []).filter((c) => c.valor !== valor));
   }
 
   async carregarConfiguracaoSync(): Promise<ConfiguracaoSync | null> {

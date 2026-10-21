@@ -10,7 +10,6 @@ function lerImagemComoDataURL(file: File): Promise<string> {
 import { useNavigate, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import {
-  CATEGORIAS_PRATO,
   DIAS_SEMANA,
   type CategoriaPrato,
   type Cliente,
@@ -21,6 +20,7 @@ import {
   type TipoRefeicao,
   type Turma,
 } from '../domain/types';
+import { categoriasDisponiveis } from '../domain/categorias';
 
 function composicaoPadrao(): ComposicaoRefeicao[] {
   return [
@@ -618,7 +618,7 @@ export function PaginaClienteForm() {
                 }}
                 style={{ minWidth: 130 }}
               >
-                {CATEGORIAS_PRATO.map((c) => (
+                {categoriasDisponiveis().map((c) => (
                   <option key={c.valor} value={c.valor}>
                     {c.nome}
                   </option>
@@ -791,7 +791,7 @@ function EditorRefeicoes({
                         })
                       }
                     >
-                      {CATEGORIAS_PRATO.map((cat) => (
+                      {categoriasDisponiveis().map((cat) => (
                         <option key={cat.valor} value={cat.valor}>
                           {cat.nome}
                         </option>
