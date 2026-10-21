@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { Cardapio, CategoriaInsumo, Cliente, ConfiguracaoSync, Insumo, Prato, Profissional, TipoRefeicao, Turma, UnidadeMedida } from '../domain/types';
+import type { Cardapio, CategoriaInsumo, Cliente, ConfiguracaoSync, Insumo, Prato, PreferenciaAlimentar, Profissional, TipoRefeicao, Turma, UnidadeMedida } from '../domain/types';
 import { getRepository, type Repository } from '../data/repo';
-import { TIPOS_REFEICAO_PADRAO } from '../data/seed';
+import { RESTRICOES_DISPONIVEIS, TIPOS_REFEICAO_PADRAO } from '../data/seed';
 
 export interface ResultadoSync {
   importados: number;
@@ -17,6 +17,12 @@ interface DataState {
   insumos: Insumo[];
   turmas: Turma[];
   profissionais: Profissional[];
+  /** Restrições/preferências cadastradas pela nutricionista (sem as padrão). */
+  preferencias: PreferenciaAlimentar[];
+  /** Padrão + cadastradas: a lista usada em turmas, clientes e Receituário. */
+  restricoesDisponiveis: { valor: string; nome: string }[];
+  /** Erro ao ler as preferências (ex.: tabela ainda não criada no banco). */
+  erroPreferencias: string | null;
   carregando: boolean;
   configuracaoSync: ConfiguracaoSync | null;
   recarregarClientes: () => Promise<void>;
@@ -37,6 +43,8 @@ interface DataState {
   removerTurma: (id: string) => Promise<void>;
   salvarProfissional: (p: Profissional) => Promise<void>;
   removerProfissional: (id: string) => Promise<void>;
+  salvarPreferencia: (p: PreferenciaAlimentar) => Promise<void>;
+  removerPreferencia: (valor: string) => Promise<void>;
   salvarConfiguracaoSync: (c: ConfiguracaoSync) => Promise<void>;
   sincronizarInsumos: () => Promise<ResultadoSync>;
 }
@@ -72,6 +80,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
+  const [preferencias, setPreferencias] = useState<PreferenciaAlimentar[]>([]);
+  const [erroPreferencias, setErroPreferencias] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [configuracaoSync, setConfiguracaoSync] = useState<ConfiguracaoSync | null>(null);
 
@@ -80,8 +90,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const recarregarInsumos = async () => setInsumos(await repo.listarInsumos());
   const recarregarTurmas = async () => setTurmas(await repo.listarTurmas());
   const recarregarProfissionais = async () => setProfissionais(await repo.listarProfissionais());
+  // Carregadas à parte: sem a tabela no banco (migração ainda não aplicada), o
+  // resto do sistema continua funcionando só com as restrições padrão.
+  const recarregarPreferencias = async () => {
+    try {
+      setPreferencias(await repo.listarPreferencias());
+      setErroPreferencias(null);
+    } catch (err) {
+      console.error('[GerenciaFood] Erro ao carregar preferências alimentares:', err);
+      setErroPreferencias(descreverErro(err));
+    }
+  };
 
   useEffect(() => {
+    recarregarPreferencias();
     (async () => {
       try {
         const [c, p, t, i, tu, pr, cfg] = await Promise.all([
@@ -208,6 +230,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     insumos,
     turmas,
     profissionais,
+    preferencias,
+    restricoesDisponiveis: [
+      ...RESTRICOES_DISPONIVEIS,
+      ...preferencias.filter((p) => !RESTRICOES_DISPONIVEIS.some((r) => r.valor === p.valor)),
+    ],
+    erroPreferencias,
     carregando,
     configuracaoSync,
     recarregarClientes,
@@ -258,6 +286,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     removerProfissional: async (id) => {
       await repo.removerProfissional(id);
       await recarregarProfissionais();
+    },
+    salvarPreferencia: async (p) => {
+      await repo.salvarPreferencia(p);
+      await recarregarPreferencias();
+    },
+    removerPreferencia: async (valor) => {
+      await repo.removerPreferencia(valor);
+      await recarregarPreferencias();
     },
     salvarConfiguracaoSync,
     sincronizarInsumos,

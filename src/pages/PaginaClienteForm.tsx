@@ -21,7 +21,6 @@ import {
   type TipoRefeicao,
   type Turma,
 } from '../domain/types';
-import { RESTRICOES_DISPONIVEIS } from '../data/seed';
 
 function composicaoPadrao(): ComposicaoRefeicao[] {
   return [
@@ -59,6 +58,7 @@ export function PaginaClienteForm() {
     salvarTurma,
     removerTurma,
     profissionais,
+    restricoesDisponiveis,
     carregando,
   } = useData();
 
@@ -406,7 +406,7 @@ export function PaginaClienteForm() {
               <div style={{ marginTop: 12 }}>
                 <label>Restrições / preferências desta turma</label>
                 <div className="chips">
-                  {RESTRICOES_DISPONIVEIS.map((r) => (
+                  {restricoesDisponiveis.map((r) => (
                     <span
                       key={r.valor}
                       className={`chip ${turma.restricoes.includes(r.valor) ? 'on' : ''}`}
@@ -436,7 +436,7 @@ export function PaginaClienteForm() {
               Aplicadas a todas as refeições ao gerar o cardápio.
             </p>
             <div className="chips">
-              {RESTRICOES_DISPONIVEIS.map((r) => (
+              {restricoesDisponiveis.map((r) => (
                 <span
                   key={r.valor}
                   className={`chip ${restricoes.includes(r.valor) ? 'on' : ''}`}

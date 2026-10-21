@@ -6,7 +6,6 @@ import {
   type CategoriaPrato,
   type Prato,
 } from '../domain/types';
-import { RESTRICOES_DISPONIVEIS } from '../data/seed';
 import { rotuloCategoria } from '../domain/gerador';
 import {
   pratoEhSazonal,
@@ -15,7 +14,7 @@ import {
 } from '../data/sazonalidade';
 
 export function PaginaPratos() {
-  const { pratos, salvarPrato, removerPrato } = useData();
+  const { pratos, salvarPrato, removerPrato, restricoesDisponiveis } = useData();
   const [nome, setNome] = useState('');
   const [categoria, setCategoria] = useState<CategoriaPrato>('proteina');
   const [restricoes, setRestricoes] = useState<string[]>([]);
@@ -90,7 +89,7 @@ export function PaginaPratos() {
         <div style={{ marginTop: 12 }}>
           <label>Atende às restrições (opcional)</label>
           <div className="chips">
-            {RESTRICOES_DISPONIVEIS.map((r) => (
+            {restricoesDisponiveis.map((r) => (
               <span
                 key={r.valor}
                 className={`chip ${restricoes.includes(r.valor) ? 'on' : ''}`}
@@ -143,7 +142,7 @@ export function PaginaPratos() {
                     ? '—'
                     : p.restricoes.map((r) => (
                         <span key={r} className="tag">
-                          {RESTRICOES_DISPONIVEIS.find((x) => x.valor === r)?.nome ?? r}
+                          {restricoesDisponiveis.find((x) => x.valor === r)?.nome ?? r}
                         </span>
                       ))}
                 </td>

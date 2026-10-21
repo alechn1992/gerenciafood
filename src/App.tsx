@@ -14,6 +14,7 @@ import { PaginaMontagemCardapio } from './pages/PaginaMontagemCardapio';
 import { PaginaRelatorio } from './pages/PaginaRelatorio';
 import { PaginaRelatorioMenu } from './pages/PaginaRelatorioMenu';
 import { PaginaReceita } from './pages/PaginaReceita';
+import { PaginaPreferencias } from './pages/PaginaPreferencias';
 import { PaginaInsumos } from './pages/PaginaInsumos';
 import { PaginaConfiguracoes } from './pages/PaginaConfiguracoes';
 import { PaginaSazonalidade } from './pages/PaginaSazonalidade';
@@ -57,6 +58,8 @@ const NAV_ESTRUTURA: NavItem[] = [
       { tela: 'profissionais', label: 'Profissionais', to: '/profissionais' },
       { tela: 'clientes',      label: 'Clientes',      to: '/clientes' },
       { tela: 'insumos',       label: 'Insumos',       to: '/insumos' },
+      // Mesma permissão de Clientes: quem edita turmas cadastra as preferências delas.
+      { tela: 'clientes',      label: 'Preferências alimentares', to: '/preferencias' },
     ],
   },
   {
@@ -123,7 +126,7 @@ export function App() {
                         {aberto && (
                           <div className="nav-grupo-filhos">
                             {filhosVisiveis.map((f) => (
-                              <NavLink key={f.tela} to={f.to} className={({ isActive }) => (isActive ? 'ativo' : '')}>
+                              <NavLink key={f.to} to={f.to} className={({ isActive }) => (isActive ? 'ativo' : '')}>
                                 {f.label}
                               </NavLink>
                             ))}
@@ -180,6 +183,7 @@ export function App() {
                   <Route path="/pratos" element={<PaginaPratos />} />
                   <Route path="/pratos/:id/receita" element={<PaginaReceita />} />
                   <Route path="/insumos" element={<PaginaInsumos />} />
+                  <Route path="/preferencias" element={<PaginaPreferencias />} />
                   <Route path="/sazonalidade" element={<PaginaSazonalidade />} />
                   <Route path="/visitas" element={<PaginaVisitas />} />
                   <Route path="/visitas/:id" element={<PaginaVisitaDetalhe />} />

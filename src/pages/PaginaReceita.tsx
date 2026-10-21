@@ -9,7 +9,6 @@ import {
   type Receita,
   type UnidadeMedida,
 } from '../domain/types';
-import { RESTRICOES_DISPONIVEIS } from '../data/seed';
 import { formatarMoeda } from '../lib/moeda';
 
 function receitaVazia(): Receita {
@@ -70,7 +69,7 @@ function calcNutricao(itens: ItemReceita[], insumos: Insumo[]): TotalNutricional
 
 export function PaginaReceita() {
   const { id } = useParams();
-  const { pratos, insumos, salvarPrato } = useData();
+  const { pratos, insumos, salvarPrato, restricoesDisponiveis } = useData();
   const prato = pratos.find((p) => p.id === id);
 
   const [ingredientesTexto, setIngredientesTexto] = useState('');
@@ -297,7 +296,7 @@ export function PaginaReceita() {
               <div style={{ marginTop: 8 }}>
                 {prato.restricoes.map((r) => (
                   <span key={r} className="tag">
-                    {RESTRICOES_DISPONIVEIS.find((x) => x.valor === r)?.nome ?? r}
+                    {restricoesDisponiveis.find((x) => x.valor === r)?.nome ?? r}
                   </span>
                 ))}
               </div>

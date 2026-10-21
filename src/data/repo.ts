@@ -5,7 +5,7 @@
 // Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY), os dados passam a ser
 // persistidos no Postgres do Supabase.
 
-import type { Cardapio, Cliente, ConfiguracaoSync, Insumo, PlanoAcao, Prato, Profissional, Relatorio, TipoRefeicao, Turma, Visita, SecaoVisita } from '../domain/types';
+import type { Cardapio, Cliente, ConfiguracaoSync, Insumo, PlanoAcao, Prato, PreferenciaAlimentar, Profissional, Relatorio, TipoRefeicao, Turma, Visita, SecaoVisita } from '../domain/types';
 import { INSUMOS_PADRAO, PRATOS_PADRAO, TIPOS_REFEICAO_PADRAO } from './seed';
 import { supabase } from '../lib/supabase';
 import { SupabaseRepository } from './supabaseRepo';
@@ -39,6 +39,9 @@ export interface Repository {
   listarProfissionais(): Promise<Profissional[]>;
   salvarProfissional(p: Profissional): Promise<void>;
   removerProfissional(id: string): Promise<void>;
+  listarPreferencias(): Promise<PreferenciaAlimentar[]>;
+  salvarPreferencia(p: PreferenciaAlimentar): Promise<void>;
+  removerPreferencia(valor: string): Promise<void>;
   carregarConfiguracaoSync(): Promise<ConfiguracaoSync | null>;
   salvarConfiguracaoSync(c: ConfiguracaoSync): Promise<void>;
 }
@@ -54,6 +57,7 @@ const KEYS = {
   planos: 'gf.planos',
   visitas: 'gf.visitas',
   profissionais: 'gf.profissionais',
+  preferencias: 'gf.preferencias',
   syncConfig: 'gf.syncconfig',
 };
 
@@ -265,6 +269,19 @@ export class LocalRepository implements Repository {
 
   async removerProfissional(id: string): Promise<void> {
     escrever(KEYS.profissionais, ler<Profissional[]>(KEYS.profissionais, []).filter((p) => p.id !== id));
+  }
+
+  async listarPreferencias(): Promise<PreferenciaAlimentar[]> {
+    return ler<PreferenciaAlimentar[]>(KEYS.preferencias, []).sort((a, b) => a.nome.localeCompare(b.nome));
+  }
+
+  async salvarPreferencia(p: PreferenciaAlimentar): Promise<void> {
+    const todas = ler<PreferenciaAlimentar[]>(KEYS.preferencias, []).filter((x) => x.valor !== p.valor);
+    escrever(KEYS.preferencias, [...todas, p]);
+  }
+
+  async removerPreferencia(valor: string): Promise<void> {
+    escrever(KEYS.preferencias, ler<PreferenciaAlimentar[]>(KEYS.preferencias, []).filter((p) => p.valor !== valor));
   }
 
   async carregarConfiguracaoSync(): Promise<ConfiguracaoSync | null> {

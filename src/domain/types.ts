@@ -45,6 +45,17 @@ export const CATEGORIAS_PRATO: { valor: CategoriaPrato; nome: string }[] = [
   { valor: 'outro', nome: 'Outro' },
 ];
 
+/**
+ * Restrição/preferência alimentar cadastrada pela nutricionista (ex.: "Sem
+ * ovo"), somada às padrão. `valor` é o identificador gravado em turmas,
+ * clientes e pratos; `nome` é o rótulo exibido.
+ */
+export interface PreferenciaAlimentar {
+  valor: string;
+  nome: string;
+  criadoEm?: string;
+}
+
 /** Unidade de medida de um insumo. */
 export type UnidadeMedida = 'kg' | 'g' | 'l' | 'ml' | 'un' | 'dz' | 'pct';
 

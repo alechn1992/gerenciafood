@@ -11,6 +11,7 @@ import type {
   Insumo,
   PlanoAcao,
   Prato,
+  PreferenciaAlimentar,
   Profissional,
   RefeicaoConfig,
   Relatorio,
@@ -258,6 +259,24 @@ export class SupabaseRepository implements Repository {
 
   async removerProfissional(id: string): Promise<void> {
     const { error } = await this.db.from('profissionais').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async listarPreferencias(): Promise<PreferenciaAlimentar[]> {
+    const { data, error } = await this.db.from('preferencias_alimentares').select('*').order('nome');
+    const rows = this.assert(data, error);
+    return rows.map((r) => ({ valor: r.valor, nome: r.nome, criadoEm: r.criado_em }));
+  }
+
+  async salvarPreferencia(p: PreferenciaAlimentar): Promise<void> {
+    const { error } = await this.db
+      .from('preferencias_alimentares')
+      .upsert({ valor: p.valor, nome: p.nome, ...(p.criadoEm ? { criado_em: p.criadoEm } : {}) });
+    if (error) throw error;
+  }
+
+  async removerPreferencia(valor: string): Promise<void> {
+    const { error } = await this.db.from('preferencias_alimentares').delete().eq('valor', valor);
     if (error) throw error;
   }
 
