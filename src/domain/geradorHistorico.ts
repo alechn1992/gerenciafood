@@ -14,9 +14,10 @@
 //    na semana enquanto houver opção e deixando por último os que saíram na
 //    semana mais recente.
 
-import type { Cardapio, CategoriaPrato, DiaSemana, ItemCardapio, Prato, Turma } from './types';
+import type { Cardapio, CategoriaPrato, DiaSemana, ItemCardapio, Prato, PratoFixoCliente, Turma } from './types';
 import { criarRng, embaralhar } from './gerador';
 import { ehFormula, ehItemDeEvento } from './pratosEspeciais';
+import { aplicarPratosFixos } from './pratosFixos';
 
 export interface OpcoesHistorico {
   clienteId: string;
@@ -31,6 +32,8 @@ export interface OpcoesHistorico {
   seed?: number;
   /** Quantas semanas mais recentes servem de base. */
   semanasDeBase?: number;
+  /** Pratos combinados do cliente; os que valem para a turma entram por cima do sorteio. */
+  pratosFixos?: PratoFixoCliente[];
 }
 
 export interface ResultadoHistorico {
@@ -167,7 +170,11 @@ export function gerarPorHistorico(op: OpcoesHistorico): ResultadoHistorico {
       clienteId: op.clienteId,
       turmaId: op.turma.id,
       semanaInicio: op.semanaInicio,
-      itens: ordenados,
+      itens: aplicarPratosFixos(ordenados, op.pratosFixos ?? [], {
+        dias: op.dias,
+        turmaId: op.turma.id,
+        pratos: op.pratos,
+      }),
       geradoEm: new Date().toISOString(),
     },
     avisos: [],

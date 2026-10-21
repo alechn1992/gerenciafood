@@ -671,6 +671,7 @@ function CardapioPorTurmas({
             pratos,
             semanaInicio,
             seed,
+            pratosFixos: cliente.pratosFixos,
           });
           if (r.cardapio) {
             porTurma[turma.id] = aplicarCalendario(r.cardapio, periodos);
