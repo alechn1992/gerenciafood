@@ -4,12 +4,15 @@ import { useData } from '../state/DataContext';
 import { gerarCardapio, rotuloCategoria } from '../domain/gerador';
 import { gerarPorHistorico } from '../domain/geradorHistorico';
 import { ehFormula } from '../domain/pratosEspeciais';
+import { aplicarCalendario, avisosDaSemana } from '../domain/calendario';
+import { useCalendario } from '../state/useCalendario';
 import {
   DIAS_SEMANA,
   type Cardapio,
   type CategoriaPrato,
   type Cliente,
   type ItemCardapio,
+  type PeriodoSemFuncionamento,
   type Prato,
   type RefeicaoConfig,
   type TipoRefeicao,
@@ -169,6 +172,21 @@ function copiarCardapio(origem: Cardapio, novaSemana: string): Cardapio {
   };
 }
 
+/** Aviso de tela para os dias da semana marcados no calendário do cliente. */
+function avisosDoCalendario(semanaInicio: string, periodos: PeriodoSemFuncionamento[]): string[] {
+  const doCalendario = avisosDaSemana(periodos, semanaInicio).filter((a) => a.dia >= 1 && a.dia <= 5);
+  if (doCalendario.length === 0) return [];
+  const nomes = ['', 'segunda', 'terça', 'quarta', 'quinta', 'sexta'];
+  if (doCalendario.length === 5 && new Set(doCalendario.map((a) => a.texto)).size === 1) {
+    return [`Semana sem funcionamento (${doCalendario[0].texto}), conforme o calendário do cliente.`];
+  }
+  return [
+    'Sem funcionamento, conforme o calendário do cliente: ' +
+      doCalendario.map((a) => `${nomes[a.dia]} (${a.texto})`).join(', ') +
+      '. Nesses dias não há cardápio.',
+  ];
+}
+
 function adicionarSemanas(data: string, n: number): string {
   const d = new Date(`${data}T00:00:00`);
   d.setDate(d.getDate() + n * 7);
@@ -191,6 +209,7 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
   const [copiandoId, setCopiandoId] = useState<string | null>(null);
   const [semanaDestino, setSemanaDestino] = useState(segundaFeiraDaSemana());
   const [imprimindo, setImprimindo] = useState<SemanaImpressao[] | null>(null);
+  const { periodos } = useCalendario(cliente.id);
 
   useEffect(() => {
     listarCardapios(cliente.id).then(setSalvos);
@@ -210,8 +229,9 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
       priorizarSazonais,
       ufSazonalidade: priorizarSazonais ? ufSazonalidade : undefined,
     });
-    setAtual(cardapio);
-    setAvisos(avisos);
+    // Dias sem funcionamento (calendário do cliente) ficam sem pratos.
+    setAtual(aplicarCalendario(cardapio, periodos));
+    setAvisos([...avisosDoCalendario(semana, periodos), ...avisos]);
   };
 
   const salvar = async () => {
@@ -384,7 +404,7 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
                   setImprimindo([
                     {
                       semanaInicio: atual.semanaInicio,
-                      blocos: [{ cardapio: atual, refeicoes: cliente.refeicoes }],
+                      blocos: [{ cardapio: aplicarCalendario(atual, periodos), refeicoes: cliente.refeicoes }],
                     },
                   ])
                 }
@@ -483,7 +503,7 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
                           setImprimindo([
                             {
                               semanaInicio: c.semanaInicio,
-                              blocos: [{ cardapio: c, refeicoes: cliente.refeicoes }],
+                              blocos: [{ cardapio: aplicarCalendario(c, periodos), refeicoes: cliente.refeicoes }],
                             },
                           ])
                         }
@@ -534,6 +554,7 @@ function CardapioPorTurmas({
   const [imprimindo, setImprimindo] = useState<SemanaImpressao[] | null>(null);
   /** Há geração, cópia ou troca na tela que ainda não foi salva. */
   const [pendente, setPendente] = useState(false);
+  const { periodos } = useCalendario(cliente.id);
 
   /** Converte as semanas em tela para o formato da folha das famílias. */
   const paraImpressao = (fonte: SemanaGerada[]): SemanaImpressao[] =>
@@ -543,7 +564,8 @@ function CardapioPorTurmas({
         .filter((t) => s.porTurma[t.id])
         .map((t) => ({
           titulo: t.nome,
-          cardapio: s.porTurma[t.id],
+          // A folha das famílias segue o calendário de funcionamento do cliente.
+          cardapio: aplicarCalendario(s.porTurma[t.id], periodos),
           refeicoes: t.refeicoes,
         })),
     }));
@@ -651,7 +673,7 @@ function CardapioPorTurmas({
             seed,
           });
           if (r.cardapio) {
-            porTurma[turma.id] = r.cardapio;
+            porTurma[turma.id] = aplicarCalendario(r.cardapio, periodos);
             historico.push(r.cardapio);
           }
           avisos.push(...r.avisos);
@@ -664,9 +686,10 @@ function CardapioPorTurmas({
           semanaInicio,
           seed,
         });
-        porTurma[turma.id] = cardapio;
+        porTurma[turma.id] = aplicarCalendario(cardapio, periodos);
         if (av.length > 0) avisos.push(`${turma.nome}: ${av.join(' ')}`);
       });
+      avisos.unshift(...avisosDoCalendario(semanaInicio, periodos));
       return { semanaInicio, porTurma, avisos };
     });
     setSemanasGeradas(novas);
@@ -748,9 +771,9 @@ function CardapioPorTurmas({
     salvosTurma
       .filter((c) => c.semanaInicio === semanaInicio)
       .forEach((c) => {
-        if (c.turmaId) porTurma[c.turmaId] = c;
+        if (c.turmaId) porTurma[c.turmaId] = aplicarCalendario(c, periodos);
       });
-    setSemanasGeradas([{ semanaInicio, porTurma, avisos: [] }]);
+    setSemanasGeradas([{ semanaInicio, porTurma, avisos: avisosDoCalendario(semanaInicio, periodos) }]);
     setSemana(semanaInicio);
     setPendente(false);
   };
@@ -769,6 +792,20 @@ function CardapioPorTurmas({
   const temAlteracoes = semanasGeradas.some((s) =>
     Object.values(s.porTurma).some((c) => c.itens.some((i) => i.alteradoManualmente)),
   );
+
+  // O calendário chega depois da primeira abertura da semana: reaplica para a
+  // tela mostrar o mesmo que vai para as famílias.
+  useEffect(() => {
+    if (periodos.length === 0) return;
+    setSemanasGeradas((prev) =>
+      prev.map((s) => ({
+        ...s,
+        porTurma: Object.fromEntries(
+          Object.entries(s.porTurma).map(([t, c]) => [t, aplicarCalendario(c, periodos)]),
+        ),
+      })),
+    );
+  }, [periodos]);
 
   // Com nada na tela, a semana selecionada abre direto no cardápio salvo (por
   // exemplo, o importado da planilha), em vez de exigir um "Gerar" que sortearia
@@ -803,6 +840,9 @@ function CardapioPorTurmas({
         <div className="acoes">
           <Link to="/clientes" className="btn secundario">
             ← Voltar
+          </Link>
+          <Link to={`/clientes/${cliente.id}/calendario`} className="btn secundario">
+            📅 Calendário
           </Link>
           {semanasGeradas.length > 0 && (
             <button

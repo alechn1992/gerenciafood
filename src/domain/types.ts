@@ -258,6 +258,22 @@ export interface ItemCardapio {
   alteradoManualmente?: boolean;
 }
 
+/**
+ * Período em que o cliente não funciona (feriado, recesso, férias...). Nesses
+ * dias o cardápio não é gerado e a folha das famílias mostra o motivo.
+ */
+export interface PeriodoSemFuncionamento {
+  id: string;
+  clienteId: string;
+  /** Datas ISO (AAAA-MM-DD), inclusivas; num dia só, inicio === fim. */
+  inicio: string;
+  fim: string;
+  /** Texto que vai para as famílias, ex.: "FERIADO", "RECESSO". */
+  motivo: string;
+  /** Detalhe interno, ex.: "Tiradentes". */
+  descricao?: string;
+}
+
 /** Rascunho ainda pode mudar e não vai para as famílias; ausente = concluído. */
 export type StatusCardapio = 'rascunho' | 'concluido';
 
