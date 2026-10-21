@@ -747,3 +747,24 @@ th {
 .nav-grupo-filhos {
   padding-left: 8px;
 }
+
+/* Filtros da lista de pratos (Receituário) */
+.filtros-pratos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.filtros-pratos > select { width: auto; flex: 0 1 190px; }
+.filtros-pratos-busca { flex: 1 1 260px; }
+.filtros-pratos-safra {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: normal;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.filtros-pratos-safra input { width: auto; margin: 0; }
