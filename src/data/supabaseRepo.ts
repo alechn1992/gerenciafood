@@ -10,6 +10,7 @@ import type {
   ConfiguracaoSync,
   DiaSemana,
   Insumo,
+  PeriodoSemFuncionamento,
   PlanoAcao,
   Prato,
   PreferenciaAlimentar,
@@ -309,6 +310,40 @@ export class SupabaseRepository implements Repository {
 
   async removerCategoria(valor: string): Promise<void> {
     const { error } = await this.db.from('categorias_prato').delete().eq('valor', valor);
+    if (error) throw error;
+  }
+
+  async listarCalendario(clienteId: string): Promise<PeriodoSemFuncionamento[]> {
+    const { data, error } = await this.db
+      .from('calendario_cliente')
+      .select('*')
+      .eq('cliente_id', clienteId)
+      .order('inicio');
+    const rows = this.assert(data, error);
+    return rows.map((r) => ({
+      id: r.id,
+      clienteId: r.cliente_id,
+      inicio: r.inicio,
+      fim: r.fim,
+      motivo: r.motivo,
+      descricao: r.descricao ?? undefined,
+    }));
+  }
+
+  async salvarPeriodo(p: PeriodoSemFuncionamento): Promise<void> {
+    const { error } = await this.db.from('calendario_cliente').upsert({
+      id: p.id,
+      cliente_id: p.clienteId,
+      inicio: p.inicio,
+      fim: p.fim,
+      motivo: p.motivo,
+      descricao: p.descricao || null,
+    });
+    if (error) throw error;
+  }
+
+  async removerPeriodo(id: string): Promise<void> {
+    const { error } = await this.db.from('calendario_cliente').delete().eq('id', id);
     if (error) throw error;
   }
 

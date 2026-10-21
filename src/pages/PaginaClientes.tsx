@@ -70,6 +70,12 @@ export function PaginaClientes() {
                         Cardápio
                       </Link>
                       <Link
+                        to={`/clientes/${c.id}/calendario`}
+                        className="btn pequeno secundario"
+                      >
+                        Calendário
+                      </Link>
+                      <Link
                         to={`/clientes/${c.id}/relatorio`}
                         className="btn pequeno secundario"
                       >

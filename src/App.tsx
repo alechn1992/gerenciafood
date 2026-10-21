@@ -16,6 +16,7 @@ import { PaginaRelatorioMenu } from './pages/PaginaRelatorioMenu';
 import { PaginaReceita } from './pages/PaginaReceita';
 import { PaginaPreferencias } from './pages/PaginaPreferencias';
 import { PaginaCategorias } from './pages/PaginaCategorias';
+import { PaginaCalendario } from './pages/PaginaCalendario';
 import { PaginaInsumos } from './pages/PaginaInsumos';
 import { PaginaConfiguracoes } from './pages/PaginaConfiguracoes';
 import { PaginaSazonalidade } from './pages/PaginaSazonalidade';
@@ -179,6 +180,7 @@ export function App() {
                   <Route path="/clientes/novo" element={<PaginaClienteForm />} />
                   <Route path="/clientes/:id/editar" element={<PaginaClienteForm />} />
                   <Route path="/clientes/:id/cardapio" element={<PaginaCardapio />} />
+                  <Route path="/clientes/:id/calendario" element={<PaginaCalendario />} />
                   <Route path="/cardapio" element={<PaginaMontagemCardapio />} />
                   <Route path="/clientes/:id/relatorio" element={<PaginaRelatorio />} />
                   <Route path="/clientes/:id/plano-acao" element={<PaginaPlanoAcao />} />

@@ -5,7 +5,7 @@
 // Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY), os dados passam a ser
 // persistidos no Postgres do Supabase.
 
-import type { Cardapio, CategoriaCadastrada, Cliente, ConfiguracaoSync, Insumo, PlanoAcao, Prato, PreferenciaAlimentar, Profissional, Relatorio, TipoRefeicao, Turma, Visita, SecaoVisita } from '../domain/types';
+import type { Cardapio, CategoriaCadastrada, Cliente, ConfiguracaoSync, Insumo, PeriodoSemFuncionamento, PlanoAcao, Prato, PreferenciaAlimentar, Profissional, Relatorio, TipoRefeicao, Turma, Visita, SecaoVisita } from '../domain/types';
 import { INSUMOS_PADRAO, PRATOS_PADRAO, TIPOS_REFEICAO_PADRAO } from './seed';
 import { supabase } from '../lib/supabase';
 import { SupabaseRepository } from './supabaseRepo';
@@ -45,6 +45,9 @@ export interface Repository {
   listarCategorias(): Promise<CategoriaCadastrada[]>;
   salvarCategoria(c: CategoriaCadastrada): Promise<void>;
   removerCategoria(valor: string): Promise<void>;
+  listarCalendario(clienteId: string): Promise<PeriodoSemFuncionamento[]>;
+  salvarPeriodo(p: PeriodoSemFuncionamento): Promise<void>;
+  removerPeriodo(id: string): Promise<void>;
   carregarConfiguracaoSync(): Promise<ConfiguracaoSync | null>;
   salvarConfiguracaoSync(c: ConfiguracaoSync): Promise<void>;
 }
@@ -62,6 +65,7 @@ const KEYS = {
   profissionais: 'gf.profissionais',
   preferencias: 'gf.preferencias',
   categorias: 'gf.categorias',
+  calendario: 'gf.calendario',
   syncConfig: 'gf.syncconfig',
 };
 
@@ -299,6 +303,21 @@ export class LocalRepository implements Repository {
 
   async removerCategoria(valor: string): Promise<void> {
     escrever(KEYS.categorias, ler<CategoriaCadastrada[]>(KEYS.categorias, []).filter((c) => c.valor !== valor));
+  }
+
+  async listarCalendario(clienteId: string): Promise<PeriodoSemFuncionamento[]> {
+    return ler<PeriodoSemFuncionamento[]>(KEYS.calendario, [])
+      .filter((p) => p.clienteId === clienteId)
+      .sort((a, b) => a.inicio.localeCompare(b.inicio));
+  }
+
+  async salvarPeriodo(p: PeriodoSemFuncionamento): Promise<void> {
+    const todos = ler<PeriodoSemFuncionamento[]>(KEYS.calendario, []).filter((x) => x.id !== p.id);
+    escrever(KEYS.calendario, [...todos, p]);
+  }
+
+  async removerPeriodo(id: string): Promise<void> {
+    escrever(KEYS.calendario, ler<PeriodoSemFuncionamento[]>(KEYS.calendario, []).filter((p) => p.id !== id));
   }
 
   async carregarConfiguracaoSync(): Promise<ConfiguracaoSync | null> {
