@@ -4,6 +4,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   Cardapio,
+  CategoriaCadastrada,
   CategoriaInsumo,
   Cliente,
   ConfiguracaoSync,
@@ -277,6 +278,24 @@ export class SupabaseRepository implements Repository {
 
   async removerPreferencia(valor: string): Promise<void> {
     const { error } = await this.db.from('preferencias_alimentares').delete().eq('valor', valor);
+    if (error) throw error;
+  }
+
+  async listarCategorias(): Promise<CategoriaCadastrada[]> {
+    const { data, error } = await this.db.from('categorias_prato').select('*').order('nome');
+    const rows = this.assert(data, error);
+    return rows.map((r) => ({ valor: r.valor, nome: r.nome, criadoEm: r.criado_em }));
+  }
+
+  async salvarCategoria(c: CategoriaCadastrada): Promise<void> {
+    const { error } = await this.db
+      .from('categorias_prato')
+      .upsert({ valor: c.valor, nome: c.nome, ...(c.criadoEm ? { criado_em: c.criadoEm } : {}) });
+    if (error) throw error;
+  }
+
+  async removerCategoria(valor: string): Promise<void> {
+    const { error } = await this.db.from('categorias_prato').delete().eq('valor', valor);
     if (error) throw error;
   }
 

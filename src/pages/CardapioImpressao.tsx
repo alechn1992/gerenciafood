@@ -5,7 +5,6 @@
 // os pratos aparecem agrupados — o formato que os pais esperam ler.
 
 import {
-  CATEGORIAS_PRATO,
   DIAS_SEMANA,
   type Cardapio,
   type Cliente,
@@ -14,6 +13,7 @@ import {
   type RefeicaoConfig,
   type TipoRefeicao,
 } from '../domain/types';
+import { ordemCategoria } from '../domain/categorias';
 
 /** Um agrupamento impresso dentro de uma semana (uma turma, ou o cliente inteiro). */
 export interface BlocoImpressao {
@@ -34,7 +34,6 @@ const MESES = [
 ];
 
 /** Ordem de exibição dos pratos dentro de uma refeição (prato principal primeiro). */
-const ORDEM_CATEGORIA = new Map(CATEGORIAS_PRATO.map((c, i) => [c.valor, i]));
 
 /** Data efetiva de um dia da semana, a partir da segunda-feira de referência. */
 function dataDoDia(semanaInicio: string, dia: DiaSemana): Date {
@@ -67,8 +66,7 @@ function pratosDaCelula(
     .filter((i) => i.dia === dia && i.tipoRefeicaoId === tipoRefeicaoId)
     .slice()
     .sort(
-      (a, b) =>
-        (ORDEM_CATEGORIA.get(a.categoria) ?? 99) - (ORDEM_CATEGORIA.get(b.categoria) ?? 99),
+      (a, b) => ordemCategoria(a.categoria) - ordemCategoria(b.categoria),
     )
     .map((i) => i.pratoNome);
 }

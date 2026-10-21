@@ -23,8 +23,8 @@ export interface TipoRefeicao {
   ordem: number; // ordena as refeições dentro de um dia
 }
 
-/** Categoria de um prato, usada pelas regras de variedade. */
-export type CategoriaPrato =
+/** Categorias que vêm com o sistema. */
+export type CategoriaPadrao =
   | 'proteina'
   | 'guarnicao'
   | 'acompanhamento'
@@ -34,7 +34,21 @@ export type CategoriaPrato =
   | 'lanche'
   | 'outro';
 
-export const CATEGORIAS_PRATO: { valor: CategoriaPrato; nome: string }[] = [
+/**
+ * Categoria de um prato, usada pelas regras de variedade: uma das padrão ou
+ * uma cadastrada pela nutricionista (identificador, ex.: 'fruta').
+ */
+export type CategoriaPrato = CategoriaPadrao | (string & {});
+
+/** Categoria cadastrada pela nutricionista, além das padrão. */
+export interface CategoriaCadastrada {
+  valor: string;
+  nome: string;
+  criadoEm?: string;
+}
+
+/** Só as padrão; a lista completa (com as cadastradas) vem de `categoriasDisponiveis()`. */
+export const CATEGORIAS_PRATO: { valor: CategoriaPadrao; nome: string }[] = [
   { valor: 'proteina', nome: 'Proteína' },
   { valor: 'guarnicao', nome: 'Guarnição' },
   { valor: 'acompanhamento', nome: 'Acompanhamento' },

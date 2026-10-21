@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import {
-  CATEGORIAS_PRATO,
   type CategoriaPrato,
   type Prato,
 } from '../domain/types';
+import { categoriasDisponiveis } from '../domain/categorias';
 import { rotuloCategoria } from '../domain/gerador';
 import {
   pratoEhSazonal,
@@ -19,6 +19,9 @@ export function PaginaPratos() {
   const [categoria, setCategoria] = useState<CategoriaPrato>('proteina');
   const [restricoes, setRestricoes] = useState<string[]>([]);
   const [filtro, setFiltro] = useState<CategoriaPrato | 'todas'>('todas');
+  /** Prato em edição no formulário do topo; null = cadastrando um novo. */
+  const [editando, setEditando] = useState<Prato | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const mesAtual = new Date().getMonth() + 1;
   const ufSalva = localStorage.getItem('sazonalidade_uf') ?? 'SP';
@@ -36,19 +39,48 @@ export function PaginaPratos() {
   const toggleRestricao = (r: string) =>
     setRestricoes((p) => (p.includes(r) ? p.filter((x) => x !== r) : [...p, r]));
 
-  const adicionar = async () => {
-    if (!nome.trim()) return;
-    const prato: Prato = {
-      id: crypto.randomUUID(),
-      nome: nome.trim(),
-      categoria,
-      restricoes,
-      tags: [],
-      ativo: true,
-    };
-    await salvarPrato(prato);
+  const limparFormulario = () => {
+    setEditando(null);
     setNome('');
+    setCategoria('proteina');
     setRestricoes([]);
+  };
+
+  const editar = (p: Prato) => {
+    setEditando(p);
+    setNome(p.nome);
+    setCategoria(p.categoria);
+    setRestricoes(p.restricoes);
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const salvar = async () => {
+    const nomeLimpo = nome.trim();
+    if (!nomeLimpo) return;
+    // A importação da planilha reaproveita pratos pelo nome: dois com o mesmo
+    // nome fariam ela escolher um deles arbitrariamente.
+    const repetido = pratos.find(
+      (p) => p.id !== editando?.id && p.nome.trim().toLowerCase() === nomeLimpo.toLowerCase(),
+    );
+    if (repetido) {
+      alert(`Já existe um prato chamado "${repetido.nome}".`);
+      return;
+    }
+    const prato: Prato = editando
+      ? { ...editando, nome: nomeLimpo, categoria, restricoes }
+      : { id: crypto.randomUUID(), nome: nomeLimpo, categoria, restricoes, tags: [], ativo: true };
+    try {
+      await salvarPrato(prato);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : JSON.stringify(err);
+      alert(
+        /categoria_check/.test(msg)
+          ? 'O banco ainda não aceita categorias novas. Aplique a migração 0020_categorias_prato.sql no Supabase.'
+          : `Não foi possível salvar o prato: ${msg}`,
+      );
+      return;
+    }
+    limparFormulario();
   };
 
   const listados = pratos
@@ -63,22 +95,22 @@ export function PaginaPratos() {
         cardápios.
       </p>
 
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Novo prato</h3>
+      <div className="card" ref={formRef}>
+        <h3 style={{ marginTop: 0 }}>{editando ? `Editar prato — ${editando.nome}` : 'Novo prato'}</h3>
         <div className="grid cols-2">
           <div>
             <label>Nome do prato</label>
             <input
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && adicionar()}
+              onKeyDown={(e) => e.key === 'Enter' && salvar()}
               placeholder="Ex.: Strogonoff de frango"
             />
           </div>
           <div>
             <label>Categoria</label>
             <select value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaPrato)}>
-              {CATEGORIAS_PRATO.map((c) => (
+              {categoriasDisponiveis().map((c) => (
                 <option key={c.valor} value={c.valor}>
                   {c.nome}
                 </option>
@@ -100,9 +132,21 @@ export function PaginaPratos() {
             ))}
           </div>
         </div>
-        <button className="btn" style={{ marginTop: 14 }} onClick={adicionar}>
-          + Adicionar prato
-        </button>
+        <div className="acoes" style={{ marginTop: 14 }}>
+          <button className="btn" onClick={salvar}>
+            {editando ? 'Salvar alterações' : '+ Adicionar prato'}
+          </button>
+          {editando && (
+            <button className="btn secundario" onClick={limparFormulario}>
+              Cancelar
+            </button>
+          )}
+        </div>
+        {editando && (
+          <p className="subtitulo" style={{ marginTop: 8, marginBottom: 0 }}>
+            Cardápios já salvos guardam o nome antigo; os próximos usam o novo.
+          </p>
+        )}
       </div>
 
       <div className="card">
@@ -114,7 +158,7 @@ export function PaginaPratos() {
             onChange={(e) => setFiltro(e.target.value as CategoriaPrato | 'todas')}
           >
             <option value="todas">Todas as categorias</option>
-            {CATEGORIAS_PRATO.map((c) => (
+            {categoriasDisponiveis().map((c) => (
               <option key={c.valor} value={c.valor}>
                 {c.nome}
               </option>
@@ -156,6 +200,9 @@ export function PaginaPratos() {
                 </td>
                 <td>
                   <div className="acoes">
+                    <button className="btn pequeno secundario" onClick={() => editar(p)}>
+                      Editar
+                    </button>
                     <button
                       className="btn pequeno secundario"
                       onClick={() => salvarPrato({ ...p, ativo: !p.ativo })}

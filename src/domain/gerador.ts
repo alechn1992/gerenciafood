@@ -10,7 +10,6 @@
 //  - Determinístico dado um `seed` (facilita testes e "regenerar igual").
 
 import type {
-  CategoriaPrato,
   Cardapio,
   Cliente,
   ItemCardapio,
@@ -20,6 +19,7 @@ import type {
   Turma,
 } from './types';
 import { DIAS_SEMANA } from './types';
+import { rotuloCategoria } from './categorias';
 import { pratoEhSazonal, UF_PARA_REGIAO, type RegiaoClimatica } from '../data/sazonalidade';
 
 /** Gerador pseudoaleatório determinístico (mulberry32). */
@@ -210,17 +210,5 @@ export function gerarCardapio(opcoes: OpcoesGeracao): ResultadoGeracao {
   return { cardapio, avisos };
 }
 
-const ROTULOS_CATEGORIA: Record<CategoriaPrato, string> = {
-  proteina: 'Proteína',
-  guarnicao: 'Guarnição',
-  acompanhamento: 'Acompanhamento',
-  salada: 'Salada',
-  sobremesa: 'Sobremesa',
-  bebida: 'Bebida',
-  lanche: 'Lanche',
-  outro: 'Outro',
-};
-
-export function rotuloCategoria(c: CategoriaPrato): string {
-  return ROTULOS_CATEGORIA[c] ?? c;
-}
+// Mantido aqui para quem já importa de '../domain/gerador'.
+export { rotuloCategoria } from './categorias';
