@@ -84,7 +84,7 @@ export class SupabaseRepository implements Repository {
   }
 
   async salvarCardapio(cardapio: Cardapio): Promise<void> {
-    const { error } = await this.db.from('cardapios').upsert({
+    const linha = {
       id: cardapio.id,
       cliente_id: cardapio.clienteId,
       turma_id: cardapio.turmaId ?? null,
@@ -92,8 +92,21 @@ export class SupabaseRepository implements Repository {
       itens: cardapio.itens,
       avisos: cardapio.avisos ?? [],
       gerado_em: cardapio.geradoEm,
-    });
-    if (error) throw error;
+    };
+    const { error } = await this.db
+      .from('cardapios')
+      .upsert({ ...linha, status: cardapio.status ?? 'concluido' });
+    if (!error) return;
+    // Sem a coluna (migração 0021 ainda não aplicada): grava o cardápio para
+    // não perder o trabalho, mas avisa que o status não ficou registrado.
+    if (/status/.test(error.message ?? '') && /column|schema/i.test(error.message ?? '')) {
+      const { error: semStatus } = await this.db.from('cardapios').upsert(linha);
+      if (semStatus) throw semStatus;
+      throw new Error(
+        'O cardápio foi salvo, mas o status (rascunho/concluída) não: aplique a migração 0021_cardapio_status.sql no Supabase.',
+      );
+    }
+    throw error;
   }
 
   async removerCardapio(id: string): Promise<void> {
@@ -425,6 +438,7 @@ function mapCardapioFromRow(r: any): Cardapio {
     semanaInicio: r.semana_inicio,
     itens: r.itens ?? [],
     avisos: r.avisos ?? [],
+    status: r.status === 'rascunho' ? 'rascunho' : 'concluido',
     geradoEm: r.gerado_em,
   };
 }

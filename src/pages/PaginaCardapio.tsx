@@ -13,6 +13,7 @@ import {
   type Prato,
   type RefeicaoConfig,
   type TipoRefeicao,
+  type StatusCardapio,
   type Turma,
 } from '../domain/types';
 import { categoriasDisponiveis } from '../domain/categorias';
@@ -68,7 +69,8 @@ function CelulaEditavel({
 
   return (
     <span
-      title="Clique para trocar o prato"
+      title={item.alteradoManualmente ? 'Trocado manualmente — clique para trocar de novo' : 'Clique para trocar o prato'}
+      className={item.alteradoManualmente ? 'item-alterado' : undefined}
       style={{ cursor: 'pointer', borderBottom: '1px dashed var(--cinza)', paddingBottom: 1 }}
       onClick={abrir}
     >
@@ -155,7 +157,16 @@ function VisualizacaoImpressao({
 
 function copiarCardapio(origem: Cardapio, novaSemana: string): Cardapio {
   // Os avisos (feriado, recesso) são das datas da semana de origem, não da nova.
-  return { ...origem, id: crypto.randomUUID(), semanaInicio: novaSemana, avisos: [], geradoEm: new Date().toISOString() };
+  // Marcações de troca manual e o status são da semana de origem também.
+  return {
+    ...origem,
+    id: crypto.randomUUID(),
+    semanaInicio: novaSemana,
+    itens: origem.itens.map(({ alteradoManualmente: _, ...item }) => item),
+    avisos: [],
+    status: undefined,
+    geradoEm: new Date().toISOString(),
+  };
 }
 
 function adicionarSemanas(data: string, n: number): string {
@@ -230,7 +241,9 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
       return {
         ...prev,
         itens: prev.itens.map((item, i) =>
-          i === itemIdx ? { ...item, pratoId: novoPrato.id, pratoNome: novoPrato.nome } : item,
+          i === itemIdx
+            ? { ...item, pratoId: novoPrato.id, pratoNome: novoPrato.nome, alteradoManualmente: true }
+            : item,
         ),
       };
     });
@@ -519,6 +532,8 @@ function CardapioPorTurmas({
   const [copiandoSemana, setCopiandoSemana] = useState<string | null>(null);
   const [semanaDestinoCopia, setSemanaDestinoCopia] = useState(segundaFeiraDaSemana());
   const [imprimindo, setImprimindo] = useState<SemanaImpressao[] | null>(null);
+  /** Há geração, cópia ou troca na tela que ainda não foi salva. */
+  const [pendente, setPendente] = useState(false);
 
   /** Converte as semanas em tela para o formato da folha das famílias. */
   const paraImpressao = (fonte: SemanaGerada[]): SemanaImpressao[] =>
@@ -549,6 +564,7 @@ function CardapioPorTurmas({
     if (novas.length > 0) {
       setSemanasGeradas(novas);
       setSemana(novaBase);
+      setPendente(true);
     }
     setCopiandoSemana(null);
   };
@@ -556,6 +572,7 @@ function CardapioPorTurmas({
   const trocarPratoTurma = (semanaInicio: string, turmaId: string, itemIdx: number, novoPratoId: string) => {
     const novoPrato = pratos.find((p) => p.id === novoPratoId);
     if (!novoPrato) return;
+    setPendente(true);
     setSemanasGeradas((prev) =>
       prev.map((s) => {
         if (s.semanaInicio !== semanaInicio) return s;
@@ -569,7 +586,7 @@ function CardapioPorTurmas({
               ...cardapio,
               itens: cardapio.itens.map((item, i) =>
                 i === itemIdx
-                  ? { ...item, pratoId: novoPrato.id, pratoNome: novoPrato.nome }
+                  ? { ...item, pratoId: novoPrato.id, pratoNome: novoPrato.nome, alteradoManualmente: true }
                   : item,
               ),
             },
@@ -653,21 +670,65 @@ function CardapioPorTurmas({
       return { semanaInicio, porTurma, avisos };
     });
     setSemanasGeradas(novas);
+    setPendente(true);
   };
 
-  const salvarTudo = async () => {
-    const cardapios = semanasGeradas.flatMap((s) => Object.values(s.porTurma));
-    for (const c of cardapios) {
-      // Substitui o salvo da mesma turma e semana em vez de criar outra cópia ao
-      // lado — com duas, a tela escolhia uma delas arbitrariamente.
-      const mesmos = salvos.filter((s) => s.turmaId === c.turmaId && s.semanaInicio === c.semanaInicio);
-      const mantido = mesmos.find((s) => s.id === c.id) ?? mesmos[0];
-      await salvarCardapio(mantido ? { ...c, id: mantido.id } : c);
-      for (const d of mesmos) if (d.id !== mantido?.id) await removerCardapio(d.id);
+  const salvarTudo = async (status: StatusCardapio) => {
+    const cardapios = semanasGeradas.flatMap((s) => Object.values(s.porTurma)).map((c) => ({ ...c, status }));
+    try {
+      for (const c of cardapios) {
+        // Substitui o salvo da mesma turma e semana em vez de criar outra cópia ao
+        // lado — com duas, a tela escolhia uma delas arbitrariamente.
+        const mesmos = salvos.filter((s) => s.turmaId === c.turmaId && s.semanaInicio === c.semanaInicio);
+        const mantido = mesmos.find((s) => s.id === c.id) ?? mesmos[0];
+        await salvarCardapio(mantido ? { ...c, id: mantido.id } : c);
+        for (const d of mesmos) if (d.id !== mantido?.id) await removerCardapio(d.id);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : `Não foi possível salvar: ${JSON.stringify(err)}`);
+      setSalvos(await listarCardapios(cliente.id));
+      return;
     }
-    setSalvos(await listarCardapios(cliente.id));
-    setMsgSalvo(`${cardapios.length} cardápio(s) salvo(s).`);
+    const atualizados = await listarCardapios(cliente.id);
+    setSalvos(atualizados);
+    // A tela passa a mostrar os registros salvos (com id e status do banco).
+    setSemanasGeradas((prev) =>
+      prev.map((s) => {
+        const porTurma: Record<string, Cardapio> = {};
+        for (const [turmaId, c] of Object.entries(s.porTurma)) {
+          porTurma[turmaId] =
+            atualizados.find((x) => x.turmaId === turmaId && x.semanaInicio === s.semanaInicio) ?? c;
+        }
+        return { ...s, porTurma };
+      }),
+    );
+    setPendente(false);
+    setMsgSalvo(
+      status === 'rascunho'
+        ? `${cardapios.length} cardápio(s) salvo(s) como rascunho.`
+        : `${cardapios.length} cardápio(s) salvo(s) e concluído(s).`,
+    );
     setTimeout(() => setMsgSalvo(null), 4000);
+  };
+
+  /** Conclui ou reabre uma semana salva inteira (todas as turmas). */
+  const alterarStatusSemana = async (semanaInicio: string, status: StatusCardapio) => {
+    const daSemana = salvos.filter((c) => c.turmaId && c.semanaInicio === semanaInicio);
+    try {
+      for (const c of daSemana) await salvarCardapio({ ...c, status });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : `Não foi possível alterar: ${JSON.stringify(err)}`);
+    }
+    const atualizados = await listarCardapios(cliente.id);
+    setSalvos(atualizados);
+    setSemanasGeradas((prev) =>
+      prev.map((s) => {
+        if (s.semanaInicio !== semanaInicio) return s;
+        const porTurma: Record<string, Cardapio> = {};
+        for (const [turmaId, c] of Object.entries(s.porTurma)) porTurma[turmaId] = { ...c, status };
+        return { ...s, porTurma };
+      }),
+    );
   };
 
   const excluirSemana = async (semanaInicio: string) => {
@@ -691,7 +752,23 @@ function CardapioPorTurmas({
       });
     setSemanasGeradas([{ semanaInicio, porTurma, avisos: [] }]);
     setSemana(semanaInicio);
+    setPendente(false);
   };
+
+  const statusDaSemana = (semanaInicio: string): StatusCardapio =>
+    salvosTurma.some((c) => c.semanaInicio === semanaInicio && c.status === 'rascunho') ? 'rascunho' : 'concluido';
+
+  // Só vai para as famílias o que está salvo e concluído.
+  const algumRascunhoNaTela = semanasGeradas.some((s) =>
+    Object.values(s.porTurma).some((c) => c.status === 'rascunho'),
+  );
+  const podeImprimirTela = semanasGeradas.length > 0 && !pendente && !algumRascunhoNaTela;
+  const motivoSemImpressao = pendente
+    ? 'Salve e conclua o cardápio para imprimir para as famílias.'
+    : 'Rascunho: conclua a semana para imprimir para as famílias.';
+  const temAlteracoes = semanasGeradas.some((s) =>
+    Object.values(s.porTurma).some((c) => c.itens.some((i) => i.alteradoManualmente)),
+  );
 
   // Com nada na tela, a semana selecionada abre direto no cardápio salvo (por
   // exemplo, o importado da planilha), em vez de exigir um "Gerar" que sortearia
@@ -730,6 +807,8 @@ function CardapioPorTurmas({
           {semanasGeradas.length > 0 && (
             <button
               className="btn"
+              disabled={!podeImprimirTela}
+              title={podeImprimirTela ? undefined : motivoSemImpressao}
               onClick={() => setImprimindo(paraImpressao(semanasGeradas))}
             >
               👨‍👩‍👧 Cardápio para as famílias
@@ -746,6 +825,7 @@ function CardapioPorTurmas({
               <tr>
                 <th>Semana</th>
                 <th>Turmas</th>
+                <th>Situação</th>
                 <th></th>
               </tr>
             </thead>
@@ -754,6 +834,13 @@ function CardapioPorTurmas({
                 <tr key={semanaInicio}>
                   <td>{formatarData(semanaInicio)}</td>
                   <td>{salvosTurma.filter((c) => c.semanaInicio === semanaInicio).length}</td>
+                  <td>
+                    {statusDaSemana(semanaInicio) === 'rascunho' ? (
+                      <span className="status-semana rascunho">Rascunho</span>
+                    ) : (
+                      <span className="status-semana concluido">Concluída</span>
+                    )}
+                  </td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                       <button
@@ -785,9 +872,31 @@ function CardapioPorTurmas({
                           <button className="btn pequeno secundario" onClick={() => setCopiandoSemana(null)}>✕</button>
                         </span>
                       )}
+                      {statusDaSemana(semanaInicio) === 'rascunho' ? (
+                        <button
+                          className="btn pequeno"
+                          onClick={() => alterarStatusSemana(semanaInicio, 'concluido')}
+                          title="Marcar a semana como pronta para as famílias"
+                        >
+                          ✓ Concluir
+                        </button>
+                      ) : (
+                        <button
+                          className="btn pequeno secundario"
+                          onClick={() => alterarStatusSemana(semanaInicio, 'rascunho')}
+                          title="Voltar a semana para rascunho"
+                        >
+                          Reabrir
+                        </button>
+                      )}
                       <button
                         className="btn pequeno secundario"
-                        title="Cardápio para as famílias"
+                        title={
+                          statusDaSemana(semanaInicio) === 'rascunho'
+                            ? 'Rascunho: conclua a semana para imprimir para as famílias'
+                            : 'Cardápio para as famílias'
+                        }
+                        disabled={statusDaSemana(semanaInicio) === 'rascunho'}
                         onClick={() => {
                           const porTurma: Record<string, Cardapio> = {};
                           salvosTurma
@@ -830,9 +939,14 @@ function CardapioPorTurmas({
               📅 Gerar mês (4 semanas)
             </button>
             {semanasGeradas.length > 0 && (
-              <button className="btn secundario" onClick={salvarTudo}>
-                Salvar
-              </button>
+              <>
+                <button className="btn secundario" onClick={() => salvarTudo('rascunho')}>
+                  💾 Salvar rascunho
+                </button>
+                <button className="btn" onClick={() => salvarTudo('concluido')}>
+                  ✓ Salvar e concluir
+                </button>
+              </>
             )}
             {msgSalvo && (
               <span className="login-aviso sucesso" style={{ alignSelf: 'center' }}>
@@ -845,7 +959,22 @@ function CardapioPorTurmas({
 
       {semanasGeradas.map((s) => (
         <div key={s.semanaInicio} className="semana-print-quebra">
-          <h2 style={{ margin: '20px 0 8px' }}>Semana de {formatarData(s.semanaInicio)}</h2>
+          <h2 style={{ margin: '20px 0 8px' }}>
+            Semana de {formatarData(s.semanaInicio)}{' '}
+            {pendente ? (
+              <span className="status-semana pendente no-print">Não salva</span>
+            ) : Object.values(s.porTurma).some((c) => c.status === 'rascunho') ? (
+              <span className="status-semana rascunho no-print">Rascunho</span>
+            ) : (
+              <span className="status-semana concluido no-print">Concluída</span>
+            )}
+          </h2>
+          {temAlteracoes && (
+            <p className="no-print" style={{ margin: '0 0 8px', fontSize: 13 }}>
+              <span className="item-alterado">Em amarelo</span>: pratos trocados manualmente. O destaque
+              aparece só nesta tela, não na folha das famílias.
+            </p>
+          )}
           {s.avisos.length > 0 && (
             <div className="aviso no-print">
               <strong>Atenção:</strong>

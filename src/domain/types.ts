@@ -254,7 +254,12 @@ export interface ItemCardapio {
   categoria: CategoriaPrato;
   pratoId: string;
   pratoNome: string;
+  /** Trocado à mão depois de gerado: destacado na tela (não na impressão). */
+  alteradoManualmente?: boolean;
 }
+
+/** Rascunho ainda pode mudar e não vai para as famílias; ausente = concluído. */
+export type StatusCardapio = 'rascunho' | 'concluido';
 
 /** Cardápio gerado para um cliente (ou uma turma do cliente) numa semana. */
 /**
@@ -276,6 +281,7 @@ export interface Cardapio {
   itens: ItemCardapio[];
   /** Específicos das datas desta semana — não acompanham cópias para outras semanas. */
   avisos?: AvisoDia[];
+  status?: StatusCardapio;
   geradoEm: string;
 }
 
