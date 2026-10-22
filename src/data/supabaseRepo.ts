@@ -177,6 +177,22 @@ export class SupabaseRepository implements Repository {
     return data ? mapRelatorioFromRow(data) : null;
   }
 
+  async listarRelatorios(clienteId: string): Promise<Relatorio[]> {
+    const { data, error } = await this.db
+      .from('relatorios')
+      .select('*')
+      .eq('cliente_id', clienteId)
+      .order('data_avaliacao', { ascending: false })
+      .order('atualizado_em', { ascending: false });
+    const rows = this.assert(data, error);
+    return rows.map(mapRelatorioFromRow);
+  }
+
+  async removerRelatorio(id: string): Promise<void> {
+    const { error } = await this.db.from('relatorios').delete().eq('id', id);
+    if (error) throw error;
+  }
+
   async salvarPlanoAcao(p: PlanoAcao): Promise<void> {
     const { error } = await this.db.from('planos_acao').upsert({
       id: p.id,

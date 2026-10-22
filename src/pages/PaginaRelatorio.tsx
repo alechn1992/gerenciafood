@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import type { Cliente, Relatorio } from '../domain/types';
@@ -42,20 +42,98 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
   const [enviando, setEnviando] = useState(false);
   const [msgEmail, setMsgEmail] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
 
-  // Carrega o último relatório salvo para este cliente
+  // Vários checklists por cliente ao longo do ano: a lista fica no topo e o
+  // aberto é sempre um deles (ou um novo, ainda não salvo).
+  const [salvos, setSalvos] = useState<Relatorio[]>([]);
+  const [abertoSalvo, setAbertoSalvo] = useState(false);
+  /** Estado como foi aberto/salvo, para avisar antes de descartar alterações. */
+  const [instantaneo, setInstantaneo] = useState('');
+
+  const estadoAtual = () =>
+    JSON.stringify({ respostas, observacoes, avaliador, dataAval, ehCei, registroCRN });
+  const temAlteracoes = instantaneo !== '' && estadoAtual() !== instantaneo;
+
+  const abrir = useCallback((rel: Relatorio) => {
+    relatorioIdRef.current = rel.id;
+    setAvaliador(rel.avaliador);
+    setRegistroCRN(rel.registroCRN);
+    setEhCei(rel.ehCei);
+    setDataAval(rel.dataAvaliacao);
+    setRespostas(rel.respostas as Record<string, Situacao>);
+    setObservacoes(rel.observacoes);
+    setFotos({});
+    setAbertoSalvo(true);
+    setInstantaneo(
+      JSON.stringify({
+        respostas: rel.respostas,
+        observacoes: rel.observacoes,
+        avaliador: rel.avaliador,
+        dataAval: rel.dataAvaliacao,
+        ehCei: rel.ehCei,
+        registroCRN: rel.registroCRN,
+      }),
+    );
+  }, []);
+
+  // Abre o checklist mais recente do cliente
   useEffect(() => {
-    repo.carregarRelatorio(cliente.id).then((rel) => {
-      if (!rel) return;
-      relatorioIdRef.current = rel.id;
-      setAvaliador(rel.avaliador);
-      setRegistroCRN(rel.registroCRN);
-      setEhCei(rel.ehCei);
-      setDataAval(rel.dataAvaliacao);
-      setRespostas(rel.respostas as Record<string, Situacao>);
-      setObservacoes(rel.observacoes);
+    repo.listarRelatorios(cliente.id).then((lista) => {
+      setSalvos(lista);
+      if (lista[0]) abrir(lista[0]);
+      else setInstantaneo(estadoAtual());
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cliente.id]);
+
+  const confirmarDescarte = () =>
+    !temAlteracoes || confirm('O checklist aberto tem alterações não salvas. Descartar e continuar?');
+
+  function novoChecklist(copiarRespostas: boolean) {
+    if (!confirmarDescarte()) return;
+    relatorioIdRef.current = crypto.randomUUID();
+    const hoje = new Date().toISOString().slice(0, 10);
+    const respostasNovas = copiarRespostas ? respostas : {};
+    const observacoesNovas = copiarRespostas ? observacoes : {};
+    setRespostas(respostasNovas);
+    setObservacoes(observacoesNovas);
+    setFotos({});
+    setDataAval(hoje);
+    setAbertoSalvo(false);
+    setInstantaneo(
+      JSON.stringify({ respostas: respostasNovas, observacoes: observacoesNovas, avaliador, dataAval: hoje, ehCei, registroCRN }),
+    );
+    setMsgSalvar({
+      tipo: 'ok',
+      texto: copiarRespostas
+        ? 'Novo checklist com as respostas do anterior. Revise e salve.'
+        : 'Novo checklist em branco. Preencha e salve.',
+    });
+    setTimeout(() => setMsgSalvar(null), 4000);
+  }
+
+  async function excluirChecklist(rel: Relatorio) {
+    if (!confirm(`Excluir o checklist de ${formatarData(rel.dataAvaliacao)}? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await repo.removerRelatorio(rel.id);
+      const lista = await repo.listarRelatorios(cliente.id);
+      setSalvos(lista);
+      if (rel.id === relatorioIdRef.current) {
+        if (lista[0]) abrir(lista[0]);
+        else novoChecklist(false);
+      }
+    } catch {
+      setMsgSalvar({ tipo: 'erro', texto: 'Não foi possível excluir o checklist.' });
+    }
+  }
+
+  /** Índice de conformidade de um checklist salvo, para a lista. */
+  const indiceDe = (rel: Relatorio) => {
+    const itens = (rel.ehCei ? [...CHECKLIST_BOAS_PRATICAS, ...CHECKLIST_CEI_SESA_162] : CHECKLIST_BOAS_PRATICAS)
+      .flatMap((b) => b.itens);
+    const aplic = itens.filter((i) => rel.respostas[i.id] && rel.respostas[i.id] !== 'na');
+    const conf = itens.filter((i) => rel.respostas[i.id] === 'conforme');
+    return aplic.length > 0 ? Math.round((conf.length / aplic.length) * 100) : null;
+  };
 
   const blocosAtivos = ehCei
     ? [...CHECKLIST_BOAS_PRATICAS, ...CHECKLIST_CEI_SESA_162]
@@ -100,8 +178,12 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
         geradoEm: new Date().toISOString(),
         atualizadoEm: new Date().toISOString(),
       };
-      await repo.salvarRelatorio(rel);
-      setMsgSalvar({ tipo: 'ok', texto: 'Relatório salvo com sucesso.' });
+      const jaExistia = salvos.find((x) => x.id === rel.id);
+      await repo.salvarRelatorio(jaExistia ? { ...rel, geradoEm: jaExistia.geradoEm } : rel);
+      setSalvos(await repo.listarRelatorios(cliente.id));
+      setAbertoSalvo(true);
+      setInstantaneo(estadoAtual());
+      setMsgSalvar({ tipo: 'ok', texto: `Checklist de ${formatarData(dataAval)} salvo.` });
     } catch {
       setMsgSalvar({ tipo: 'erro', texto: 'Erro ao salvar. Tente novamente.' });
     } finally {
@@ -182,12 +264,83 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
         </div>
         <div className="acoes">
           <button className="btn secundario" onClick={handleSalvar} disabled={salvando}>
-            {salvando ? 'Salvando…' : '💾 Salvar rascunho'}
+            {salvando ? 'Salvando…' : '💾 Salvar checklist'}
           </button>
           <button className="btn secundario" onClick={() => { setModalEmail(true); setMsgEmail(null); }}>
             ✉️ Enviar por e-mail
           </button>
         </div>
+      </div>
+
+      {/* Checklists do cliente ao longo do ano */}
+      <div className="card no-print">
+        <div className="linha" style={{ marginBottom: salvos.length > 0 ? 12 : 0 }}>
+          <div>
+            <h3 style={{ margin: 0 }}>Checklists de {cliente.nome}</h3>
+            <p className="subtitulo" style={{ margin: '4px 0 0' }}>
+              {abertoSalvo
+                ? `Aberto: checklist de ${formatarData(dataAval)}${temAlteracoes ? ' — com alterações não salvas' : ''}.`
+                : 'Aberto: checklist novo, ainda não salvo.'}
+            </p>
+          </div>
+          <div className="acoes">
+            <button className="btn" onClick={() => novoChecklist(false)}>
+              + Novo checklist
+            </button>
+            {(abertoSalvo || Object.keys(respostas).length > 0) && (
+              <button
+                className="btn secundario"
+                onClick={() => novoChecklist(true)}
+                title="Começa um checklist novo já com as respostas do aberto, para reavaliar"
+              >
+                Novo a partir deste
+              </button>
+            )}
+          </div>
+        </div>
+        {salvos.length > 0 && (
+          <table>
+            <thead>
+              <tr>
+                <th>Data da avaliação</th>
+                <th>Avaliador</th>
+                <th>Conformidade</th>
+                <th style={{ width: 1 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {salvos.map((r) => {
+                const aberto = r.id === relatorioIdRef.current && abertoSalvo;
+                const ind = indiceDe(r);
+                return (
+                  <tr key={r.id} style={aberto ? { background: 'var(--verde-claro)' } : undefined}>
+                    <td>
+                      {formatarData(r.dataAvaliacao)}
+                      {aberto && <span className="status-semana concluido" style={{ marginLeft: 8 }}>Aberto</span>}
+                    </td>
+                    <td>{r.avaliador || '—'}</td>
+                    <td>{ind === null ? '—' : `${ind}%`}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <div className="acoes">
+                        {!aberto && (
+                          <button
+                            className="btn pequeno secundario"
+                            onClick={() => confirmarDescarte() && abrir(r)}
+                          >
+                            Abrir
+                          </button>
+                        )}
+                        <button className="btn pequeno perigo" onClick={() => excluirChecklist(r)} title="Excluir checklist">
+                          ✕
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Modal de envio por e-mail */}

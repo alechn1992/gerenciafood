@@ -30,6 +30,9 @@ export interface Repository {
   removerTurma(id: string): Promise<void>;
   salvarRelatorio(r: Relatorio): Promise<void>;
   carregarRelatorio(clienteId: string): Promise<Relatorio | null>;
+  /** Todos os checklists do cliente, do mais recente para o mais antigo. */
+  listarRelatorios(clienteId: string): Promise<Relatorio[]>;
+  removerRelatorio(id: string): Promise<void>;
   salvarPlanoAcao(p: PlanoAcao): Promise<void>;
   carregarPlanoAcao(clienteId: string): Promise<PlanoAcao | null>;
   listarVisitas(clienteId?: string): Promise<Visita[]>;
@@ -224,6 +227,16 @@ export class LocalRepository implements Repository {
       .filter((r) => r.clienteId === clienteId)
       .sort((a, b) => b.atualizadoEm.localeCompare(a.atualizadoEm));
     return doCliente[0] ?? null;
+  }
+
+  async listarRelatorios(clienteId: string): Promise<Relatorio[]> {
+    return ler<Relatorio[]>(KEYS.relatorios, [])
+      .filter((r) => r.clienteId === clienteId)
+      .sort((a, b) => b.dataAvaliacao.localeCompare(a.dataAvaliacao) || b.atualizadoEm.localeCompare(a.atualizadoEm));
+  }
+
+  async removerRelatorio(id: string): Promise<void> {
+    escrever(KEYS.relatorios, ler<Relatorio[]>(KEYS.relatorios, []).filter((r) => r.id !== id));
   }
 
   async salvarPlanoAcao(p: PlanoAcao): Promise<void> {
