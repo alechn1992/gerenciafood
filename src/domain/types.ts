@@ -340,6 +340,7 @@ export interface Visita {
   secoes: SecaoVisita[];
   proximaVisita?: string; // YYYY-MM-DD
   relatorioId?: string;
+  assinaturas?: AssinaturasRelatorio;
   criadoEm: string;
 }
 
@@ -393,6 +394,34 @@ export interface Profissional {
 }
 
 /** Relatório de segurança dos alimentos salvo para um cliente. */
+/**
+ * Como o relatório é assinado: com a assinatura cadastrada do profissional,
+ * desenhada na tela (celular/tablet) ou em branco, para assinar no papel.
+ */
+export type ModoAssinatura = 'padrao' | 'tela' | 'papel';
+
+/** Assinaturas de um relatório (checklist ou visita). */
+export interface AssinaturasRelatorio {
+  modo?: ModoAssinatura;
+  /** Imagem (data URL PNG) desenhada na tela, quando modo = 'tela'. */
+  imagemTela?: string;
+  /** Quem acompanhou pelo estabelecimento. */
+  responsavelLocal?: string;
+  responsavelCargo?: string;
+  /** Assinatura do responsável do estabelecimento, desenhada na tela. */
+  imagemResponsavel?: string;
+}
+
+/** Dados de cabeçalho do checklist, no mesmo padrão do relatório de visita. */
+export interface CabecalhoChecklist {
+  hora?: string;
+  tipo?: TipoVisita;
+  emailConsultor?: string;
+  objetivo?: string;
+  proximaAvaliacao?: string;
+  assinaturas?: AssinaturasRelatorio;
+}
+
 export interface Relatorio {
   id: string;
   clienteId: string;
@@ -406,6 +435,7 @@ export interface Relatorio {
   respostas: Record<string, string>;
   /** Mapa itemId → texto de observação. */
   observacoes: Record<string, string>;
+  cabecalho?: CabecalhoChecklist;
   geradoEm: string;
   atualizadoEm: string;
 }

@@ -7,6 +7,8 @@ import { supabase } from '../lib/supabase';
 import { chaveVisita } from '../domain/planoAcao';
 import { hojeISO, usePlanoAcao } from '../state/usePlanoAcao';
 import { AcaoInline } from './AcaoInline';
+import { BlocoAssinaturas, modoAssinatura } from '../components/BlocoAssinaturas';
+import type { AssinaturasRelatorio } from '../domain/types';
 
 function formatarData(iso?: string) {
   if (!iso) return '—';
@@ -26,6 +28,26 @@ export function PaginaVisitaDetalhe() {
   const [msgEmail, setMsgEmail] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   const plano = usePlanoAcao(visita?.clienteId);
   const [msgPlano, setMsgPlano] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  const [assinaturas, setAssinaturas] = useState<AssinaturasRelatorio | undefined>(undefined);
+  const [assinaturasAlteradas, setAssinaturasAlteradas] = useState(false);
+  const [msgAssinatura, setMsgAssinatura] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+
+  useEffect(() => {
+    setAssinaturas(visita?.assinaturas);
+    setAssinaturasAlteradas(false);
+  }, [visita]);
+
+  async function salvarAssinaturas() {
+    if (!visita) return;
+    try {
+      await repo.salvarVisita({ ...visita, assinaturas });
+      setVisita({ ...visita, assinaturas });
+      setMsgAssinatura({ tipo: 'ok', texto: 'Assinaturas salvas.' });
+    } catch (err) {
+      setMsgAssinatura({ tipo: 'erro', texto: err instanceof Error ? err.message : 'Não foi possível salvar as assinaturas.' });
+    }
+    setTimeout(() => setMsgAssinatura(null), 5000);
+  }
 
   async function salvarPlano() {
     try {
@@ -311,26 +333,67 @@ export function PaginaVisitaDetalhe() {
           </div>
         )}
 
-        {/* Rodapé — assinatura, nome e registro apenas */}
-        {(visita.consultor || profissional) && (
-          <div className="relatorio-visita-rodape">
-            <div className="relatorio-visita-assinatura">
-              {profissional?.assinatura ? (
-                <div style={{ marginBottom: 4 }}>
-                  <img
-                    src={profissional.assinatura}
-                    alt="Assinatura"
-                    style={{ maxHeight: 72, maxWidth: 220, objectFit: 'contain' }}
-                  />
-                </div>
-              ) : (
-                <div className="relatorio-visita-assinatura-linha" />
-              )}
-              <p>{visita.consultor || profissional?.nome}</p>
-              {profissional?.registroCRN && <p style={{ fontSize: 12 }}>{profissional.registroCRN}</p>}
-            </div>
+        {/* Assinaturas: escolha do modo e assinatura na tela (não sai na impressão) */}
+        <div className="card no-print" style={{ marginTop: 20 }}>
+          <h3 style={{ marginTop: 0 }}>Assinaturas</h3>
+          <BlocoAssinaturas
+            valor={assinaturas}
+            onChange={(a) => {
+              setAssinaturas(a);
+              setAssinaturasAlteradas(true);
+            }}
+            profissional={profissional ?? undefined}
+            nomeProfissional={visita.consultor || profissional?.nome || ''}
+            registro={profissional?.registroCRN}
+            data={formatarData(visita.data)}
+            semImpressao
+          />
+          <div className="acoes" style={{ marginTop: 12, alignItems: 'center' }}>
+            <button className="btn" onClick={salvarAssinaturas} disabled={!assinaturasAlteradas}>
+              💾 Salvar assinaturas
+            </button>
+            {msgAssinatura && (
+              <span className={msgAssinatura.tipo === 'ok' ? 'login-aviso sucesso' : 'login-aviso erro'}>{msgAssinatura.texto}</span>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Rodapé — assinaturas do profissional e do responsável do estabelecimento */}
+        {(() => {
+          const modo = modoAssinatura(assinaturas, profissional ?? undefined);
+          const imagem =
+            modo === 'padrao' ? profissional?.assinatura : modo === 'tela' ? assinaturas?.imagemTela : undefined;
+          const temResponsavel = !!(assinaturas?.responsavelLocal || assinaturas?.imagemResponsavel);
+          if (!visita.consultor && !profissional && !temResponsavel) return null;
+          return (
+            <div className="relatorio-visita-rodape" style={{ display: 'flex', gap: 40, flexWrap: 'wrap' }}>
+              <div className="relatorio-visita-assinatura">
+                {imagem ? (
+                  <div style={{ marginBottom: 4 }}>
+                    <img src={imagem} alt="Assinatura" style={{ maxHeight: 72, maxWidth: 220, objectFit: 'contain' }} />
+                  </div>
+                ) : (
+                  <div className="relatorio-visita-assinatura-linha" />
+                )}
+                <p>{visita.consultor || profissional?.nome}</p>
+                {profissional?.registroCRN && <p style={{ fontSize: 12 }}>{profissional.registroCRN}</p>}
+              </div>
+              {temResponsavel && (
+                <div className="relatorio-visita-assinatura">
+                  {assinaturas?.imagemResponsavel ? (
+                    <div style={{ marginBottom: 4 }}>
+                      <img src={assinaturas.imagemResponsavel} alt="Assinatura do responsável" style={{ maxHeight: 72, maxWidth: 220, objectFit: 'contain' }} />
+                    </div>
+                  ) : (
+                    <div className="relatorio-visita-assinatura-linha" />
+                  )}
+                  <p>{assinaturas?.responsavelLocal || 'Responsável pelo estabelecimento'}</p>
+                  {assinaturas?.responsavelCargo && <p style={{ fontSize: 12 }}>{assinaturas.responsavelCargo}</p>}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Paginação impressão */}
         <div className="print-only relatorio-visita-footer-impressao">
