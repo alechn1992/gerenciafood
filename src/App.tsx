@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
 import { usePermissoes } from './auth/PermissoesContext';
 import { supabase } from './lib/supabase';
-import { rotuloVersao, useNovaVersaoDisponivel } from './lib/versao';
+import { useNovaVersaoDisponivel } from './lib/versao';
+import { Sidebar } from './components/Sidebar';
+import { Icone } from './components/Icone';
 import { PaginaLogin } from './pages/PaginaLogin';
 import { PaginaDefinirSenha } from './pages/PaginaDefinirSenha';
 import { PaginaClientes } from './pages/PaginaClientes';
@@ -46,50 +48,11 @@ function RotaProtegida({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-type NavLink = { tipo: 'link'; tela: string; label: string; to: string };
-type NavGrupo = { tipo: 'grupo'; id: string; label: string; filhos: { tela: string; label: string; to: string }[] };
-type NavItem = NavLink | NavGrupo;
-
-const NAV_ESTRUTURA: NavItem[] = [
-  { tipo: 'link',  tela: 'cardapio',     label: 'Cardápio',      to: '/cardapio' },
-  { tipo: 'link',  tela: 'pratos',       label: 'Receituário',   to: '/pratos' },
-  { tipo: 'link',  tela: 'sazonalidade', label: 'Sazonalidade',  to: '/sazonalidade' },
-  { tipo: 'link',  tela: 'importar',     label: '📥 Importar Excel', to: '/importar-cardapio' },
-  {
-    tipo: 'grupo', id: 'cadastro', label: 'Cadastro',
-    filhos: [
-      { tela: 'profissionais', label: 'Profissionais', to: '/profissionais' },
-      { tela: 'clientes',      label: 'Clientes',      to: '/clientes' },
-      { tela: 'insumos',       label: 'Insumos',       to: '/insumos' },
-      // Mesma permissão de Clientes: quem edita turmas cadastra as preferências delas.
-      { tela: 'clientes',      label: 'Preferências alimentares', to: '/preferencias' },
-      // Mesma permissão do Receituário, onde as categorias são usadas.
-      { tela: 'pratos',        label: 'Categorias de prato',      to: '/categorias' },
-    ],
-  },
-  {
-    tipo: 'grupo', id: 'relatorios', label: 'Relatórios',
-    filhos: [
-      { tela: 'relatorio', label: '📊 Painel', to: '/painel' },
-      { tela: 'relatorio', label: 'Checklist de Boas Práticas', to: '/relatorio' },
-      { tela: 'visitas',   label: 'Visitas',                    to: '/visitas' },
-    ],
-  },
-];
-
 export function App() {
   const { user, session, carregando: carregandoAuth, sair } = useAuth();
   const { telas } = usePermissoes();
   const novaVersao = useNovaVersaoDisponivel();
-  const [gruposAbertos, setGruposAbertos] = useState<Set<string>>(new Set(['cadastro', 'relatorios']));
-
-  function toggleGrupo(id: string) {
-    setGruposAbertos((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  }
+  const [menuAberto, setMenuAberto] = useState(false);
 
   return (
     <Routes>
@@ -108,61 +71,21 @@ export function App() {
         element={
           <RotaProtegida>
             <div className="app">
-              <aside className="sidebar no-print">
-                <div className="marca">🍽️ GerenciaFood</div>
-                <nav>
-                  {NAV_ESTRUTURA.map((item) => {
-                    if (item.tipo === 'link') {
-                      if (!telas.includes(item.tela)) return null;
-                      return (
-                        <NavLink key={item.tela} to={item.to} className={({ isActive }) => (isActive ? 'ativo' : '')}>
-                          {item.label}
-                        </NavLink>
-                      );
-                    }
-                    const filhosVisiveis = item.filhos.filter((f) => telas.includes(f.tela));
-                    if (filhosVisiveis.length === 0) return null;
-                    const aberto = gruposAbertos.has(item.id);
-                    return (
-                      <div key={item.id} className="nav-grupo">
-                        <button className="nav-grupo-header" onClick={() => toggleGrupo(item.id)}>
-                          <span>{item.label}</span>
-                          <span className="nav-grupo-seta">{aberto ? '▾' : '▸'}</span>
-                        </button>
-                        {aberto && (
-                          <div className="nav-grupo-filhos">
-                            {filhosVisiveis.map((f) => (
-                              <NavLink key={f.to} to={f.to} className={({ isActive }) => (isActive ? 'ativo' : '')}>
-                                {f.label}
-                              </NavLink>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </nav>
-
-                <NavLink to="/configuracoes" className={({ isActive }) => (isActive ? 'ativo' : '')}>
-                  ⚙️ Configurações
-                </NavLink>
-
-                <div className="sidebar-rodape">
-                  {user && (
-                    <div className="sidebar-usuario">
-                      <span className="sidebar-email">{user.email}</span>
-                      <button className="sidebar-sair" onClick={sair}>
-                        Sair
-                      </button>
-                    </div>
-                  )}
-                  <div className="sidebar-versao" title="Versão do sistema em uso nesta aba">
-                    Versão {rotuloVersao()}
-                  </div>
-                </div>
-              </aside>
+              <Sidebar
+                telas={telas}
+                email={user?.email ?? undefined}
+                onSair={sair}
+                aberto={menuAberto}
+                onFechar={() => setMenuAberto(false)}
+              />
 
               <main className="conteudo">
+                <div className="topo-mobile no-print">
+                  <button className="menu-abrir" onClick={() => setMenuAberto(true)} aria-label="Abrir menu">
+                    <Icone nome="menu" tamanho={22} />
+                  </button>
+                  <strong>GerenciaFood</strong>
+                </div>
                 {novaVersao && (
                   <div className="aviso-versao no-print" role="status">
                     <span>

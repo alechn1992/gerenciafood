@@ -120,7 +120,7 @@ export function PaginaPainel() {
     <div>
       <div className="linha" style={{ marginBottom: 16 }}>
         <div>
-          <h1 style={{ marginBottom: 4 }}>📊 Painel</h1>
+          <h1 style={{ marginBottom: 4 }}>Painel</h1>
           <p className="subtitulo" style={{ margin: 0 }}>
             Conformidade dos checklists, plano de ação (checklist e visitas) e agenda de visitas.
           </p>
