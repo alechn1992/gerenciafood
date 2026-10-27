@@ -150,9 +150,10 @@ export class SupabaseRepository implements Repository {
   }
 
   async salvarRelatorio(r: Relatorio): Promise<void> {
-    const { error } = await this.db.from('relatorios').upsert({
+    const linha = {
       id: r.id,
       cliente_id: r.clienteId,
+      profissional_id: r.profissionalId || null,
       avaliador: r.avaliador,
       registro_crn: r.registroCRN,
       eh_cei: r.ehCei,
@@ -161,8 +162,18 @@ export class SupabaseRepository implements Repository {
       observacoes: r.observacoes,
       gerado_em: r.geradoEm,
       atualizado_em: new Date().toISOString(),
-    });
-    if (error) throw error;
+    };
+    const { error } = await this.db.from('relatorios').upsert({ ...linha, cabecalho: r.cabecalho ?? {} });
+    if (!error) return;
+    // Sem a coluna (migração 0023 ainda não aplicada): salva o checklist e avisa.
+    if (colunaFaltando(error, 'cabecalho')) {
+      const { error: semCabecalho } = await this.db.from('relatorios').upsert(linha);
+      if (semCabecalho) throw semCabecalho;
+      throw new Error(
+        'O checklist foi salvo, mas o cabeçalho completo e as assinaturas não: aplique a migração 0023_cabecalho_assinaturas.sql no Supabase.',
+      );
+    }
+    throw error;
   }
 
   async carregarRelatorio(clienteId: string): Promise<Relatorio | null> {
@@ -256,8 +267,17 @@ export class SupabaseRepository implements Repository {
       proxima_visita: v.proximaVisita || null,
       relatorio_id: v.relatorioId || null,
       criado_em: v.criadoEm,
+      ...(v.assinaturas ? { assinaturas: v.assinaturas } : {}),
     });
-    if (error) throw error;
+    if (!error) return;
+    if (v.assinaturas && colunaFaltando(error, 'assinaturas')) {
+      const { assinaturas: _, ...semAssinaturas } = v;
+      await this.salvarVisita(semAssinaturas);
+      throw new Error(
+        'A visita foi salva, mas as assinaturas não: aplique a migração 0023_cabecalho_assinaturas.sql no Supabase.',
+      );
+    }
+    throw error;
   }
 
   async removerVisita(id: string): Promise<void> {
@@ -530,6 +550,7 @@ function mapVisitaFromRow(r: any): Visita {
     secoes: r.secoes ?? [],
     proximaVisita: r.proxima_visita ?? undefined,
     relatorioId: r.relatorio_id ?? undefined,
+    assinaturas: r.assinaturas && Object.keys(r.assinaturas).length > 0 ? r.assinaturas : undefined,
     criadoEm: r.criado_em,
   };
 }
@@ -550,6 +571,12 @@ function mapProfissionalFromRow(r: any): Profissional {
   };
 }
 
+/** Erro do PostgREST por coluna que ainda não existe (migração pendente). */
+function colunaFaltando(error: { message?: string; code?: string }, coluna: string): boolean {
+  const msg = error.message ?? '';
+  return msg.includes(coluna) && /column|schema/i.test(msg);
+}
+
 function mapRelatorioFromRow(r: any): Relatorio {
   return {
     id: r.id,
@@ -560,6 +587,8 @@ function mapRelatorioFromRow(r: any): Relatorio {
     dataAvaliacao: r.data_avaliacao,
     respostas: r.respostas ?? {},
     observacoes: r.observacoes ?? {},
+    profissionalId: r.profissional_id ?? undefined,
+    cabecalho: r.cabecalho ?? {},
     geradoEm: r.gerado_em,
     atualizadoEm: r.atualizado_em,
   };

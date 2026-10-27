@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
-import type { Cliente, Relatorio } from '../domain/types';
+import type { CabecalhoChecklist, Cliente, Relatorio } from '../domain/types';
+import { TIPOS_VISITA } from '../domain/types';
+import { BlocoAssinaturas } from '../components/BlocoAssinaturas';
 import {
   CHECKLIST_BOAS_PRATICAS,
   CHECKLIST_CEI_SESA_162,
@@ -36,6 +38,9 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
   const [logo, setLogo] = useState(cliente.logo ?? '');
   const [registroCRN, setRegistroCRN] = useState(cliente.registroProfissional ?? '');
   const [profissionalId, setProfissionalId] = useState('');
+  // Cabeçalho completo, no mesmo padrão do relatório de visita.
+  const [cabecalho, setCabecalho] = useState<CabecalhoChecklist>({ tipo: 'auditoria' });
+  const atualizarCabecalho = (campos: Partial<CabecalhoChecklist>) => setCabecalho((c) => ({ ...c, ...campos }));
   const relatorioIdRef = useRef<string>(crypto.randomUUID());
 
   // estado de UI
@@ -54,7 +59,7 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
   const [instantaneo, setInstantaneo] = useState('');
 
   const estadoAtual = () =>
-    JSON.stringify({ respostas, observacoes, avaliador, dataAval, ehCei, registroCRN });
+    JSON.stringify({ respostas, observacoes, avaliador, dataAval, ehCei, registroCRN, cabecalho, profissionalId });
   const temAlteracoes = instantaneo !== '' && estadoAtual() !== instantaneo;
 
   const abrir = useCallback((rel: Relatorio) => {
@@ -65,6 +70,9 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
     setDataAval(rel.dataAvaliacao);
     setRespostas(rel.respostas as Record<string, Situacao>);
     setObservacoes(rel.observacoes);
+    const cab = { tipo: 'auditoria' as const, ...(rel.cabecalho ?? {}) };
+    setCabecalho(cab);
+    setProfissionalId(rel.profissionalId ?? '');
     setFotos({});
     setAbertoSalvo(true);
     setInstantaneo(
@@ -75,6 +83,8 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
         dataAval: rel.dataAvaliacao,
         ehCei: rel.ehCei,
         registroCRN: rel.registroCRN,
+        cabecalho: cab,
+        profissionalId: rel.profissionalId ?? '',
       }),
     );
   }, []);
@@ -102,9 +112,12 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
     setObservacoes(observacoesNovas);
     setFotos({});
     setDataAval(hoje);
+    // Novo checklist: mantém tipo e e-mail; hora, objetivo e assinaturas são da avaliação.
+    const cab: CabecalhoChecklist = { tipo: cabecalho.tipo ?? 'auditoria', emailConsultor: cabecalho.emailConsultor };
+    setCabecalho(cab);
     setAbertoSalvo(false);
     setInstantaneo(
-      JSON.stringify({ respostas: respostasNovas, observacoes: observacoesNovas, avaliador, dataAval: hoje, ehCei, registroCRN }),
+      JSON.stringify({ respostas: respostasNovas, observacoes: observacoesNovas, avaliador, dataAval: hoje, ehCei, registroCRN, cabecalho: cab, profissionalId }),
     );
     setMsgSalvar({
       tipo: 'ok',
@@ -179,6 +192,8 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
         dataAvaliacao: dataAval,
         respostas,
         observacoes,
+        profissionalId: profissionalId || undefined,
+        cabecalho,
         geradoEm: new Date().toISOString(),
         atualizadoEm: new Date().toISOString(),
       };
@@ -192,8 +207,11 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
       setAbertoSalvo(true);
       setInstantaneo(estadoAtual());
       setMsgSalvar({ tipo: 'ok', texto: `Checklist de ${formatarData(dataAval)} salvo, com o plano de ação.` });
-    } catch {
-      setMsgSalvar({ tipo: 'erro', texto: 'Erro ao salvar. Tente novamente.' });
+    } catch (err) {
+      setMsgSalvar({
+        tipo: 'erro',
+        texto: err instanceof Error && err.message ? err.message : 'Erro ao salvar. Tente novamente.',
+      });
     } finally {
       setSalvando(false);
       setTimeout(() => setMsgSalvar(null), 4000);
@@ -467,36 +485,129 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
                   </div>
                 </div>
               </div>
-              <div className="grid cols-2">
-                <div>
-                  <label>Avaliador</label>
-                  <input
-                    className="no-print"
-                    value={avaliador}
-                    onChange={(e) => setAvaliador(e.target.value)}
-                  />
-                  {avaliador && (
-                    <div className="somente-print" style={{ fontWeight: 500, paddingTop: 2 }}>
-                      {avaliador}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label>Data da avaliação</label>
-                  <input
-                    type="date"
-                    className="no-print"
-                    value={dataAval}
-                    onChange={(e) => setDataAval(e.target.value)}
-                  />
-                  <div className="somente-print" style={{ fontWeight: 500, paddingTop: 2 }}>
-                    {formatarData(dataAval)}
-                  </div>
-                </div>
-              </div>
+              <div className="somente-print" />
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Dados da avaliação — mesmo padrão do relatório de visita */}
+      <div className="card">
+        <h3 className="no-print" style={{ marginTop: 0 }}>Dados da avaliação</h3>
+        <div className="no-print cabecalho-avaliacao">
+          <div>
+            <label>Data da avaliação *</label>
+            <input type="date" value={dataAval} onChange={(e) => setDataAval(e.target.value)} />
+          </div>
+          <div>
+            <label>Hora</label>
+            <input
+              value={cabecalho.hora ?? ''}
+              onChange={(e) => atualizarCabecalho({ hora: e.target.value })}
+              placeholder="ex.: das 14h às 16h"
+            />
+          </div>
+          <div>
+            <label>Tipo</label>
+            <select value={cabecalho.tipo ?? 'auditoria'} onChange={(e) => atualizarCabecalho({ tipo: e.target.value as CabecalhoChecklist['tipo'] })}>
+              {TIPOS_VISITA.map((t) => (
+                <option key={t.valor} value={t.valor}>{t.nome}</option>
+              ))}
+            </select>
+          </div>
+          <div className="largura-toda">
+            <label>Profissional responsável</label>
+            <select
+              value={profissionalId}
+              onChange={(e) => {
+                const pid = e.target.value;
+                setProfissionalId(pid);
+                const p = profissionais.find((x) => x.id === pid);
+                if (p) {
+                  setAvaliador(p.nome);
+                  setRegistroCRN(p.registroCRN ?? '');
+                  atualizarCabecalho({ emailConsultor: p.email ?? cabecalho.emailConsultor });
+                }
+              }}
+            >
+              <option value="">— Selecione ou preencha manualmente —</option>
+              {profissionais.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}{p.registroCRN ? ` (${p.registroCRN})` : ''}{p.empresa ? ` — ${p.empresa}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label>Consultor(a) / avaliador(a)</label>
+            <input value={avaliador} onChange={(e) => setAvaliador(e.target.value)} placeholder="Nome" />
+          </div>
+          <div>
+            <label>Registro profissional (CRN)</label>
+            <input value={registroCRN} onChange={(e) => setRegistroCRN(e.target.value)} />
+          </div>
+          <div>
+            <label>E-mail do consultor</label>
+            <input
+              type="email"
+              value={cabecalho.emailConsultor ?? ''}
+              onChange={(e) => atualizarCabecalho({ emailConsultor: e.target.value })}
+              placeholder="email@exemplo.com"
+            />
+          </div>
+          <div className="largura-toda">
+            <label>Observações gerais / objetivo</label>
+            <textarea
+              rows={2}
+              value={cabecalho.objetivo ?? ''}
+              onChange={(e) => atualizarCabecalho({ objetivo: e.target.value })}
+              placeholder="Objetivo da avaliação, observações gerais…"
+            />
+          </div>
+          <div>
+            <label>Próxima avaliação</label>
+            <input
+              type="date"
+              value={cabecalho.proximaAvaliacao ?? ''}
+              onChange={(e) => atualizarCabecalho({ proximaAvaliacao: e.target.value })}
+            />
+          </div>
+        </div>
+
+        {/* Impressão: cabeçalho em tabela, como no relatório de visita */}
+        <div className="somente-print">
+        <table className="relatorio-visita-cabecalho">
+          <tbody>
+            <tr>
+              <td className="label">Cliente:</td>
+              <td colSpan={3}><strong>{cliente.nome}</strong>{cliente.cnpj ? ` — CNPJ ${cliente.cnpj}` : ''}</td>
+            </tr>
+            <tr>
+              <td className="label">Consultor(a):</td>
+              <td>{avaliador || '—'}{registroCRN ? ` (${registroCRN})` : ''}</td>
+              <td className="label">E-mail:</td>
+              <td>{cabecalho.emailConsultor || '—'}</td>
+            </tr>
+            <tr>
+              <td className="label">Data:</td>
+              <td>{formatarData(dataAval)}</td>
+              <td className="label">Hora:</td>
+              <td>{cabecalho.hora || '—'}</td>
+            </tr>
+            <tr>
+              <td className="label">Tipo:</td>
+              <td>{TIPOS_VISITA.find((t) => t.valor === cabecalho.tipo)?.nome ?? 'Auditoria'}</td>
+              <td className="label">Próxima avaliação:</td>
+              <td>{cabecalho.proximaAvaliacao ? formatarData(cabecalho.proximaAvaliacao) : '—'}</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+        {cabecalho.objetivo && (
+          <div className="relatorio-visita-obs somente-print">
+            <strong>Observações gerais / objetivo:</strong> {cabecalho.objetivo}
+          </div>
+        )}
       </div>
 
       {/* Indicadores */}
@@ -626,87 +737,27 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
         </ul>
       </div>
 
-      {/* Assinatura */}
+      {/* Assinaturas */}
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Responsável técnico</h3>
-        {profissionais.length > 0 && (
-          <div className="no-print" style={{ marginBottom: 16 }}>
-            <label>Selecionar profissional cadastrado</label>
-            <select
-              value={profissionalId}
-              onChange={(e) => {
-                const pid = e.target.value;
-                setProfissionalId(pid);
-                const p = profissionais.find((x) => x.id === pid);
-                if (p) {
-                  setAvaliador(p.nome);
-                  setRegistroCRN(p.registroCRN ?? '');
-                }
-              }}
-            >
-              <option value="">— Selecione ou preencha manualmente —</option>
-              {profissionais.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}{p.registroCRN ? ` (${p.registroCRN})` : ''}{p.empresa ? ` — ${p.empresa}` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        <div className="no-print grid cols-2" style={{ marginBottom: 20 }}>
-          <div>
-            <label>Nome completo</label>
-            <input value={avaliador} onChange={(e) => setAvaliador(e.target.value)} />
-          </div>
-          <div>
-            <label>Registro profissional (CRN / CFTA / CREF)</label>
-            <input value={registroCRN} onChange={(e) => setRegistroCRN(e.target.value)} />
-          </div>
-        </div>
-        {/* Bloco de assinatura para impressão */}
+        <h3 style={{ marginTop: 0 }}>Assinaturas</h3>
         {(() => {
           const prof = profissionais.find((p) => p.id === profissionalId);
           return (
-            <div className="assinatura-bloco">
+            <>
               {prof?.logoEmpresa && (
-                <div className="assinatura-campo" style={{ textAlign: 'center' }}>
-                  <img
-                    src={prof.logoEmpresa}
-                    alt={prof.empresa ?? prof.nome}
-                    style={{ maxHeight: 56, maxWidth: 160, objectFit: 'contain', marginBottom: 4 }}
-                  />
-                  {prof.empresa && <div className="assinatura-rotulo">{prof.empresa}</div>}
+                <div className="somente-print" style={{ marginBottom: 8 }}>
+                  <img src={prof.logoEmpresa} alt={prof.empresa ?? prof.nome} style={{ maxHeight: 48, maxWidth: 160, objectFit: 'contain' }} />
                 </div>
               )}
-              <div className="assinatura-campo">
-                {prof?.assinatura ? (
-                  <div style={{ marginBottom: 2 }}>
-                    <img
-                      src={prof.assinatura}
-                      alt="Assinatura"
-                      style={{ maxHeight: 64, maxWidth: 200, objectFit: 'contain' }}
-                    />
-                  </div>
-                ) : (
-                  <div className="assinatura-linha">{avaliador}</div>
-                )}
-                <div className="assinatura-rotulo">Nome / Responsável Técnico</div>
-              </div>
-              <div className="assinatura-campo">
-                <div className="assinatura-linha">{registroCRN}</div>
-                <div className="assinatura-rotulo">Registro profissional</div>
-              </div>
-              {!prof?.assinatura && (
-                <div className="assinatura-campo">
-                  <div className="assinatura-linha" />
-                  <div className="assinatura-rotulo">Assinatura</div>
-                </div>
-              )}
-              <div className="assinatura-campo">
-                <div className="assinatura-linha">{formatarData(dataAval)}</div>
-                <div className="assinatura-rotulo">Data</div>
-              </div>
-            </div>
+              <BlocoAssinaturas
+                valor={cabecalho.assinaturas}
+                onChange={(a) => atualizarCabecalho({ assinaturas: a })}
+                profissional={prof}
+                nomeProfissional={avaliador}
+                registro={registroCRN}
+                data={formatarData(dataAval)}
+              />
+            </>
           );
         })()}
       </div>
