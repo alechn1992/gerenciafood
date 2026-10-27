@@ -345,7 +345,10 @@ export interface Visita {
 
 export type StatusAcao = 'pendente' | 'em_andamento' | 'concluido';
 
-/** Uma ação corretiva vinculada a um item não conforme do checklist. */
+/** De onde veio a não conformidade que a ação corrige. */
+export type OrigemAcao = 'checklist' | 'visita' | 'manual';
+
+/** Uma ação corretiva vinculada a um item não conforme (checklist ou visita). */
 export interface AcaoCorretiva {
   itemId: string;
   itemTexto: string;
@@ -354,6 +357,14 @@ export interface AcaoCorretiva {
   prazo: string; // YYYY-MM-DD
   status: StatusAcao;
   observacao?: string;
+  /** Ausente nas ações antigas: 'manual-…' = manual, o resto = checklist. */
+  origem?: OrigemAcao;
+  /** Checklist ou visita em que a não conformidade foi registrada. */
+  origemId?: string;
+  /** Data (ISO) do checklist ou da visita de origem. */
+  origemData?: string;
+  /** Quando o item voltou a constar como conforme (ISO), concluindo a ação. */
+  resolvidoEm?: string;
 }
 
 /** Plano de ação gerado a partir das não conformidades do relatório. */
