@@ -2,6 +2,8 @@
   --verde: #1f7a4d;
   --verde-claro: #e8f5ee;
   --verde-escuro: #145636;
+  --verde-texto: #1f7a4d;
+  --verde-hover: #145636;
   --texto: #1c2b24;
   --cinza: #6b7d74;
   --borda: #d8e3dc;
@@ -11,6 +13,7 @@
   --alerta-bg: #fdf1e7;
   --radius: 10px;
   --sombra: 0 1px 3px rgba(20, 40, 30, 0.08), 0 1px 2px rgba(20, 40, 30, 0.06);
+  color-scheme: light;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -26,7 +29,7 @@ body {
 }
 
 a {
-  color: var(--verde);
+  color: var(--verde-texto);
   text-decoration: none;
 }
 
@@ -100,6 +103,7 @@ textarea {
   font-size: 0.95rem;
   font-family: inherit;
   background: var(--branco);
+  color: inherit;
 }
 
 input:focus,
@@ -124,7 +128,7 @@ textarea:focus {
 }
 
 .btn:hover {
-  background: var(--verde-escuro);
+  background: var(--verde-hover);
 }
 
 .btn.secundario {
@@ -202,7 +206,7 @@ th {
 
 .aviso {
   background: var(--alerta-bg);
-  border: 1px solid #f0d0b3;
+  border: 1px solid var(--tom-laranja-borda, #f0d0b3);
   color: var(--alerta);
   border-radius: 8px;
   padding: 12px 14px;
@@ -333,18 +337,18 @@ th {
 }
 
 .badge-conforme {
-  background: #dcf5e7;
-  color: #166534;
+  background: var(--tom-verde-bg, #dcf5e7);
+  color: var(--tom-verde-texto, #166534);
 }
 
 .badge-nao-conforme {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--tom-vermelho-bg, #fee2e2);
+  color: var(--tom-vermelho-texto, #991b1b);
 }
 
 .badge-na {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--tom-amarelo-bg, #fef3c7);
+  color: var(--tom-amarelo-texto, #92400e);
 }
 
 .badge-vazio {
@@ -537,13 +541,13 @@ th {
 .login-aviso.erro {
   background: var(--alerta-bg);
   color: var(--alerta);
-  border: 1px solid #f0c4a0;
+  border: 1px solid var(--tom-laranja-borda, #f0c4a0);
 }
 
 .login-aviso.sucesso {
   background: var(--verde-claro);
   color: var(--verde-escuro);
-  border: 1px solid #b5d9c6;
+  border: 1px solid var(--tom-borda, #b5d9c6);
 }
 
 .login-form {
@@ -584,7 +588,7 @@ th {
 .link-btn {
   background: none;
   border: none;
-  color: var(--verde);
+  color: var(--verde-texto);
   font-size: 0.85rem;
   cursor: pointer;
   padding: 4px 8px;
@@ -603,9 +607,9 @@ th {
   flex-wrap: wrap;
   margin-bottom: 16px;
   padding: 10px 14px;
-  border: 1px solid #e8d96a;
+  border: 1px solid var(--tom-amarelo-borda, #e8d96a);
   border-radius: 8px;
-  background: #fffbea;
+  background: var(--tom-amarelo-bg, #fffbea);
   font-size: 0.9rem;
 }
 
@@ -632,10 +636,10 @@ th {
 
 /* Prato trocado manualmente na grade do cardápio (só na tela). */
 .item-alterado {
-  background: #fff1c2;
+  background: var(--tom-amarelo-bg, #fff1c2);
   border-radius: 3px;
   padding: 0 3px;
-  box-shadow: inset 0 -2px 0 #e0a800;
+  box-shadow: inset 0 -2px 0 var(--tom-amarelo-borda, #e0a800);
 }
 @media print {
   .item-alterado { background: none; box-shadow: none; padding: 0; }
@@ -651,9 +655,9 @@ th {
   vertical-align: middle;
   white-space: nowrap;
 }
-.status-semana.rascunho { background: #fff1c2; color: #7a5200; }
-.status-semana.concluido { background: #e3f4ea; color: #1e6b3f; }
-.status-semana.pendente { background: #fde8e4; color: #9a2f1c; }
+.status-semana.rascunho { background: var(--tom-amarelo-bg, #fff1c2); color: var(--tom-amarelo-texto, #7a5200); }
+.status-semana.concluido { background: var(--tom-verde-bg, #e3f4ea); color: var(--tom-verde-texto, #1e6b3f); }
+.status-semana.pendente { background: var(--tom-vermelho-bg, #fde8e4); color: var(--tom-vermelho-texto, #9a2f1c); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* Linha de um prato fixo (combinado) no cadastro do cliente */
@@ -689,7 +693,7 @@ th {
   background: none;
   border: 0;
   padding: 0;
-  color: var(--verde, #1e6b3f);
+  color: var(--verde-texto, #1e6b3f);
   text-decoration: underline;
   cursor: pointer;
   font: inherit;
@@ -700,7 +704,7 @@ th {
   margin-top: 8px;
   padding: 10px 12px;
   border-left: 3px solid #e53935;
-  background: #fff6f5;
+  background: var(--tom-vermelho-bg, #fff6f5);
   border-radius: 6px;
 }
 .acao-inline-titulo {
@@ -729,9 +733,9 @@ th {
   border-radius: 999px;
   white-space: nowrap;
 }
-.selo-acao.pendente { background: #fff1c2; color: #6b4a00; }
-.selo-acao.em_andamento { background: #e3edfb; color: #1f4f99; }
-.selo-acao.concluido { background: #e3f4ea; color: #1e6b3f; }
+.selo-acao.pendente { background: var(--tom-amarelo-bg, #fff1c2); color: var(--tom-amarelo-texto, #6b4a00); }
+.selo-acao.em_andamento { background: var(--tom-azul-bg, #e3edfb); color: var(--tom-azul-texto, #1f4f99); }
+.selo-acao.concluido { background: var(--tom-verde-bg, #e3f4ea); color: var(--tom-verde-texto, #1e6b3f); }
 .selo-acao.atrasada { background: #b3261e; color: #fff; }
 
 .barra-progresso {
@@ -759,7 +763,7 @@ th {
   border-radius: 10px;
   padding: 14px 16px;
 }
-.painel-indicador.alerta { border-color: #9a2f1c; background: #fff6f5; }
+.painel-indicador.alerta { border-color: var(--tom-vermelho-borda, #9a2f1c); background: var(--tom-vermelho-bg, #fff6f5); }
 .painel-indicador-titulo { font-size: 13px; color: var(--cinza); }
 .painel-indicador-valor { font-size: 30px; font-weight: 700; line-height: 1.2; margin: 4px 0 2px; }
 .painel-indicador-detalhe { font-size: 12px; color: var(--cinza); }
@@ -812,7 +816,7 @@ i.painel-cor { width: 10px; height: 10px; border-radius: 2px; vertical-align: -1
   border-radius: 4px 4px 0 0;
   margin-bottom: 2px;
 }
-.painel-evolucao-col:hover .painel-evolucao-barra { background: var(--verde-escuro); }
+.painel-evolucao-col:hover .painel-evolucao-barra { background: var(--verde-hover); }
 
 .painel-colunas {
   display: grid;
@@ -1063,7 +1067,7 @@ i.painel-cor { width: 10px; height: 10px; border-radius: 2px; vertical-align: -1
   cursor: pointer;
   font-weight: normal;
   margin: 0;
-  background: #fff;
+  background: var(--branco);
 }
 .assinatura-opcao input { width: auto; margin: 0; }
 .assinatura-opcao.on { border-color: var(--verde); background: var(--verde-claro); }
@@ -1084,14 +1088,99 @@ i.painel-cor { width: 10px; height: 10px; border-radius: 2px; vertical-align: -1
 
 /* Cabeçalho em tabela dos relatórios (visita e checklist) */
 .relatorio-visita-cabecalho { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px; }
-.relatorio-visita-cabecalho td { padding: 6px 10px; border: 1px solid #ccc; }
-.relatorio-visita-cabecalho td.label { font-weight: 600; background: #f5f5f5; width: 130px; white-space: nowrap; }
+.relatorio-visita-cabecalho td { padding: 6px 10px; border: 1px solid var(--tom-borda, #ccc); }
+.relatorio-visita-cabecalho td.label { font-weight: 600; background: var(--tom-sup, #f5f5f5); width: 130px; white-space: nowrap; }
 .relatorio-visita-obs {
-  background: #f9f9f9;
-  border: 1px solid #e0e0e0;
+  background: var(--tom-sup, #f9f9f9);
+  border: 1px solid var(--tom-borda, #e0e0e0);
   border-left: 4px solid #f59e0b;
   padding: 10px 14px;
   margin-bottom: 20px;
   font-size: 14px;
   border-radius: 4px;
 }
+
+/* ── Modo escuro ────────────────────────────────────────
+   Só na tela: a impressão continua sempre clara. Os tons --tom-* existem
+   apenas aqui; no modo claro cada uso cai na cor original (fallback). */
+@media screen {
+  :root[data-tema='escuro'] {
+    color-scheme: dark;
+    --verde: #1a7a4c;
+    --verde-claro: #183326;
+    --verde-escuro: #8fdcb2;
+    --verde-texto: #5fd39a;
+    --verde-hover: #146b42;
+    --texto: #e4ece7;
+    --cinza: #9db0a5;
+    --borda: #2c3b33;
+    --fundo: #111915;
+    --branco: #17201b;
+    --alerta: #f0a26b;
+    --alerta-bg: #3a2414;
+    --sombra: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
+
+    --tom-sup: #1c2a22;
+    --tom-sup-verde: #183326;
+    --tom-borda: #34463c;
+    --tom-neutro-texto: #8a9a91;
+    --tom-amarelo-bg: #3a3113;
+    --tom-amarelo-borda: #8a7420;
+    --tom-amarelo-texto: #f2cf6b;
+    --tom-laranja-borda: #6b4527;
+    --tom-laranja-bg: #3a2414;
+    --tom-laranja-texto: #f5a66a;
+    --tom-rosa-bg: #3a1b2a;
+    --tom-rosa-texto: #f29ac2;
+    --tom-vermelho-bg: #321b19;
+    --tom-vermelho-borda: #a0453b;
+    --tom-vermelho-texto: #f19a8f;
+    --tom-verde-bg: #183326;
+    --tom-verde-texto: #7fd6a7;
+    --tom-azul-bg: #1a2a44;
+    --tom-azul-texto: #9cc0f5;
+  }
+  :root[data-tema='escuro'] .sidebar { background: #0d2419; }
+  /* Cores do gráfico do Painel ajustadas ao fundo escuro (validadas para daltonismo). */
+  :root[data-tema='escuro'] .painel-cor.atrasada { background: #c63d36; }
+  :root[data-tema='escuro'] .painel-cor.pendente { background: #c48700; }
+  :root[data-tema='escuro'] .painel-cor.em_andamento { background: #4a8fe8; }
+  :root[data-tema='escuro'] .painel-cor.concluido { background: #3aa36a; }
+  :root[data-tema='escuro'] .barra-progresso > div { background: #3aa36a; }
+  :root[data-tema='escuro'] .login-tela { background: #0b1510; }
+  :root[data-tema='escuro'] .item-alterado { background: #5a4810; box-shadow: inset 0 -2px 0 #e9bd2f; color: #fff6d8; }
+  /* Pré-visualização do cardápio das famílias: continua uma folha branca. */
+  :root[data-tema='escuro'] .cp-folha { padding: 20px 24px; border-radius: 8px; }
+  :root[data-tema='escuro'] .login-card { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); border: 1px solid var(--borda); }
+  /* O quadro de assinatura fica branco, como o papel. */
+  :root[data-tema='escuro'] .assinatura-tela-quadro { border-color: #4a5d52; }
+  :root[data-tema='escuro'] .assinatura-tela-dica { color: #6b7d74; }
+}
+
+/* Seletor de tema no rodapé do menu */
+.tema-seletor {
+  display: flex;
+  gap: 2px;
+  margin: 4px 12px 8px;
+  padding: 3px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.tema-seletor button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #cfe6da;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.tema-seletor button:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.tema-seletor button[aria-pressed='true'] { background: rgba(95, 211, 154, 0.2); color: #fff; }
+.tema-seletor button:focus-visible { outline: 2px solid #5fd39a; outline-offset: 1px; }

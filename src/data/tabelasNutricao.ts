@@ -14,7 +14,7 @@ export const ROTULO_FONTE: Record<FonteNutricional, string> = {
 };
 
 export const COR_FONTE: Record<FonteNutricional, { bg: string; text: string }> = {
-  taco: { bg: '#e6f4ea', text: '#2d6a4f' },
-  usda: { bg: '#e8f0fe', text: '#1a56db' },
-  ibge: { bg: '#fff3e0', text: '#c76b00' },
+  taco: { bg: 'var(--tom-verde-bg, #e6f4ea)', text: 'var(--tom-verde-texto, #2d6a4f)' },
+  usda: { bg: 'var(--tom-azul-bg, #e8f0fe)', text: 'var(--tom-azul-texto, #1a56db)' },
+  ibge: { bg: 'var(--tom-laranja-bg, #fff3e0)', text: 'var(--tom-laranja-texto, #c76b00)' },
 };

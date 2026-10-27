@@ -444,10 +444,10 @@ export function PaginaVisitas() {
                     </span>
                   </td>
                   <td>{v.consultor || <span style={{ color: 'var(--cinza)' }}>—</span>}</td>
-                  <td style={{ textAlign: 'center', color: '#16a34a', fontWeight: 700 }}>
+                  <td style={{ textAlign: 'center', color: 'var(--tom-verde-texto, #16a34a)', fontWeight: 700 }}>
                     {totalConformes(v) > 0 ? totalConformes(v) : <span style={{ color: 'var(--cinza)' }}>—</span>}
                   </td>
-                  <td style={{ textAlign: 'center', color: '#dc2626', fontWeight: 700 }}>
+                  <td style={{ textAlign: 'center', color: 'var(--tom-vermelho-texto, #dc2626)', fontWeight: 700 }}>
                     {totalNaoConformes(v) > 0 ? totalNaoConformes(v) : <span style={{ color: 'var(--cinza)' }}>—</span>}
                   </td>
                   <td style={{ whiteSpace: 'nowrap', fontSize: 13 }}>

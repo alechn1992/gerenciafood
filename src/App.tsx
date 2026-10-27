@@ -5,6 +5,7 @@ import { usePermissoes } from './auth/PermissoesContext';
 import { supabase } from './lib/supabase';
 import { useNovaVersaoDisponivel } from './lib/versao';
 import { Sidebar } from './components/Sidebar';
+import { useTema } from './state/useTema';
 import { Icone } from './components/Icone';
 import { PaginaLogin } from './pages/PaginaLogin';
 import { PaginaDefinirSenha } from './pages/PaginaDefinirSenha';
@@ -53,6 +54,7 @@ export function App() {
   const { telas } = usePermissoes();
   const novaVersao = useNovaVersaoDisponivel();
   const [menuAberto, setMenuAberto] = useState(false);
+  const tema = useTema();
 
   return (
     <Routes>
@@ -77,6 +79,8 @@ export function App() {
                 onSair={sair}
                 aberto={menuAberto}
                 onFechar={() => setMenuAberto(false)}
+                tema={tema.preferencia}
+                onTema={tema.escolher}
               />
 
               <main className="conteudo">

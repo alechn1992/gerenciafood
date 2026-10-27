@@ -16,10 +16,10 @@ interface EstadoIBGE {
 }
 
 const COR_CAT: Record<CategoriaSazonal, { bg: string; text: string; emoji: string; rotulo: string }> = {
-  fruta:  { bg: '#fff3e0', text: '#e65100', emoji: '🍎', rotulo: 'Frutas' },
-  verdura:{ bg: '#e8f5e9', text: '#2e7d32', emoji: '🥬', rotulo: 'Verduras' },
-  legume: { bg: '#e3f2fd', text: '#1565c0', emoji: '🥕', rotulo: 'Legumes' },
-  raiz:   { bg: '#fce4ec', text: '#880e4f', emoji: '🥔', rotulo: 'Raízes e tubérculos' },
+  fruta:  { bg: 'var(--tom-laranja-bg, #fff3e0)', text: 'var(--tom-laranja-texto, #e65100)', emoji: '🍎', rotulo: 'Frutas' },
+  verdura:{ bg: 'var(--tom-verde-bg, #e8f5e9)', text: 'var(--tom-verde-texto, #2e7d32)', emoji: '🥬', rotulo: 'Verduras' },
+  legume: { bg: 'var(--tom-azul-bg, #e3f2fd)', text: 'var(--tom-azul-texto, #1565c0)', emoji: '🥕', rotulo: 'Legumes' },
+  raiz:   { bg: 'var(--tom-rosa-bg, #fce4ec)', text: 'var(--tom-rosa-texto, #880e4f)', emoji: '🥔', rotulo: 'Raízes e tubérculos' },
 };
 
 const CATS_ORDEM: CategoriaSazonal[] = ['fruta', 'verdura', 'legume', 'raiz'];
@@ -215,8 +215,8 @@ export function PaginaSazonalidade() {
                         style={{
                           width: 32,
                           textAlign: 'center',
-                          background: mes === i + 1 ? '#e8f0fe' : undefined,
-                          color: mes === i + 1 ? '#1a56db' : undefined,
+                          background: mes === i + 1 ? 'var(--tom-azul-bg, #e8f0fe)' : undefined,
+                          color: mes === i + 1 ? 'var(--tom-azul-texto, #1a56db)' : undefined,
                           fontWeight: mes === i + 1 ? 700 : 400,
                         }}
                       >
@@ -254,9 +254,9 @@ export function PaginaSazonalidade() {
                               background: mesesItem.includes(m)
                                 ? mes === m
                                   ? cor.bg
-                                  : '#f0f0f0'
+                                  : 'var(--tom-sup, #f0f0f0)'
                                 : undefined,
-                              color: mesesItem.includes(m) && mes === m ? cor.text : '#888',
+                              color: mesesItem.includes(m) && mes === m ? cor.text : 'var(--tom-neutro-texto, #888)',
                               fontWeight: mesesItem.includes(m) && mes === m ? 700 : 400,
                             }}
                           >

@@ -4,6 +4,13 @@
 import { NavLink } from 'react-router-dom';
 import { Icone } from './Icone';
 import { rotuloVersao } from '../lib/versao';
+import type { PreferenciaTema } from '../lib/tema';
+
+const OPCOES_TEMA: { valor: PreferenciaTema; rotulo: string; dica: string }[] = [
+  { valor: 'claro', rotulo: 'Claro', dica: 'Tema claro' },
+  { valor: 'escuro', rotulo: 'Escuro', dica: 'Tema escuro' },
+  { valor: 'automatico', rotulo: 'Auto', dica: 'Seguir o tema do celular ou computador' },
+];
 
 interface ItemMenu {
   /** Permissão (tela do perfil) exigida para ver o item. */
@@ -61,6 +68,8 @@ export function Sidebar({
   onSair,
   aberto,
   onFechar,
+  tema,
+  onTema,
 }: {
   telas: string[];
   email?: string;
@@ -68,6 +77,8 @@ export function Sidebar({
   /** Gaveta aberta (telas estreitas). */
   aberto: boolean;
   onFechar: () => void;
+  tema: PreferenciaTema;
+  onTema: (t: PreferenciaTema) => void;
 }) {
   return (
     <>
@@ -118,6 +129,20 @@ export function Sidebar({
               </button>
             </div>
           )}
+          <div className="tema-seletor" role="group" aria-label="Tema da tela">
+            {OPCOES_TEMA.map((o) => (
+              <button
+                key={o.valor}
+                type="button"
+                aria-pressed={tema === o.valor}
+                title={o.dica}
+                onClick={() => onTema(o.valor)}
+              >
+                <Icone nome={o.valor} tamanho={14} />
+                {o.rotulo}
+              </button>
+            ))}
+          </div>
           <div className="sidebar-versao" title="Versão do sistema em uso nesta aba">
             Versão {rotuloVersao()}
           </div>
