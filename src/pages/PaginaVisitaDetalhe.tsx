@@ -4,6 +4,9 @@ import { useData } from '../state/DataContext';
 import type { Profissional, Visita } from '../domain/types';
 import { TIPOS_VISITA } from '../domain/types';
 import { supabase } from '../lib/supabase';
+import { chaveVisita } from '../domain/planoAcao';
+import { hojeISO, usePlanoAcao } from '../state/usePlanoAcao';
+import { AcaoInline } from './AcaoInline';
 
 function formatarData(iso?: string) {
   if (!iso) return '—';
@@ -21,6 +24,18 @@ export function PaginaVisitaDetalhe() {
   const [emailDest, setEmailDest] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [msgEmail, setMsgEmail] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  const plano = usePlanoAcao(visita?.clienteId);
+  const [msgPlano, setMsgPlano] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+
+  async function salvarPlano() {
+    try {
+      await plano.salvar();
+      setMsgPlano({ tipo: 'ok', texto: 'Plano de ação salvo.' });
+    } catch {
+      setMsgPlano({ tipo: 'erro', texto: 'Não foi possível salvar o plano de ação.' });
+    }
+    setTimeout(() => setMsgPlano(null), 4000);
+  }
 
   useEffect(() => {
     (async () => {
@@ -230,7 +245,37 @@ export function PaginaVisitaDetalhe() {
                   >
                     {item.status === 'conforme' ? '✔' : '✘'}
                   </span>
-                  <span>{item.descricao}</span>
+                  <span style={{ flex: 1 }}>
+                    {item.descricao}
+                    {item.status === 'nao_conforme' && (() => {
+                      const chave = chaveVisita(visita.id, item.id);
+                      const acao = plano.acaoPorChave(chave);
+                      return (
+                        <>
+                          <AcaoInline
+                            acao={acao}
+                            onChange={(campos) =>
+                              plano.atualizarAcao(chave, campos, {
+                                itemId: item.id,
+                                itemTexto: secao.nome ? `${secao.nome}: ${item.descricao}` : item.descricao,
+                                origem: 'visita',
+                                origemId: visita.id,
+                                origemData: visita.data,
+                                hoje: hojeISO(),
+                              })
+                            }
+                          />
+                          {acao?.acao && (
+                            <div className="somente-print" style={{ fontSize: '0.82rem', marginTop: 4 }}>
+                              <strong>Ação corretiva:</strong> {acao.acao}
+                              {acao.responsavel && ` — Responsável: ${acao.responsavel}`}
+                              {acao.prazo && ` — Prazo: ${formatarData(acao.prazo)}`}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </span>
                 </li>
               ))}
               {secao.itens.length === 0 && (
@@ -241,6 +286,23 @@ export function PaginaVisitaDetalhe() {
             </ul>
           </div>
         ))}
+
+        {totalNaoConformes > 0 && (
+          <div className="acoes no-print" style={{ margin: '12px 0', alignItems: 'center' }}>
+            <button className="btn" onClick={salvarPlano} disabled={!plano.sujo}>
+              💾 Salvar plano de ação
+            </button>
+            <Link to={`/clientes/${visita.clienteId}/plano-acao`} className="btn secundario">
+              📋 Ver plano completo
+            </Link>
+            {msgPlano && (
+              <span className={msgPlano.tipo === 'ok' ? 'login-aviso sucesso' : 'login-aviso erro'}>{msgPlano.texto}</span>
+            )}
+            {plano.sujo && !msgPlano && (
+              <span style={{ fontSize: 13, color: 'var(--cinza)' }}>Alterações no plano ainda não salvas.</span>
+            )}
+          </div>
+        )}
 
         {/* Próxima visita */}
         {visita.proximaVisita && (

@@ -17,6 +17,7 @@ import { PaginaReceita } from './pages/PaginaReceita';
 import { PaginaPreferencias } from './pages/PaginaPreferencias';
 import { PaginaCategorias } from './pages/PaginaCategorias';
 import { PaginaCalendario } from './pages/PaginaCalendario';
+import { PaginaPainel } from './pages/PaginaPainel';
 import { PaginaInsumos } from './pages/PaginaInsumos';
 import { PaginaConfiguracoes } from './pages/PaginaConfiguracoes';
 import { PaginaSazonalidade } from './pages/PaginaSazonalidade';
@@ -69,6 +70,7 @@ const NAV_ESTRUTURA: NavItem[] = [
   {
     tipo: 'grupo', id: 'relatorios', label: 'Relatórios',
     filhos: [
+      { tela: 'relatorio', label: '📊 Painel', to: '/painel' },
       { tela: 'relatorio', label: 'Checklist de Boas Práticas', to: '/relatorio' },
       { tela: 'visitas',   label: 'Visitas',                    to: '/visitas' },
     ],
@@ -185,6 +187,7 @@ export function App() {
                   <Route path="/clientes/:id/relatorio" element={<PaginaRelatorio />} />
                   <Route path="/clientes/:id/plano-acao" element={<PaginaPlanoAcao />} />
                   <Route path="/relatorio" element={<PaginaRelatorioMenu />} />
+                  <Route path="/painel" element={<PaginaPainel />} />
                   <Route path="/pratos" element={<PaginaPratos />} />
                   <Route path="/pratos/:id/receita" element={<PaginaReceita />} />
                   <Route path="/insumos" element={<PaginaInsumos />} />

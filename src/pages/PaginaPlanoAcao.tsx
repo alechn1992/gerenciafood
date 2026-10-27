@@ -1,22 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
-import type { AcaoCorretiva, PlanoAcao, StatusAcao } from '../domain/types';
-import {
-  CHECKLIST_BOAS_PRATICAS,
-  CHECKLIST_CEI_SESA_162,
-} from '../domain/legislacao';
-const COR_STATUS: Record<StatusAcao, string> = {
-  pendente: '#e53935',
-  em_andamento: '#f59e0b',
-  concluido: '#16a34a',
+import type { AcaoCorretiva, OrigemAcao, StatusAcao } from '../domain/types';
+import { chaveAcao, origemDe, resumoAcoes, situacaoAcao, type SituacaoAcao } from '../domain/planoAcao';
+import { formatarData } from '../lib/datas';
+import { hojeISO, usePlanoAcao } from '../state/usePlanoAcao';
+import { SeloSituacao } from './AcaoInline';
+
+const ROTULO_ORIGEM: Record<OrigemAcao, string> = {
+  checklist: 'Checklist',
+  visita: 'Visita',
+  manual: 'Manual',
 };
 
-const ROTULO_STATUS: Record<StatusAcao, string> = {
-  pendente: 'Pendente',
-  em_andamento: 'Em andamento',
-  concluido: 'Concluído',
-};
+/** Ordem de exibição: o que exige atenção primeiro. */
+const ORDEM: Record<SituacaoAcao, number> = { atrasada: 0, pendente: 1, em_andamento: 2, concluido: 3 };
 
 export function PaginaPlanoAcao() {
   const { id } = useParams();
@@ -35,74 +33,37 @@ export function PaginaPlanoAcao() {
 }
 
 function PlanoAcaoCliente({ clienteId, clienteNome }: { clienteId: string; clienteNome: string }) {
-  const { repo } = useData();
-  const [acoes, setAcoes] = useState<AcaoCorretiva[]>([]);
-  const [planoId] = useState(() => crypto.randomUUID());
-  const [relatorioId, setRelatorioId] = useState('');
+  const plano = usePlanoAcao(clienteId);
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
-  const [carregando, setCarregando] = useState(true);
+  const [filtroSituacao, setFiltroSituacao] = useState<'abertas' | SituacaoAcao | 'todas'>('abertas');
+  const [filtroOrigem, setFiltroOrigem] = useState<OrigemAcao | 'todas'>('todas');
+  const hoje = hojeISO();
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const rel = await repo.carregarRelatorio(clienteId);
-        // carregarPlanoAcao pode falhar se a tabela ainda não existir no Supabase
-        const plano = await repo.carregarPlanoAcao(clienteId).catch(() => null);
+  const resumo = resumoAcoes(plano.acoes, hoje);
 
-        if (plano) {
-          setAcoes(plano.acoes);
-          setRelatorioId(plano.relatorioId);
-          return;
-        }
+  const listadas = useMemo(
+    () =>
+      plano.acoes
+        .map((a, idx) => ({ a, idx, s: situacaoAcao(a, hoje) }))
+        .filter(({ a, s }) => {
+          if (filtroOrigem !== 'todas' && origemDe(a) !== filtroOrigem) return false;
+          if (filtroSituacao === 'todas') return true;
+          if (filtroSituacao === 'abertas') return s !== 'concluido';
+          return s === filtroSituacao;
+        })
+        .sort((x, y) => ORDEM[x.s] - ORDEM[y.s] || (x.a.prazo ?? '').localeCompare(y.a.prazo ?? '')),
+    [plano.acoes, filtroOrigem, filtroSituacao, hoje],
+  );
 
-        // Gera plano inicial a partir das não conformidades do relatório
-        if (rel) {
-          setRelatorioId(rel.id);
-          const todosItens = [
-            ...CHECKLIST_BOAS_PRATICAS,
-            ...CHECKLIST_CEI_SESA_162,
-          ].flatMap((b) => b.itens);
-
-          const prazoDefault = (() => {
-            const d = new Date();
-            d.setDate(d.getDate() + 30);
-            return d.toISOString().slice(0, 10);
-          })();
-
-          const novasAcoes: AcaoCorretiva[] = todosItens
-            .filter((item) => rel.respostas[item.id] === 'nao_conforme')
-            .map((item) => ({
-              itemId: item.id,
-              itemTexto: item.texto,
-              acao: '',
-              responsavel: '',
-              prazo: prazoDefault,
-              status: 'pendente' as StatusAcao,
-              observacao: rel.observacoes[item.id] ?? '',
-            }));
-          setAcoes(novasAcoes);
-        }
-      } catch {
-        // Continua com estado vazio se houver erro de carregamento
-      } finally {
-        setCarregando(false);
-      }
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clienteId]);
-
-  const atualizar = (idx: number, campo: keyof AcaoCorretiva, valor: string) => {
-    setAcoes((prev) =>
-      prev.map((a, i) => (i === idx ? { ...a, [campo]: valor } : a)),
-    );
-  };
+  const atualizar = (a: AcaoCorretiva, campos: Partial<AcaoCorretiva>) =>
+    plano.atualizarAcao(chaveAcao(a), campos);
 
   const adicionarManual = () => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
-    setAcoes((prev) => [
-      ...prev,
+    plano.substituirAcoes([
+      ...plano.acoes,
       {
         itemId: `manual-${Date.now()}`,
         itemTexto: '',
@@ -111,27 +72,23 @@ function PlanoAcaoCliente({ clienteId, clienteNome }: { clienteId: string; clien
         prazo: d.toISOString().slice(0, 10),
         status: 'pendente',
         observacao: '',
+        origem: 'manual',
       },
     ]);
+    setFiltroSituacao('abertas');
+    setFiltroOrigem('todas');
   };
 
   const remover = (idx: number) => {
-    setAcoes((prev) => prev.filter((_, i) => i !== idx));
+    if (!confirm('Remover esta ação do plano?')) return;
+    plano.substituirAcoes(plano.acoes.filter((_, i) => i !== idx));
   };
 
   const salvar = async () => {
     setSalvando(true);
     setMsg(null);
     try {
-      const plano: PlanoAcao = {
-        id: planoId,
-        clienteId,
-        relatorioId,
-        acoes,
-        criadoEm: new Date().toISOString(),
-        atualizadoEm: new Date().toISOString(),
-      };
-      await repo.salvarPlanoAcao(plano);
+      await plano.salvar();
       setMsg({ tipo: 'ok', texto: 'Plano de ação salvo.' });
     } catch {
       setMsg({ tipo: 'erro', texto: 'Erro ao salvar. Tente novamente.' });
@@ -141,14 +98,14 @@ function PlanoAcaoCliente({ clienteId, clienteNome }: { clienteId: string; clien
     }
   };
 
-  const pendentes = acoes.filter((a) => a.status === 'pendente').length;
-  const emAndamento = acoes.filter((a) => a.status === 'em_andamento').length;
-  const concluidos = acoes.filter((a) => a.status === 'concluido').length;
-  const pct = acoes.length > 0 ? Math.round((concluidos / acoes.length) * 100) : 0;
-
-  if (carregando) {
+  if (plano.carregando) {
     return <p style={{ padding: 32, color: 'var(--cinza)' }}>Carregando…</p>;
   }
+
+  const origemTexto = (a: AcaoCorretiva) => {
+    const o = origemDe(a);
+    return a.origemData ? `${ROTULO_ORIGEM[o]} de ${formatarData(a.origemData)}` : ROTULO_ORIGEM[o];
+  };
 
   return (
     <div>
@@ -156,77 +113,100 @@ function PlanoAcaoCliente({ clienteId, clienteNome }: { clienteId: string; clien
         <div>
           <h1>Plano de Ação — {clienteNome}</h1>
           <p className="subtitulo">
-            Ações corretivas para as não conformidades identificadas no checklist.
+            Ações corretivas para as não conformidades do checklist de boas práticas e das visitas.
+            Quando o item volta a ficar conforme, a ação é concluída sozinha.
           </p>
         </div>
         <div className="acoes">
-          <Link to={`/clientes/${clienteId}/relatorio`} className="btn secundario">
-            ← Relatório
-          </Link>
+          <Link to="/painel" className="btn secundario">📊 Painel</Link>
+          <Link to={`/clientes/${clienteId}/relatorio`} className="btn secundario">Checklist</Link>
+          <Link to={`/visitas?cliente=${clienteId}`} className="btn secundario">Visitas</Link>
           <button className="btn secundario no-print" onClick={() => window.print()}>
             🖨️ Imprimir / PDF
           </button>
         </div>
       </div>
 
+      {plano.sujo && (
+        <div className="aviso no-print" style={{ marginBottom: 12 }}>
+          Há mudanças no plano ainda não salvas (inclusive não conformidades trazidas do checklist
+          ou das visitas). Clique em <strong>💾 Salvar plano</strong>.
+        </div>
+      )}
+
       {/* Resumo */}
       <div className="card">
         <div className="linha" style={{ flexWrap: 'wrap', gap: 24, alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <Indicador titulo="Total" valor={String(acoes.length)} />
-            <Indicador titulo="Pendente" valor={String(pendentes)} cor={COR_STATUS.pendente} />
-            <Indicador titulo="Em andamento" valor={String(emAndamento)} cor={COR_STATUS.em_andamento} />
-            <Indicador titulo="Concluído" valor={String(concluidos)} cor={COR_STATUS.concluido} />
+            <Indicador titulo="Total" valor={resumo.total} />
+            <Indicador titulo="Pendentes" valor={resumo.pendentes} cor="#6b4a00" />
+            <Indicador titulo="Em andamento" valor={resumo.emAndamento} cor="#1f4f99" />
+            <Indicador titulo="Concluídas" valor={resumo.concluidas} cor="#1e6b3f" />
+            <Indicador titulo="Atrasadas" valor={resumo.atrasadas} cor="#b3261e" destaque={resumo.atrasadas > 0} />
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-              <span>Progresso</span>
-              <strong>{pct}%</strong>
+              <span>Concluídas</span>
+              <strong>{resumo.progresso}%</strong>
             </div>
-            <div style={{ background: 'var(--borda)', borderRadius: 8, height: 10, overflow: 'hidden' }}>
-              <div style={{ width: `${pct}%`, height: '100%', background: COR_STATUS.concluido, transition: 'width 0.3s' }} />
+            <div className="barra-progresso">
+              <div style={{ width: `${resumo.progresso}%` }} />
             </div>
           </div>
         </div>
       </div>
 
-      {acoes.length === 0 && (
+      <div className="filtros-pratos no-print">
+        <select value={filtroSituacao} onChange={(e) => setFiltroSituacao(e.target.value as typeof filtroSituacao)} aria-label="Situação">
+          <option value="abertas">Abertas (não concluídas)</option>
+          <option value="atrasada">Só atrasadas</option>
+          <option value="pendente">Só pendentes</option>
+          <option value="em_andamento">Só em andamento</option>
+          <option value="concluido">Só concluídas</option>
+          <option value="todas">Todas</option>
+        </select>
+        <select value={filtroOrigem} onChange={(e) => setFiltroOrigem(e.target.value as typeof filtroOrigem)} aria-label="Origem">
+          <option value="todas">Checklist, visitas e manuais</option>
+          <option value="checklist">Só do checklist</option>
+          <option value="visita">Só das visitas</option>
+          <option value="manual">Só manuais</option>
+        </select>
+        <span style={{ fontSize: 13, color: 'var(--cinza)' }}>
+          {listadas.length} de {plano.acoes.length} ação(ões)
+        </span>
+      </div>
+
+      {plano.acoes.length === 0 && (
         <div className="card vazio">
-          {relatorioId
-            ? 'Nenhuma não conformidade encontrada no relatório. Use o botão abaixo para adicionar ações manuais.'
-            : 'Nenhum relatório salvo para este cliente. Preencha o checklist primeiro.'}
+          {plano.checklists.length > 0 || plano.visitas.length > 0
+            ? 'Nenhuma não conformidade no checklist mais recente nem nas visitas. Use o botão abaixo para adicionar ações manuais.'
+            : 'Nenhum checklist ou visita registrada para este cliente ainda.'}
         </div>
       )}
+      {plano.acoes.length > 0 && listadas.length === 0 && (
+        <div className="card vazio">Nenhuma ação com esses filtros.</div>
+      )}
 
-      {/* Tabela de ações */}
-      {acoes.map((a, idx) => (
-        <div key={a.itemId + idx} className="card" style={{ marginBottom: 12 }}>
+      {listadas.map(({ a, idx }) => (
+        <div key={chaveAcao(a)} className="card" style={{ marginBottom: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              {a.itemTexto ? (
+              <div style={{ fontSize: 12, color: 'var(--cinza)', marginBottom: 2 }}>
+                {origemTexto(a)}
+                {a.resolvidoEm && ` · ficou conforme em ${formatarData(a.resolvidoEm)}`}
+              </div>
+              {a.itemTexto || origemDe(a) !== 'manual' ? (
                 <p style={{ margin: 0, fontWeight: 500 }}>{a.itemTexto}</p>
               ) : (
                 <input
                   placeholder="Descrição da não conformidade"
                   value={a.itemTexto}
-                  onChange={(e) => atualizar(idx, 'itemTexto', e.target.value)}
+                  onChange={(e) => atualizar(a, { itemTexto: e.target.value })}
                   style={{ width: '100%', fontWeight: 500 }}
                 />
               )}
             </div>
-            <span
-              style={{
-                background: COR_STATUS[a.status] + '22',
-                color: COR_STATUS[a.status],
-                borderRadius: 12,
-                padding: '2px 10px',
-                fontSize: 12,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {ROTULO_STATUS[a.status]}
-            </span>
+            <SeloSituacao acao={a} />
             <button
               className="btn pequeno secundario no-print"
               onClick={() => remover(idx)}
@@ -242,7 +222,7 @@ function PlanoAcaoCliente({ clienteId, clienteNome }: { clienteId: string; clien
               <label style={{ fontSize: 12 }}>Ação corretiva</label>
               <textarea
                 value={a.acao}
-                onChange={(e) => atualizar(idx, 'acao', e.target.value)}
+                onChange={(e) => atualizar(a, { acao: e.target.value })}
                 placeholder="O que será feito…"
                 rows={2}
                 style={{ width: '100%', resize: 'vertical', fontSize: 13 }}
@@ -250,51 +230,33 @@ function PlanoAcaoCliente({ clienteId, clienteNome }: { clienteId: string; clien
             </div>
             <div>
               <label style={{ fontSize: 12 }}>Responsável</label>
-              <input
-                value={a.responsavel}
-                onChange={(e) => atualizar(idx, 'responsavel', e.target.value)}
-                placeholder="Nome do responsável"
-              />
+              <input value={a.responsavel} onChange={(e) => atualizar(a, { responsavel: e.target.value })} placeholder="Nome do responsável" />
             </div>
             <div>
               <label style={{ fontSize: 12 }}>Prazo</label>
-              <input
-                type="date"
-                value={a.prazo}
-                onChange={(e) => atualizar(idx, 'prazo', e.target.value)}
-              />
+              <input type="date" value={a.prazo} onChange={(e) => atualizar(a, { prazo: e.target.value })} />
             </div>
             <div>
               <label style={{ fontSize: 12 }}>Status</label>
-              <select
-                value={a.status}
-                onChange={(e) => atualizar(idx, 'status', e.target.value as StatusAcao)}
-              >
+              <select value={a.status} onChange={(e) => atualizar(a, { status: e.target.value as StatusAcao })}>
                 <option value="pendente">Pendente</option>
                 <option value="em_andamento">Em andamento</option>
-                <option value="concluido">Concluído</option>
+                <option value="concluido">Concluída</option>
               </select>
             </div>
-            {(a.observacao !== undefined) && (
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontSize: 12 }}>Observação</label>
-                <input
-                  value={a.observacao ?? ''}
-                  onChange={(e) => atualizar(idx, 'observacao', e.target.value)}
-                  placeholder="Observações adicionais"
-                />
-              </div>
-            )}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ fontSize: 12 }}>Observação</label>
+              <input value={a.observacao ?? ''} onChange={(e) => atualizar(a, { observacao: e.target.value })} placeholder="Observações adicionais" />
+            </div>
           </div>
         </div>
       ))}
 
-      {/* Ações rodapé */}
       <div className="acoes no-print" style={{ marginTop: 16 }}>
         <button className="btn secundario" onClick={adicionarManual}>
           + Adicionar ação manual
         </button>
-        <button className="btn" onClick={salvar} disabled={salvando || acoes.length === 0}>
+        <button className="btn" onClick={salvar} disabled={salvando}>
           {salvando ? 'Salvando…' : '💾 Salvar plano'}
         </button>
         {msg && (
@@ -304,7 +266,6 @@ function PlanoAcaoCliente({ clienteId, clienteNome }: { clienteId: string; clien
         )}
       </div>
 
-      {/* Rodapé de impressão */}
       <div className="print-only" style={{ marginTop: 40, fontSize: 12, color: '#666' }}>
         Gerado em {new Date().toLocaleDateString('pt-BR')} — GerenciaFood
       </div>
@@ -312,9 +273,9 @@ function PlanoAcaoCliente({ clienteId, clienteNome }: { clienteId: string; clien
   );
 }
 
-function Indicador({ titulo, valor, cor }: { titulo: string; valor: string; cor?: string }) {
+function Indicador({ titulo, valor, cor, destaque }: { titulo: string; valor: number; cor?: string; destaque?: boolean }) {
   return (
-    <div style={{ textAlign: 'center', minWidth: 70 }}>
+    <div style={{ textAlign: 'center', minWidth: 70, padding: destaque ? '0 8px' : undefined, borderRadius: 8, background: destaque ? '#fde8e4' : undefined }}>
       <div style={{ fontSize: 28, fontWeight: 700, color: cor ?? 'var(--texto)' }}>{valor}</div>
       <div style={{ fontSize: 12, color: 'var(--cinza)' }}>{titulo}</div>
     </div>

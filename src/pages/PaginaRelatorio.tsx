@@ -10,6 +10,9 @@ import {
 } from '../domain/legislacao';
 import { formatarData } from '../lib/datas';
 import { supabase } from '../lib/supabase';
+import { chaveChecklist, resumoAcoes } from '../domain/planoAcao';
+import { hojeISO, usePlanoAcao } from '../state/usePlanoAcao';
+import { AcaoInline } from './AcaoInline';
 
 type Situacao = 'conforme' | 'nao_conforme' | 'na' | '';
 
@@ -23,6 +26,7 @@ function lerImagemComoDataURL(file: File): Promise<string> {
 
 export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
   const { repo, profissionais } = useData();
+  const plano = usePlanoAcao(cliente.id);
   const [respostas, setRespostas] = useState<Record<string, Situacao>>({});
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
   const [fotos, setFotos] = useState<Record<string, string>>({});
@@ -180,10 +184,14 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
       };
       const jaExistia = salvos.find((x) => x.id === rel.id);
       await repo.salvarRelatorio(jaExistia ? { ...rel, geradoEm: jaExistia.geradoEm } : rel);
-      setSalvos(await repo.listarRelatorios(cliente.id));
+      const lista = await repo.listarRelatorios(cliente.id);
+      setSalvos(lista);
+      // O plano acompanha o checklist: não conformidades novas viram ações e as
+      // que ficaram conformes no checklist mais recente são concluídas.
+      await plano.salvar({ checklists: lista });
       setAbertoSalvo(true);
       setInstantaneo(estadoAtual());
-      setMsgSalvar({ tipo: 'ok', texto: `Checklist de ${formatarData(dataAval)} salvo.` });
+      setMsgSalvar({ tipo: 'ok', texto: `Checklist de ${formatarData(dataAval)} salvo, com o plano de ação.` });
     } catch {
       setMsgSalvar({ tipo: 'erro', texto: 'Erro ao salvar. Tente novamente.' });
     } finally {
@@ -284,6 +292,14 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
             </p>
           </div>
           <div className="acoes">
+            <Link to={`/clientes/${cliente.id}/plano-acao`} className="btn secundario" title="Ações corretivas do checklist e das visitas">
+              📋 Plano de ação
+              {(() => {
+                const r = resumoAcoes(plano.acoes, hojeISO());
+                const abertas = r.total - r.concluidas;
+                return abertas > 0 ? ` (${abertas} aberta${abertas > 1 ? 's' : ''}${r.atrasadas ? `, ${r.atrasadas} atrasada${r.atrasadas > 1 ? 's' : ''}` : ''})` : '';
+              })()}
+            </Link>
             <button className="btn" onClick={() => novoChecklist(false)}>
               + Novo checklist
             </button>
@@ -564,6 +580,22 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
                           alt="Foto evidência"
                         />
                       </div>
+                    )}
+                    {respostas[item.id] === 'nao_conforme' && (
+                      <AcaoInline
+                        acao={plano.acaoPorChave(chaveChecklist(item.id))}
+                        onChange={(campos) =>
+                          plano.atualizarAcao(chaveChecklist(item.id), campos, {
+                            itemId: item.id,
+                            itemTexto: item.texto,
+                            origem: 'checklist',
+                            origemId: relatorioIdRef.current,
+                            origemData: dataAval,
+                            observacao: observacoes[item.id] ?? '',
+                            hoje: hojeISO(),
+                          })
+                        }
+                      />
                     )}
                   </td>
                   <td style={{ verticalAlign: 'top', paddingTop: 12 }}>
