@@ -243,8 +243,8 @@ export function PaginaVisitaDetalhe() {
         {/* Resumo de conformidades (oculto na impressão se não houver seções) */}
         {totalItens > 0 && (
           <div className="relatorio-visita-resumo no-print">
-            <span style={{ color: '#16a34a', fontWeight: 700 }}>✔ {totalConformes} conforme{totalConformes !== 1 ? 's' : ''}</span>
-            <span style={{ color: '#dc2626', fontWeight: 700 }}>✘ {totalNaoConformes} não conforme{totalNaoConformes !== 1 ? 's' : ''}</span>
+            <span style={{ color: 'var(--tom-verde-texto, #16a34a)', fontWeight: 700 }}>✔ {totalConformes} conforme{totalConformes !== 1 ? 's' : ''}</span>
+            <span style={{ color: 'var(--tom-vermelho-texto, #dc2626)', fontWeight: 700 }}>✘ {totalNaoConformes} não conforme{totalNaoConformes !== 1 ? 's' : ''}</span>
             <span style={{ color: 'var(--cinza)' }}>{totalItens} iten{totalItens !== 1 ? 's' : 's'} no total</span>
           </div>
         )}
@@ -463,17 +463,17 @@ export function PaginaVisitaDetalhe() {
         }
         .relatorio-visita-cabecalho td {
           padding: 6px 10px;
-          border: 1px solid #ccc;
+          border: 1px solid var(--tom-borda, #ccc);
         }
         .relatorio-visita-cabecalho td.label {
           font-weight: 600;
-          background: #f5f5f5;
+          background: var(--tom-sup, #f5f5f5);
           width: 130px;
           white-space: nowrap;
         }
         .relatorio-visita-obs {
-          background: #f9f9f9;
-          border: 1px solid #e0e0e0;
+          background: var(--tom-sup, #f9f9f9);
+          border: 1px solid var(--tom-borda, #e0e0e0);
           border-left: 4px solid #f59e0b;
           padding: 10px 14px;
           margin-bottom: 20px;
@@ -486,13 +486,13 @@ export function PaginaVisitaDetalhe() {
           margin-bottom: 16px;
           font-size: 14px;
           padding: 10px 14px;
-          background: #f9f9f9;
+          background: var(--tom-sup, #f9f9f9);
           border-radius: 8px;
           border: 1px solid var(--borda);
         }
         .relatorio-visita-secao {
           margin-bottom: 20px;
-          border: 1px solid #e0e0e0;
+          border: 1px solid var(--tom-borda, #e0e0e0);
           border-radius: 6px;
           overflow: hidden;
         }
@@ -516,7 +516,7 @@ export function PaginaVisitaDetalhe() {
           padding: 5px 0;
           font-size: 14px;
           line-height: 1.5;
-          border-bottom: 1px solid #f0f0f0;
+          border-bottom: 1px solid var(--tom-borda, #f0f0f0);
         }
         .relatorio-visita-item:last-child { border-bottom: none; }
         .relatorio-visita-icone {
@@ -530,20 +530,20 @@ export function PaginaVisitaDetalhe() {
           max-width: 180px;
           object-fit: contain;
         }
-        .relatorio-visita-icone.conforme { color: #16a34a; }
-        .relatorio-visita-icone.nao-conforme { color: #dc2626; }
+        .relatorio-visita-icone.conforme { color: var(--tom-verde-texto, #16a34a); }
+        .relatorio-visita-icone.nao-conforme { color: var(--tom-vermelho-texto, #dc2626); }
         .relatorio-visita-proxima {
           margin: 20px 0;
           padding: 10px 14px;
-          background: #f0fdf4;
-          border: 1px solid #bbf7d0;
+          background: var(--tom-sup-verde, #f0fdf4);
+          border: 1px solid var(--tom-borda, #bbf7d0);
           border-radius: 6px;
           font-size: 14px;
         }
         .relatorio-visita-rodape {
           margin-top: 48px;
           padding-top: 16px;
-          border-top: 1px solid #e0e0e0;
+          border-top: 1px solid var(--tom-borda, #e0e0e0);
           text-align: center;
         }
         .relatorio-visita-assinatura {
@@ -551,7 +551,7 @@ export function PaginaVisitaDetalhe() {
           text-align: center;
         }
         .relatorio-visita-assinatura-linha {
-          border-bottom: 1px solid #333;
+          border-bottom: 1px solid var(--texto, #333);
           width: 220px;
           margin: 0 auto 8px;
         }
@@ -562,7 +562,7 @@ export function PaginaVisitaDetalhe() {
         .relatorio-visita-footer-impressao {
           margin-top: 32px;
           font-size: 11px;
-          color: #888;
+          color: var(--tom-neutro-texto, #888);
           text-align: center;
         }
 

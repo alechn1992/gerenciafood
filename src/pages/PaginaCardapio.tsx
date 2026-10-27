@@ -1214,7 +1214,7 @@ function GradeTurma({
                 <th key={d.valor}>
                   {d.nome}
                   {aviso && (
-                    <div style={{ marginTop: 4, color: '#8a4b00', background: '#fff4e0', borderRadius: 4, padding: '1px 6px', fontSize: 11, display: 'inline-block' }}>
+                    <div style={{ marginTop: 4, color: 'var(--tom-amarelo-texto, #8a4b00)', background: 'var(--tom-amarelo-bg, #fff4e0)', borderRadius: 4, padding: '1px 6px', fontSize: 11, display: 'inline-block' }}>
                       {aviso}
                     </div>
                   )}

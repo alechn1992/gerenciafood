@@ -233,7 +233,7 @@ export function PaginaPainel() {
                             <BarraSituacoes contagem={cont} total={d.acoes.length} />
                             <div style={{ fontSize: 12, marginTop: 4 }}>
                               {d.acoes.length - cont.concluido} aberta(s)
-                              {cont.atrasada > 0 && <strong style={{ color: '#9a2f1c' }}> · {cont.atrasada} atrasada(s)</strong>}
+                              {cont.atrasada > 0 && <strong style={{ color: 'var(--tom-vermelho-texto, #9a2f1c)' }}> · {cont.atrasada} atrasada(s)</strong>}
                               {' · '}
                               {cont.concluido} concluída(s)
                             </div>
