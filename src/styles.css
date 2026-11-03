@@ -1184,3 +1184,35 @@ i.painel-cor { width: 10px; height: 10px; border-radius: 2px; vertical-align: -1
 .tema-seletor button:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
 .tema-seletor button[aria-pressed='true'] { background: rgba(95, 211, 154, 0.2); color: #fff; }
 .tema-seletor button:focus-visible { outline: 2px solid #5fd39a; outline-offset: 1px; }
+
+/* Filtros da Sazonalidade */
+.filtros-safra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--borda);
+}
+.filtros-safra > input { flex: 1 1 240px; max-width: 360px; }
+.filtros-safra .chip { font: inherit; font-size: 0.85rem; }
+.filtros-safra .chip:not(.on) { color: inherit; }
+.filtros-safra-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: normal;
+  cursor: pointer;
+}
+.filtros-safra-check input { width: auto; margin: 0; }
+.fase-safra {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
