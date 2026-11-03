@@ -8,6 +8,13 @@ import {
   type CategoriaSazonal,
   type RegiaoClimatica,
 } from '../data/sazonalidade';
+import { faseSafra, filtrarSafra, type FaseSafra } from '../domain/safra';
+
+const ROTULO_FASE: Record<FaseSafra, string> = {
+  inicio: 'começa',
+  fim: 'último mês',
+  unico: 'só este mês',
+};
 
 interface EstadoIBGE {
   id: number;
@@ -55,8 +62,11 @@ const ESTADOS_FALLBACK: EstadoIBGE[] = [
 ].sort((a, b) => a.nome.localeCompare(b.nome));
 
 export function PaginaSazonalidade() {
-  const hoje = new Date();
-  const [mes, setMes] = useState<number>(hoje.getMonth() + 1);
+  const mesAtual = new Date().getMonth() + 1;
+  const [mes, setMes] = useState<number>(mesAtual);
+  const [busca, setBusca] = useState('');
+  const [categorias, setCategorias] = useState<CategoriaSazonal[]>([]);
+  const [soEmSafra, setSoEmSafra] = useState(true);
   const [uf, setUf] = useState<string>(() => localStorage.getItem('sazonalidade_uf') ?? 'SP');
   const [estados, setEstados] = useState<EstadoIBGE[]>(ESTADOS_FALLBACK);
   const [apiOk, setApiOk] = useState<boolean | null>(null);
@@ -78,10 +88,16 @@ export function PaginaSazonalidade() {
 
   const regiao = UF_PARA_REGIAO[uf] as RegiaoClimatica | undefined;
 
+  const totalEmSafra = useMemo(() => (regiao ? itensEmSafra(mes, regiao).length : 0), [mes, regiao]);
+
   const itensSafra = useMemo(
-    () => (regiao ? itensEmSafra(mes, regiao) : []),
-    [mes, regiao],
+    () => (regiao ? filtrarSafra(SAZONALIDADE, regiao, { busca, categorias, soEmSafra: true, mes }) : []),
+    [mes, regiao, busca, categorias],
   );
+
+  const alternarCategoria = (cat: CategoriaSazonal) =>
+    setCategorias((atual) => (atual.includes(cat) ? atual.filter((c) => c !== cat) : [...atual, cat]));
+  const filtrando = busca.trim() !== '' || categorias.length > 0;
 
   const porCategoria = useMemo(() => {
     const mapa: Partial<Record<CategoriaSazonal, typeof itensSafra>> = {};
@@ -93,8 +109,8 @@ export function PaginaSazonalidade() {
   }, [itensSafra]);
 
   const gradeAnual = useMemo(
-    () => (regiao ? SAZONALIDADE.filter((i) => (i.meses[regiao] ?? []).length > 0) : []),
-    [regiao],
+    () => (regiao ? filtrarSafra(SAZONALIDADE, regiao, { busca, categorias, soEmSafra, mes }) : []),
+    [regiao, busca, categorias, soEmSafra, mes],
   );
 
   return (
@@ -134,16 +150,51 @@ export function PaginaSazonalidade() {
             >
               {MESES_NOMES.map((nome, i) => (
                 <option key={i + 1} value={i + 1}>
-                  {nome}
+                  {nome}{i + 1 === mesAtual ? ' (mês atual)' : ''}
                 </option>
               ))}
             </select>
           </div>
+          {mes !== mesAtual && (
+            <div style={{ alignSelf: 'flex-end' }}>
+              <button type="button" className="btn secundario" onClick={() => setMes(mesAtual)}>
+                Voltar para {MESES_NOMES[mesAtual - 1]}
+              </button>
+            </div>
+          )}
           {regiao && (
             <div style={{ alignSelf: 'flex-end', paddingBottom: 3 }}>
               <span className="tag">Região: {NOME_REGIAO[regiao]}</span>
             </div>
           )}
+        </div>
+
+        <div className="filtros-safra">
+          <input
+            type="search"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar fruta, verdura, legume…"
+            aria-label="Buscar item"
+          />
+          <div className="chips" role="group" aria-label="Filtrar por tipo">
+            {CATS_ORDEM.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                className={`chip${categorias.includes(cat) ? ' on' : ''}`}
+                aria-pressed={categorias.includes(cat)}
+                onClick={() => alternarCategoria(cat)}
+              >
+                {COR_CAT[cat].emoji} {COR_CAT[cat].rotulo}
+              </button>
+            ))}
+            {filtrando && (
+              <button type="button" className="btn-link" onClick={() => { setBusca(''); setCategorias([]); }}>
+                limpar filtros
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -156,13 +207,16 @@ export function PaginaSazonalidade() {
               <span
                 style={{ fontWeight: 400, fontSize: 14, marginLeft: 12, color: 'var(--cinza)' }}
               >
-                {itensSafra.length} {itensSafra.length === 1 ? 'item' : 'itens'} — {uf} ({NOME_REGIAO[regiao]})
+                {filtrando ? `${itensSafra.length} de ${totalEmSafra}` : itensSafra.length}{' '}
+                {itensSafra.length === 1 && !filtrando ? 'item' : 'itens'} — {uf} ({NOME_REGIAO[regiao]})
               </span>
             </h3>
 
             {itensSafra.length === 0 ? (
               <p style={{ color: 'var(--cinza)' }}>
-                Nenhum item mapeado para este mês na região {NOME_REGIAO[regiao]}.
+                {filtrando
+                  ? 'Nenhum item em safra neste mês com esses filtros.'
+                  : `Nenhum item mapeado para este mês na região ${NOME_REGIAO[regiao]}.`}
               </p>
             ) : (
               CATS_ORDEM.map((cat) => {
@@ -176,21 +230,25 @@ export function PaginaSazonalidade() {
                       <strong style={{ color: cor.text }}>{cor.rotulo}</strong>
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {lista.map((item) => (
-                        <span
-                          key={item.id}
-                          style={{
-                            background: cor.bg,
-                            color: cor.text,
-                            padding: '4px 14px',
-                            borderRadius: 20,
-                            fontWeight: 500,
-                            fontSize: 14,
-                          }}
-                        >
-                          {item.nome}
-                        </span>
-                      ))}
+                      {lista.map((item) => {
+                        const fase = faseSafra(item.meses[regiao] ?? [], mes);
+                        return (
+                          <span
+                            key={item.id}
+                            style={{
+                              background: cor.bg,
+                              color: cor.text,
+                              padding: '4px 14px',
+                              borderRadius: 20,
+                              fontWeight: 500,
+                              fontSize: 14,
+                            }}
+                          >
+                            {item.nome}
+                            {fase && <small className="fase-safra">{ROTULO_FASE[fase]}</small>}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -200,10 +258,19 @@ export function PaginaSazonalidade() {
 
           {/* Calendário anual */}
           <div className="card">
-            <h3 style={{ marginTop: 0 }}>
-              Calendário anual — {uf} ({NOME_REGIAO[regiao]})
-            </h3>
-            <div style={{ overflowX: 'auto' }}>
+            <div className="linha" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+              <h3 style={{ margin: 0 }}>
+                Calendário anual — {uf} ({NOME_REGIAO[regiao]})
+              </h3>
+              <label className="filtros-safra-check">
+                <input type="checkbox" checked={soEmSafra} onChange={(e) => setSoEmSafra(e.target.checked)} />
+                Só o que está em safra em {MESES_NOMES[mes - 1]}
+              </label>
+            </div>
+            {gradeAnual.length === 0 && (
+              <p style={{ color: 'var(--cinza)' }}>Nenhum item com esses filtros.</p>
+            )}
+            <div style={{ overflowX: 'auto', display: gradeAnual.length === 0 ? 'none' : undefined }}>
               <table style={{ fontSize: 12, minWidth: 680 }}>
                 <thead>
                   <tr>
