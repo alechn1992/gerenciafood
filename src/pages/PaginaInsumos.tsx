@@ -300,7 +300,7 @@ function InsumoLinha({
               </span>
             )}
             {insumo.codigoExterno && (
-              <span title={`Sincronizado em: ${insumo.sincronizadoEm ? new Date(insumo.sincronizadoEm).toLocaleString('pt-BR') : '?'}`} style={{ fontSize: '0.7rem', fontWeight: 600, padding: '1px 6px', borderRadius: 10, background: '#e0f0ff', color: '#0066cc', cursor: 'default', whiteSpace: 'nowrap' }}>
+              <span title={`Sincronizado em: ${insumo.sincronizadoEm ? new Date(insumo.sincronizadoEm).toLocaleString('pt-BR') : '?'}`} style={{ fontSize: '0.7rem', fontWeight: 600, padding: '1px 6px', borderRadius: 10, background: 'var(--tom-azul-bg, #e0f0ff)', color: 'var(--tom-azul-texto, #0066cc)', cursor: 'default', whiteSpace: 'nowrap' }}>
                 ⟳ API
               </span>
             )}

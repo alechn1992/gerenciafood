@@ -139,10 +139,10 @@ function PlanoAcaoCliente({ clienteId, clienteNome }: { clienteId: string; clien
         <div className="linha" style={{ flexWrap: 'wrap', gap: 24, alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             <Indicador titulo="Total" valor={resumo.total} />
-            <Indicador titulo="Pendentes" valor={resumo.pendentes} cor="#6b4a00" />
-            <Indicador titulo="Em andamento" valor={resumo.emAndamento} cor="#1f4f99" />
-            <Indicador titulo="Concluídas" valor={resumo.concluidas} cor="#1e6b3f" />
-            <Indicador titulo="Atrasadas" valor={resumo.atrasadas} cor="#b3261e" destaque={resumo.atrasadas > 0} />
+            <Indicador titulo="Pendentes" valor={resumo.pendentes} cor="var(--tom-amarelo-texto, #6b4a00)" />
+            <Indicador titulo="Em andamento" valor={resumo.emAndamento} cor="var(--tom-azul-texto, #1f4f99)" />
+            <Indicador titulo="Concluídas" valor={resumo.concluidas} cor="var(--tom-verde-texto, #1e6b3f)" />
+            <Indicador titulo="Atrasadas" valor={resumo.atrasadas} cor="var(--tom-vermelho-texto, #b3261e)" destaque={resumo.atrasadas > 0} />
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
@@ -275,7 +275,7 @@ function PlanoAcaoCliente({ clienteId, clienteNome }: { clienteId: string; clien
 
 function Indicador({ titulo, valor, cor, destaque }: { titulo: string; valor: number; cor?: string; destaque?: boolean }) {
   return (
-    <div style={{ textAlign: 'center', minWidth: 70, padding: destaque ? '0 8px' : undefined, borderRadius: 8, background: destaque ? '#fde8e4' : undefined }}>
+    <div style={{ textAlign: 'center', minWidth: 70, padding: destaque ? '0 8px' : undefined, borderRadius: 8, background: destaque ? 'var(--tom-vermelho-bg, #fde8e4)' : undefined }}>
       <div style={{ fontSize: 28, fontWeight: 700, color: cor ?? 'var(--texto)' }}>{valor}</div>
       <div style={{ fontSize: 12, color: 'var(--cinza)' }}>{titulo}</div>
     </div>

@@ -396,7 +396,7 @@ export function PaginaImportarCardapio() {
         .imp-dropzone:hover,
         .imp-dropzone--arrastando {
           border-color: var(--verde);
-          background: #f0faf4;
+          background: var(--tom-sup-verde, #f0faf4);
         }
         .imp-dropzone-icone { font-size: 2.4rem; }
         .imp-dropzone-texto { font-size: 1rem; font-weight: 600; }
@@ -404,7 +404,7 @@ export function PaginaImportarCardapio() {
 
         /* ── Resumo ── */
         .imp-resumo {
-          background: #f7fbf8;
+          background: var(--tom-sup, #f7fbf8);
           border: 1px solid var(--borda);
           border-radius: 8px;
           padding: 16px 20px;
@@ -427,7 +427,7 @@ export function PaginaImportarCardapio() {
         .imp-stat-num {
           font-size: 1.7rem;
           font-weight: 700;
-          color: var(--verde);
+          color: var(--verde-texto);
           line-height: 1;
         }
         .imp-stat-label {
@@ -444,9 +444,9 @@ export function PaginaImportarCardapio() {
           margin-bottom: 16px;
         }
         .imp-semana-tag {
-          background: #eef7f1;
-          color: var(--verde);
-          border: 1px solid #cfe3d6;
+          background: var(--tom-sup-verde, #eef7f1);
+          color: var(--verde-texto);
+          border: 1px solid var(--tom-borda, #cfe3d6);
           border-radius: 20px;
           padding: 3px 12px;
           font-size: 0.82rem;
@@ -463,7 +463,7 @@ export function PaginaImportarCardapio() {
         .imp-turmas { margin-bottom: 16px; }
         .imp-turma-chip {
           display: inline-block;
-          background: #fff;
+          background: var(--branco);
           border: 1px solid var(--borda);
           border-radius: 6px;
           padding: 3px 10px;
@@ -473,8 +473,8 @@ export function PaginaImportarCardapio() {
 
         /* ── Nota de mapeamento ── */
         .imp-nota {
-          background: #fffbea;
-          border: 1px solid #e8d96a;
+          background: var(--tom-amarelo-bg, #fffbea);
+          border: 1px solid var(--tom-amarelo-borda, #e8d96a);
           border-radius: 6px;
           padding: 10px 14px;
           font-size: 0.82rem;
@@ -490,7 +490,7 @@ export function PaginaImportarCardapio() {
           display: block;
           margin-bottom: 6px;
         }
-        .imp-obrigatorio { color: var(--vermelho, #c0392b); }
+        .imp-obrigatorio { color: var(--tom-vermelho-texto, #c0392b); }
         .imp-cliente-sel select {
           width: 100%;
           max-width: 400px;
@@ -544,16 +544,16 @@ export function PaginaImportarCardapio() {
           gap: 4px;
           font-size: 1rem;
         }
-        .imp-sucesso-lista li::before { content: '✓ '; color: var(--verde); }
+        .imp-sucesso-lista li::before { content: '✓ '; color: var(--verde-texto); }
         .imp-sucesso .imp-acoes { justify-content: center; }
 
         /* ── Erro ── */
         .imp-erro {
-          background: #fdecea;
-          border: 1px solid #f5c6c2;
+          background: var(--tom-vermelho-bg, #fdecea);
+          border: 1px solid var(--tom-vermelho-borda, #f5c6c2);
           border-radius: 6px;
           padding: 10px 14px;
-          color: #c0392b;
+          color: var(--tom-vermelho-texto, #c0392b);
           font-size: 0.9rem;
           margin: 12px 0;
         }

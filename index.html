@@ -3,6 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f6f9f7" />
+    <script>
+      // Aplica o tema salvo antes de a página aparecer (evita piscar branco).
+      (function () {
+        var p = 'automatico';
+        try { p = localStorage.getItem('gerenciafood:tema') || p; } catch (e) {}
+        var escuro = p === 'escuro' || (p !== 'claro' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.tema = escuro ? 'escuro' : 'claro';
+        if (escuro) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#111915');
+      })();
+    </script>
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%BD%EF%B8%8F%3C/text%3E%3C/svg%3E"
