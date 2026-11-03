@@ -6,6 +6,7 @@ import { supabase } from './lib/supabase';
 import { useNovaVersaoDisponivel } from './lib/versao';
 import { Sidebar } from './components/Sidebar';
 import { useTema } from './state/useTema';
+import { useData } from './state/DataContext';
 import { Icone } from './components/Icone';
 import { PaginaLogin } from './pages/PaginaLogin';
 import { PaginaDefinirSenha } from './pages/PaginaDefinirSenha';
@@ -47,6 +48,22 @@ function RotaProtegida({ children }: { children: React.ReactNode }) {
   if (!session) return <Navigate to="/login" replace />;
 
   return <>{children}</>;
+}
+
+/** Falha ao buscar os dados: avisa em vez de mostrar listas vazias. */
+function AvisoErroCarregamento() {
+  const { errosCarregamento } = useData();
+  if (errosCarregamento.length === 0) return null;
+  return (
+    <div className="aviso no-print" role="alert">
+      <strong>Não foi possível carregar todos os dados.</strong> Listas vazias aqui não querem
+      dizer que os cadastros foram apagados. Verifique a internet e tente de novo.
+      <ul style={{ margin: '6px 0 8px', paddingLeft: 18, fontSize: '0.85em' }}>
+        {errosCarregamento.map((e) => <li key={e}>{e}</li>)}
+      </ul>
+      <button className="btn pequeno" onClick={() => window.location.reload()}>Tentar de novo</button>
+    </div>
+  );
 }
 
 export function App() {
@@ -100,6 +117,7 @@ export function App() {
                     </button>
                   </div>
                 )}
+                <AvisoErroCarregamento />
                 <Routes>
                   <Route path="/" element={<Navigate to="/clientes" replace />} />
                   <Route path="/profissionais" element={<PaginaProfissionais />} />
