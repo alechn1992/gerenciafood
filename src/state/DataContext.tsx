@@ -28,6 +28,8 @@ interface DataState {
   categorias: CategoriaCadastrada[];
   erroCategorias: string | null;
   carregando: boolean;
+  /** Falhas ao buscar os dados na abertura (ex.: sem conexão com o banco). */
+  errosCarregamento: string[];
   configuracaoSync: ConfiguracaoSync | null;
   recarregarClientes: () => Promise<void>;
   recarregarPratos: () => Promise<void>;
@@ -91,6 +93,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [categorias, setCategorias] = useState<CategoriaCadastrada[]>([]);
   const [erroCategorias, setErroCategorias] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [errosCarregamento, setErrosCarregamento] = useState<string[]>([]);
   const [configuracaoSync, setConfiguracaoSync] = useState<ConfiguracaoSync | null>(null);
 
   const recarregarClientes = async () => setClientes(await repo.listarClientes());
@@ -127,29 +130,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
     recarregarPreferencias();
     recarregarCategorias();
     (async () => {
-      try {
-        const [c, p, t, i, tu, pr, cfg] = await Promise.all([
-          repo.listarClientes(),
-          repo.listarPratos(),
-          repo.listarTiposRefeicao(),
-          repo.listarInsumos(),
-          repo.listarTurmas(),
-          repo.listarProfissionais(),
-          repo.carregarConfiguracaoSync(),
-        ]);
-        setClientes(c);
-        setPratos(p);
-        setTipos(t.length > 0 ? t : TIPOS_REFEICAO_PADRAO);
-        setInsumos(i);
-        setTurmas(tu);
-        setProfissionais(pr);
-        setConfiguracaoSync(cfg);
-      } catch (err) {
-        console.error('[GerenciaFood] Erro ao carregar dados:', err);
-        setTipos(TIPOS_REFEICAO_PADRAO);
-      } finally {
-        setCarregando(false);
-      }
+      // Cada lista é buscada por conta própria: uma falha não apaga as outras e
+      // aparece na tela, em vez de parecer que não há nada cadastrado.
+      const erros: string[] = [];
+      const buscar = async <T,>(nome: string, f: () => Promise<T>, aplicar: (v: T) => void) => {
+        try {
+          aplicar(await f());
+        } catch (err) {
+          console.error(`[GerenciaFood] Erro ao carregar ${nome}:`, err);
+          erros.push(`${nome}: ${descreverErro(err)}`);
+        }
+      };
+      await Promise.all([
+        buscar('clientes', () => repo.listarClientes(), setClientes),
+        buscar('pratos', () => repo.listarPratos(), setPratos),
+        buscar('tipos de refeição', () => repo.listarTiposRefeicao(), (t) =>
+          setTipos(t.length > 0 ? t : TIPOS_REFEICAO_PADRAO),
+        ),
+        buscar('insumos', () => repo.listarInsumos(), setInsumos),
+        buscar('turmas', () => repo.listarTurmas(), setTurmas),
+        buscar('profissionais', () => repo.listarProfissionais(), setProfissionais),
+        buscar('configuração', () => repo.carregarConfiguracaoSync(), setConfiguracaoSync),
+      ]);
+      setTipos((t) => (t.length > 0 ? t : TIPOS_REFEICAO_PADRAO));
+      setErrosCarregamento(erros);
+      setCarregando(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -261,6 +266,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     categorias,
     erroCategorias,
     carregando,
+    errosCarregamento,
     configuracaoSync,
     recarregarClientes,
     recarregarPratos,
