@@ -30,6 +30,8 @@ import { categoriasDisponiveis } from '../domain/categorias';
 import { formatarData, segundaFeiraDaSemana } from '../lib/datas';
 import { UF_PARA_REGIAO } from '../data/sazonalidade';
 import { CardapioImpressao, type SemanaImpressao } from './CardapioImpressao';
+import { VisualizacaoCozinha } from './CardapioCozinhaMes';
+import { mesDaSemana, turmaPadraoCozinha } from '../domain/cozinhaMensal';
 
 function CelulaEditavel({
   item,
@@ -216,6 +218,7 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
   const [copiandoId, setCopiandoId] = useState<string | null>(null);
   const [semanaDestino, setSemanaDestino] = useState(segundaFeiraDaSemana());
   const [imprimindo, setImprimindo] = useState<SemanaImpressao[] | null>(null);
+  const [cozinha, setCozinha] = useState(false);
   const { periodos } = useCalendario(cliente.id);
 
   useEffect(() => {
@@ -350,6 +353,21 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
     );
   }
 
+  if (cozinha) {
+    return (
+      <VisualizacaoCozinha
+        cliente={cliente}
+        opcoes={[{ id: '', nome: cliente.nome, refeicoes: cliente.refeicoes }]}
+        cardapios={salvos}
+        periodos={periodos}
+        tiposRefeicao={tiposRefeicao}
+        mesInicial={mesDaSemana(semana)}
+        opcaoInicial=""
+        onFechar={() => setCozinha(false)}
+      />
+    );
+  }
+
   return (
     <div>
       <div className="linha">
@@ -359,9 +377,14 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
             Geração automática respeitando dias de operação, refeições e restrições.
           </p>
         </div>
-        <Link to="/clientes" className="btn secundario">
-          ← Voltar
-        </Link>
+        <div className="acoes">
+          <Link to="/clientes" className="btn secundario">
+            ← Voltar
+          </Link>
+          <button className="btn secundario" onClick={() => setCozinha(true)} title="Todas as semanas do mês em uma folha A4 em pé">
+            🍳 Cozinha (mês)
+          </button>
+        </div>
       </div>
 
       <div className="card">
@@ -559,6 +582,7 @@ function CardapioPorTurmas({
   const [copiandoSemana, setCopiandoSemana] = useState<string | null>(null);
   const [semanaDestinoCopia, setSemanaDestinoCopia] = useState(segundaFeiraDaSemana());
   const [imprimindo, setImprimindo] = useState<SemanaImpressao[] | null>(null);
+  const [cozinha, setCozinha] = useState(false);
   /** Há geração, cópia ou troca na tela que ainda não foi salva. */
   const [pendente, setPendente] = useState(false);
   const { periodos } = useCalendario(cliente.id);
@@ -864,6 +888,21 @@ function CardapioPorTurmas({
     );
   }
 
+  if (cozinha) {
+    return (
+      <VisualizacaoCozinha
+        cliente={cliente}
+        opcoes={turmasDoCliente.map((t) => ({ id: t.id, nome: t.nome, refeicoes: t.refeicoes }))}
+        cardapios={salvosTurma}
+        periodos={periodos}
+        tiposRefeicao={tiposRefeicao}
+        mesInicial={mesDaSemana(semana)}
+        opcaoInicial={turmaPadraoCozinha(turmasDoCliente)?.id ?? ''}
+        onFechar={() => setCozinha(false)}
+      />
+    );
+  }
+
   return (
     <div>
       <div className="linha no-print">
@@ -881,6 +920,9 @@ function CardapioPorTurmas({
           <Link to={`/clientes/${cliente.id}/calendario`} className="btn secundario">
             📅 Calendário
           </Link>
+          <button className="btn secundario" onClick={() => setCozinha(true)} title="Todas as semanas do mês de uma turma em uma folha A4 em pé">
+            🍳 Cozinha (mês)
+          </button>
           {semanasGeradas.length > 0 && (
             <button
               className="btn"
