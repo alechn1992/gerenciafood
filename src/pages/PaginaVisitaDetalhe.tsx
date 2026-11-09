@@ -7,6 +7,8 @@ import { supabase } from '../lib/supabase';
 import { chaveVisita } from '../domain/planoAcao';
 import { hojeISO, usePlanoAcao } from '../state/usePlanoAcao';
 import { AcaoInline } from './AcaoInline';
+import { FotosItem } from '../components/FotosItem';
+import { useFotosVisita } from '../state/useFotosVisita';
 import { BlocoAssinaturas, modoAssinatura } from '../components/BlocoAssinaturas';
 import type { AssinaturasRelatorio } from '../domain/types';
 
@@ -27,6 +29,7 @@ export function PaginaVisitaDetalhe() {
   const [enviando, setEnviando] = useState(false);
   const [msgEmail, setMsgEmail] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   const plano = usePlanoAcao(visita?.clienteId);
+  const fotos = useFotosVisita(visita?.id, true);
   const [msgPlano, setMsgPlano] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   const [assinaturas, setAssinaturas] = useState<AssinaturasRelatorio | undefined>(undefined);
   const [assinaturasAlteradas, setAssinaturasAlteradas] = useState(false);
@@ -256,6 +259,12 @@ export function PaginaVisitaDetalhe() {
           </p>
         )}
 
+        {(fotos.erro || fotos.enviando > 0) && (
+          <p className={`${fotos.erro ? 'aviso' : 'subtitulo'} no-print`} style={{ margin: '0 0 12px' }}>
+            {fotos.erro ?? `Salvando ${fotos.enviando} foto(s)…`}
+          </p>
+        )}
+
         {visita.secoes.map((secao) => (
           <div key={secao.id} className="relatorio-visita-secao">
             <div className="relatorio-visita-secao-header">{secao.nome}</div>
@@ -269,6 +278,11 @@ export function PaginaVisitaDetalhe() {
                   </span>
                   <span style={{ flex: 1 }}>
                     {item.descricao}
+                    <FotosItem
+                      fotos={fotos.doItem(item.id)}
+                      onAdicionar={(arquivos) => fotos.adicionar(item.id, arquivos)}
+                      onRemover={fotos.remover}
+                    />
                     {item.status === 'nao_conforme' && (() => {
                       const chave = chaveVisita(visita.id, item.id);
                       const acao = plano.acaoPorChave(chave);
