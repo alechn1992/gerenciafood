@@ -1240,6 +1240,7 @@ i.painel-cor { width: 10px; height: 10px; border-radius: 2px; vertical-align: -1
 @media print {
   .fotos-item { gap: 6px; break-inside: avoid; page-break-inside: avoid; }
   .fotos-item-foto img { width: 58mm; height: 44mm; border-color: #ccc; }
+}
 
 /* Opção de fruta única entre turmas, no cardápio */
 .opcao-fruta-unica {
