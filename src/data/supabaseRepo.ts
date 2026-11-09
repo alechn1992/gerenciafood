@@ -3,6 +3,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
+  FotoVisita,
   Cardapio,
   CategoriaCadastrada,
   CategoriaInsumo,
@@ -349,6 +350,38 @@ export class SupabaseRepository implements Repository {
     if (error) throw error;
   }
 
+  async listarFotosVisita(visitaId: string): Promise<FotoVisita[]> {
+    const { data, error } = await this.db
+      .from('visita_fotos')
+      .select('*')
+      .eq('visita_id', visitaId)
+      .order('criado_em');
+    if (error) throw tabelaFotosFaltando(error) ?? error;
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      visitaId: r.visita_id,
+      itemId: r.item_id,
+      imagem: r.imagem,
+      criadoEm: r.criado_em,
+    }));
+  }
+
+  async salvarFotoVisita(f: FotoVisita): Promise<void> {
+    const { error } = await this.db.from('visita_fotos').upsert({
+      id: f.id,
+      visita_id: f.visitaId,
+      item_id: f.itemId,
+      imagem: f.imagem,
+      criado_em: f.criadoEm,
+    });
+    if (error) throw tabelaFotosFaltando(error) ?? error;
+  }
+
+  async removerFotoVisita(id: string): Promise<void> {
+    const { error } = await this.db.from('visita_fotos').delete().eq('id', id);
+    if (error) throw tabelaFotosFaltando(error) ?? error;
+  }
+
   async listarCalendario(clienteId: string): Promise<PeriodoSemFuncionamento[]> {
     const { data, error } = await this.db
       .from('calendario_cliente')
@@ -572,6 +605,18 @@ function mapProfissionalFromRow(r: any): Profissional {
 }
 
 /** Erro do PostgREST por coluna que ainda não existe (migração pendente). */
+/** Tabela de fotos ainda não criada no banco: explica o que fazer. */
+function tabelaFotosFaltando(error: { message?: string; code?: string }): Error | null {
+  const msg = error.message ?? '';
+  if (error.code === '42P01' || error.code === 'PGRST205' || (/visita_fotos/.test(msg) && /could not find|does not exist|schema cache/i.test(msg))) {
+    return new Error(
+      'As fotos da visita ainda não podem ser salvas: falta rodar no Supabase o SQL ' +
+        '0024_visita_fotos (cria a tabela visita_fotos).',
+    );
+  }
+  return null;
+}
+
 function colunaFaltando(error: { message?: string; code?: string }, coluna: string): boolean {
   const msg = error.message ?? '';
   return msg.includes(coluna) && /column|schema/i.test(msg);

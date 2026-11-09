@@ -321,6 +321,16 @@ export interface ItemVisita {
   status: 'conforme' | 'nao_conforme';
 }
 
+/** Foto de um item da visita (guardada à parte, ver visita_fotos). */
+export interface FotoVisita {
+  id: string;
+  visitaId: string;
+  itemId: string;
+  /** JPEG reduzido, em data URL. */
+  imagem: string;
+  criadoEm: string;
+}
+
 export interface SecaoVisita {
   id: string;
   nome: string;

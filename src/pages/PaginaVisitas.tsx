@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { FotosItem } from '../components/FotosItem';
+import { useFotosVisita } from '../state/useFotosVisita';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import type { ItemVisita, SecaoVisita, TipoVisita, Visita } from '../domain/types';
@@ -50,6 +52,9 @@ export function PaginaVisitas() {
   const [form, setForm] = useState<Visita | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  // Visita já existente grava cada foto na hora; nova guarda até salvar.
+  const visitaJaSalva = !!form && visitas.some((v) => v.id === form.id);
+  const fotos = useFotosVisita(form?.id, visitaJaSalva);
 
   const carregar = async (cId?: string) => {
     setCarregando(true);
@@ -146,6 +151,15 @@ export function PaginaVisitas() {
         emailConsultor: form.emailConsultor || undefined,
         proximaVisita: form.proximaVisita || undefined,
       });
+      const itensValidos = new Set(form.secoes.flatMap((s) => s.itens.map((i) => i.id)));
+      try {
+        await fotos.gravarPendentes(itensValidos);
+      } catch (e: unknown) {
+        // A visita foi salva; só as fotos falharam (ex.: tabela ainda não criada).
+        setMsg({ tipo: 'erro', texto: `Visita salva, mas as fotos não: ${e instanceof Error ? e.message : String(e)}` });
+        await carregar(filtroCliente);
+        return;
+      }
       setMsg({ tipo: 'ok', texto: 'Visita salva.' });
       setAdicionando(false);
       setForm(null);
@@ -326,7 +340,8 @@ export function PaginaVisitas() {
 
                 <div style={{ padding: '10px 12px' }}>
                   {secao.itens.map((item, ii) => (
-                    <div key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div key={item.id} style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                       {/* Botões ✔ / ✘ */}
                       <div style={{ display: 'flex', gap: 4, paddingTop: 6, flexShrink: 0 }}>
                         <button
@@ -368,6 +383,14 @@ export function PaginaVisitas() {
                         style={{ marginTop: 6, flexShrink: 0 }}
                       >✕</button>
                     </div>
+                    <div style={{ paddingLeft: 72 }}>
+                      <FotosItem
+                        fotos={fotos.doItem(item.id)}
+                        onAdicionar={(arquivos) => fotos.adicionar(item.id, arquivos)}
+                        onRemover={fotos.remover}
+                      />
+                    </div>
+                    </div>
                   ))}
                   <button type="button" className="btn pequeno secundario" onClick={() => addItem(si)}>
                     + Adicionar item
@@ -383,11 +406,16 @@ export function PaginaVisitas() {
             )}
           </div>
 
+          {(fotos.erro || fotos.enviando > 0) && (
+            <p className={fotos.erro ? 'aviso' : 'subtitulo'} style={{ margin: '8px 0 0' }}>
+              {fotos.erro ?? `Preparando ${fotos.enviando} foto(s)…`}
+            </p>
+          )}
           <div className="acoes" style={{ marginTop: 16 }}>
             <button className="btn secundario" onClick={() => { setAdicionando(false); setForm(null); }}>
               Cancelar
             </button>
-            <button className="btn" onClick={salvar} disabled={salvando || !form.clienteId || !form.data}>
+            <button className="btn" onClick={salvar} disabled={salvando || fotos.enviando > 0 || !form.clienteId || !form.data}>
               {salvando ? 'Salvando…' : '💾 Salvar visita'}
             </button>
             {msg && (
