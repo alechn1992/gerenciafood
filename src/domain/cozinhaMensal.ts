@@ -61,3 +61,25 @@ export function turmaPadraoCozinha<T extends { nome: string }>(turmas: T[]): T |
   const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   return turmas.find((t) => norm(t.nome).includes('infant')) ?? turmas[0];
 }
+
+/** Meses (yyyy-mm) das semanas, do mais recente ao mais antigo, sem repetir. */
+export function mesesDasSemanas(semanas: string[]): string[] {
+  return [...new Set(semanas.map(mesDaSemana))].sort().reverse();
+}
+
+/**
+ * Mês que a lista de semanas salvas abre: o atual, se tiver semana salva;
+ * senão o mais próximo dele (em empate, o seguinte, que é o que se está planejando).
+ */
+export function mesInicialDaLista(meses: string[], hoje: Date = new Date()): string | undefined {
+  if (meses.length === 0) return undefined;
+  const atual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  if (meses.includes(atual)) return atual;
+  const indice = (m: string) => Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7));
+  const alvo = indice(atual);
+  return [...meses].sort((a, b) => {
+    const da = Math.abs(indice(a) - alvo);
+    const db = Math.abs(indice(b) - alvo);
+    return da - db || indice(b) - indice(a);
+  })[0];
+}

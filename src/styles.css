@@ -1285,3 +1285,24 @@ i.painel-cor { width: 10px; height: 10px; border-radius: 2px; vertical-align: -1
   font-weight: 600;
   opacity: 0.85;
 }
+
+/* Semanas salvas: título com seletor de mês */
+.cabecalho-semanas-salvas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cabecalho-semanas-salvas h3 { margin: 0; }
+.seletor-mes-semanas { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.seletor-mes-semanas label { margin: 0; }
+.seletor-mes-semanas select { width: auto; min-width: 0; max-width: 100%; }
+.seletor-mes-semanas-info { font-size: 0.8rem; color: var(--cinza); white-space: nowrap; }
+
+/* Telas estreitas: título e botões do topo quebram linha em vez de vazar. */
+@media (max-width: 860px) {
+  .linha { flex-wrap: wrap; }
+  .acoes { flex-wrap: wrap; }
+}
