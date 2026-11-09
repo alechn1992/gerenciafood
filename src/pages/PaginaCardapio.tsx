@@ -31,6 +31,8 @@ import { formatarData, segundaFeiraDaSemana } from '../lib/datas';
 import { UF_PARA_REGIAO } from '../data/sazonalidade';
 import { CardapioImpressao, type SemanaImpressao } from './CardapioImpressao';
 import { VisualizacaoCozinha } from './CardapioCozinhaMes';
+import { SeletorMesSemanas, useFiltroMes } from '../components/FiltroMesSemanas';
+import { mesDaSemana as mesDaSemanaLista } from '../domain/cozinhaMensal';
 import { mesDaSemana, turmaPadraoCozinha } from '../domain/cozinhaMensal';
 import { estiloDeTextura, unificarFrutas } from '../domain/frutaUnica';
 
@@ -343,6 +345,8 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
     </div>
   );
 
+  const filtroSimples = useFiltroMes([...new Set(salvos.map((c) => c.semanaInicio))].sort().reverse());
+
   if (imprimindo) {
     return (
       <VisualizacaoImpressao
@@ -474,7 +478,15 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
 
       {salvos.length > 0 && (
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Cardápios salvos</h3>
+          <div className="cabecalho-semanas-salvas">
+            <h3>Cardápios salvos</h3>
+            <SeletorMesSemanas
+              meses={filtroSimples.meses}
+              mes={filtroSimples.mes}
+              onChange={filtroSimples.setMes}
+              semanas={[...new Set(salvos.map((c) => c.semanaInicio))]}
+            />
+          </div>
           <table>
             <thead>
               <tr>
@@ -485,7 +497,7 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
               </tr>
             </thead>
             <tbody>
-              {salvos.map((c) => (
+              {salvos.filter((c) => filtroSimples.mostra(c.semanaInicio)).map((c) => (
                 <tr key={c.id}>
                   <td>{formatarData(c.semanaInicio)}</td>
                   <td>{new Date(c.geradoEm).toLocaleString('pt-BR')}</td>
@@ -869,6 +881,7 @@ function CardapioPorTurmas({
 
   const salvosTurma = salvos.filter((c) => c.turmaId);
   const semanasSalvas = [...new Set(salvosTurma.map((c) => c.semanaInicio))].sort().reverse();
+  const filtroMes = useFiltroMes(semanasSalvas);
 
   const verSemanaSalva = (semanaInicio: string) => {
     const porTurma: Record<string, Cardapio> = {};
@@ -981,7 +994,18 @@ function CardapioPorTurmas({
 
       {semanasSalvas.length > 0 && (
         <div className="card no-print">
-          <h3 style={{ marginTop: 0 }}>Semanas salvas</h3>
+          <div className="cabecalho-semanas-salvas">
+            <h3>Semanas salvas</h3>
+            <SeletorMesSemanas
+              meses={filtroMes.meses}
+              mes={filtroMes.mes}
+              onChange={filtroMes.setMes}
+              semanas={semanasSalvas}
+              rascunhoEm={(m) =>
+                semanasSalvas.filter((s) => mesDaSemanaLista(s) === m && statusDaSemana(s) === 'rascunho').length
+              }
+            />
+          </div>
           <table>
             <thead>
               <tr>
@@ -992,7 +1016,7 @@ function CardapioPorTurmas({
               </tr>
             </thead>
             <tbody>
-              {semanasSalvas.map((semanaInicio) => (
+              {semanasSalvas.filter(filtroMes.mostra).map((semanaInicio) => (
                 <tr key={semanaInicio}>
                   <td>{formatarData(semanaInicio)}</td>
                   <td>{salvosTurma.filter((c) => c.semanaInicio === semanaInicio).length}</td>

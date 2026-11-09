@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dataNaSemana, mesDaSemana, rotuloMes, semanasDoMes, turmaPadraoCozinha } from './cozinhaMensal';
+import { dataNaSemana, mesDaSemana, mesesDasSemanas, mesInicialDaLista, rotuloMes, semanasDoMes, turmaPadraoCozinha } from './cozinhaMensal';
 import type { DiaSemana } from './types';
 
 const SEG_SEX: DiaSemana[] = [1, 2, 3, 4, 5];
@@ -34,5 +34,20 @@ describe('turmaPadraoCozinha', () => {
     expect(turmaPadraoCozinha([{ nome: 'Baby 1' }, { nome: 'INFANTIS (2 a 5 anos)' }])?.nome).toBe('INFANTIS (2 a 5 anos)');
     expect(turmaPadraoCozinha([{ nome: 'Baby 1' }, { nome: 'Infantil 3' }])?.nome).toBe('Infantil 3');
     expect(turmaPadraoCozinha([{ nome: 'Baby 1' }])?.nome).toBe('Baby 1');
+  });
+});
+
+describe('lista de semanas salvas por mês', () => {
+  const semanas = ['2026-09-28', '2026-10-05', '2026-10-26', '2026-11-02', '2026-11-30'];
+  it('agrupa pelo mês da quinta-feira, do mais recente ao mais antigo', () => {
+    expect(mesesDasSemanas(semanas)).toEqual(['2026-12', '2026-11', '2026-10']);
+  });
+  it('abre no mês atual quando ele tem semana salva', () => {
+    expect(mesInicialDaLista(['2026-12', '2026-11', '2026-10'], new Date(2026, 10, 9))).toBe('2026-11');
+  });
+  it('sem o mês atual, abre no mais próximo (empate: o seguinte)', () => {
+    expect(mesInicialDaLista(['2026-12', '2026-10'], new Date(2026, 10, 9))).toBe('2026-12');
+    expect(mesInicialDaLista(['2026-08', '2026-07'], new Date(2026, 10, 9))).toBe('2026-08');
+    expect(mesInicialDaLista([], new Date(2026, 10, 9))).toBeUndefined();
   });
 });
