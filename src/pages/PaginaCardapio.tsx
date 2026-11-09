@@ -32,6 +32,7 @@ import { UF_PARA_REGIAO } from '../data/sazonalidade';
 import { CardapioImpressao, type SemanaImpressao } from './CardapioImpressao';
 import { VisualizacaoCozinha } from './CardapioCozinhaMes';
 import { mesDaSemana, turmaPadraoCozinha } from '../domain/cozinhaMensal';
+import { estiloDeTextura, unificarFrutas } from '../domain/frutaUnica';
 
 function CelulaEditavel({
   item,
@@ -585,6 +586,24 @@ function CardapioPorTurmas({
   const [cozinha, setCozinha] = useState(false);
   /** Há geração, cópia ou troca na tela que ainda não foi salva. */
   const [pendente, setPendente] = useState(false);
+  // Mesma fruta para todas as turmas no dia (muda só a textura). Lembrada por cliente.
+  const chaveFrutaUnica = `gf:fruta-unica:${cliente.id}`;
+  const [frutaUnica, setFrutaUnicaState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(chaveFrutaUnica) !== 'nao';
+    } catch {
+      return true;
+    }
+  });
+  const setFrutaUnica = (v: boolean) => {
+    setFrutaUnicaState(v);
+    try {
+      localStorage.setItem(chaveFrutaUnica, v ? 'sim' : 'nao');
+    } catch {
+      // Sem armazenamento: vale só nesta tela.
+    }
+  };
+  const ordemTurmas = turmasDoCliente.map((t) => t.id);
   const { periodos } = useCalendario(cliente.id);
 
   /** Converte as semanas em tela para o formato da folha das famílias. */
@@ -751,10 +770,34 @@ function CardapioPorTurmas({
         if (av.length > 0) avisos.push(`${turma.nome}: ${av.join(' ')}`);
       });
       avisos.unshift(...avisosDoCalendario(semanaInicio, periodos));
+      if (frutaUnica) {
+        const r = unificarFrutas(porTurma, ordemTurmas, pratos, estiloDeTextura(salvos));
+        return { semanaInicio, porTurma: r.porTurma, avisos };
+      }
       return { semanaInicio, porTurma, avisos };
     });
     setSemanasGeradas(novas);
     setPendente(true);
+  };
+
+  /** Iguala as frutas das semanas abertas na tela (ex.: geradas antes da opção). */
+  const igualarFrutas = () => {
+    let total = 0;
+    const novas = semanasGeradas.map((s) => {
+      const r = unificarFrutas(s.porTurma, ordemTurmas, pratos, estiloDeTextura(salvos));
+      total += r.trocas;
+      return { ...s, porTurma: r.porTurma };
+    });
+    if (total > 0) {
+      setSemanasGeradas(novas);
+      setPendente(true);
+    }
+    setMsgSalvo(
+      total > 0
+        ? `${total} fruta(s) igualada(s) entre as turmas. Confira e salve.`
+        : 'As frutas já são as mesmas em todas as turmas.',
+    );
+    setTimeout(() => setMsgSalvo(null), 5000);
   };
 
   const salvarTudo = async (status: StatusCardapio) => {
@@ -1057,6 +1100,15 @@ function CardapioPorTurmas({
             <button className="btn" onClick={() => gerar(4)}>
               📅 Gerar mês (4 semanas)
             </button>
+            {semanasGeradas.length > 0 && turmasDoCliente.length > 1 && (
+              <button
+                className="btn secundario"
+                onClick={igualarFrutas}
+                title="Usa a mesma fruta em todas as turmas em cada dia e refeição; muda só a textura"
+              >
+                🍎 Igualar frutas
+              </button>
+            )}
             {semanasGeradas.length > 0 && (
               <>
                 <button className="btn secundario" onClick={() => salvarTudo('rascunho')}>
@@ -1074,6 +1126,12 @@ function CardapioPorTurmas({
             )}
           </div>
         </div>
+        {turmasDoCliente.length > 1 && (
+          <label className="opcao-fruta-unica">
+            <input type="checkbox" checked={frutaUnica} onChange={(e) => setFrutaUnica(e.target.checked)} />
+            🍎 Mesma fruta para todas as turmas no dia — muda só a textura (amassada, raspada ou inteira)
+          </label>
+        )}
       </div>
 
       {semanasGeradas.map((s) => (
