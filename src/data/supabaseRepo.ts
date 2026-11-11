@@ -360,6 +360,7 @@ export class SupabaseRepository implements Repository {
       id: r.id,
       clienteId: r.cliente_id,
       turmaId: r.turma_id ?? undefined,
+      grupo: r.grupo ?? undefined,
       nome: r.nome,
       dataNascimento: r.data_nascimento,
       sexo: r.sexo,
@@ -374,6 +375,7 @@ export class SupabaseRepository implements Repository {
       id: c.id,
       cliente_id: c.clienteId,
       turma_id: c.turmaId || null,
+      grupo: c.grupo || null,
       nome: c.nome,
       data_nascimento: c.dataNascimento,
       sexo: c.sexo,
@@ -381,6 +383,8 @@ export class SupabaseRepository implements Repository {
       ativo: c.ativo,
       criado_em: c.criadoEm,
     });
+    if (error && colunaFaltando(error, 'grupo'))
+      throw new Error('Falta rodar no Supabase o SQL 0027_criancas_grupo (turmas Berçário a Infantil 5).');
     if (error) throw tabelasAvaliacaoFaltando(error) ?? error;
   }
 
