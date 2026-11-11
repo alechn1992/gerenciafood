@@ -5,7 +5,7 @@
 // Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY), os dados passam a ser
 // persistidos no Postgres do Supabase.
 
-import type { Cardapio, CategoriaCadastrada, FotoItem, OrigemFoto, Cliente, ConfiguracaoSync, Insumo, PeriodoSemFuncionamento, PlanoAcao, Prato, PreferenciaAlimentar, Profissional, Relatorio, TipoRefeicao, Turma, Visita, SecaoVisita } from '../domain/types';
+import type { Cardapio, CategoriaCadastrada, Crianca, FotoItem, MedidaAntropometrica, OrigemFoto, Cliente, ConfiguracaoSync, Insumo, PeriodoSemFuncionamento, PlanoAcao, Prato, PreferenciaAlimentar, Profissional, Relatorio, TipoRefeicao, Turma, Visita, SecaoVisita } from '../domain/types';
 import { INSUMOS_PADRAO, PRATOS_PADRAO, TIPOS_REFEICAO_PADRAO } from './seed';
 import { supabase } from '../lib/supabase';
 import { SupabaseRepository } from './supabaseRepo';
@@ -39,6 +39,13 @@ export interface Repository {
   carregarVisita(id: string): Promise<Visita | null>;
   salvarVisita(v: Visita): Promise<void>;
   removerVisita(id: string): Promise<void>;
+  listarCriancas(clienteId: string): Promise<Crianca[]>;
+  salvarCrianca(c: Crianca): Promise<void>;
+  removerCrianca(id: string): Promise<void>;
+  /** Medidas das crianças informadas, da mais antiga para a mais recente. */
+  listarMedidas(criancaIds: string[]): Promise<MedidaAntropometrica[]>;
+  salvarMedida(m: MedidaAntropometrica): Promise<void>;
+  removerMedida(id: string): Promise<void>;
   listarFotos(origem: OrigemFoto, donoId: string): Promise<FotoItem[]>;
   salvarFoto(origem: OrigemFoto, f: FotoItem): Promise<void>;
   removerFoto(origem: OrigemFoto, id: string): Promise<void>;
@@ -74,6 +81,8 @@ const KEYS = {
   calendario: 'gf.calendario',
   visitaFotos: 'gf.visitaFotos',
   relatorioFotos: 'gf.relatorioFotos',
+  criancas: 'gf.criancas',
+  medidas: 'gf.medidasAntropometricas',
   syncConfig: 'gf.syncconfig',
 };
 
@@ -323,6 +332,36 @@ export class LocalRepository implements Repository {
 
   async removerCategoria(valor: string): Promise<void> {
     escrever(KEYS.categorias, ler<CategoriaCadastrada[]>(KEYS.categorias, []).filter((c) => c.valor !== valor));
+  }
+
+  async listarCriancas(clienteId: string): Promise<Crianca[]> {
+    return ler<Crianca[]>(KEYS.criancas, [])
+      .filter((c) => c.clienteId === clienteId)
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+
+  async salvarCrianca(c: Crianca): Promise<void> {
+    escrever(KEYS.criancas, [...ler<Crianca[]>(KEYS.criancas, []).filter((x) => x.id !== c.id), c]);
+  }
+
+  async removerCrianca(id: string): Promise<void> {
+    escrever(KEYS.criancas, ler<Crianca[]>(KEYS.criancas, []).filter((c) => c.id !== id));
+    escrever(KEYS.medidas, ler<MedidaAntropometrica[]>(KEYS.medidas, []).filter((m) => m.criancaId !== id));
+  }
+
+  async listarMedidas(criancaIds: string[]): Promise<MedidaAntropometrica[]> {
+    const ids = new Set(criancaIds);
+    return ler<MedidaAntropometrica[]>(KEYS.medidas, [])
+      .filter((m) => ids.has(m.criancaId))
+      .sort((a, b) => a.data.localeCompare(b.data) || a.criadoEm.localeCompare(b.criadoEm));
+  }
+
+  async salvarMedida(m: MedidaAntropometrica): Promise<void> {
+    escrever(KEYS.medidas, [...ler<MedidaAntropometrica[]>(KEYS.medidas, []).filter((x) => x.id !== m.id), m]);
+  }
+
+  async removerMedida(id: string): Promise<void> {
+    escrever(KEYS.medidas, ler<MedidaAntropometrica[]>(KEYS.medidas, []).filter((m) => m.id !== id));
   }
 
   async listarFotos(origem: OrigemFoto, donoId: string): Promise<FotoItem[]> {

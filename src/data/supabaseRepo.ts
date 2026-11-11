@@ -3,6 +3,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
+  Crianca,
+  MedidaAntropometrica,
   FotoItem,
   OrigemFoto,
   Cardapio,
@@ -351,6 +353,82 @@ export class SupabaseRepository implements Repository {
     if (error) throw error;
   }
 
+  async listarCriancas(clienteId: string): Promise<Crianca[]> {
+    const { data, error } = await this.db.from('criancas').select('*').eq('cliente_id', clienteId).order('nome');
+    if (error) throw tabelasAvaliacaoFaltando(error) ?? error;
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      clienteId: r.cliente_id,
+      turmaId: r.turma_id ?? undefined,
+      nome: r.nome,
+      dataNascimento: r.data_nascimento,
+      sexo: r.sexo,
+      observacoes: r.observacoes ?? undefined,
+      ativo: r.ativo ?? true,
+      criadoEm: r.criado_em,
+    }));
+  }
+
+  async salvarCrianca(c: Crianca): Promise<void> {
+    const { error } = await this.db.from('criancas').upsert({
+      id: c.id,
+      cliente_id: c.clienteId,
+      turma_id: c.turmaId || null,
+      nome: c.nome,
+      data_nascimento: c.dataNascimento,
+      sexo: c.sexo,
+      observacoes: c.observacoes || null,
+      ativo: c.ativo,
+      criado_em: c.criadoEm,
+    });
+    if (error) throw tabelasAvaliacaoFaltando(error) ?? error;
+  }
+
+  async removerCrianca(id: string): Promise<void> {
+    const { error } = await this.db.from('criancas').delete().eq('id', id);
+    if (error) throw tabelasAvaliacaoFaltando(error) ?? error;
+  }
+
+  async listarMedidas(criancaIds: string[]): Promise<MedidaAntropometrica[]> {
+    if (criancaIds.length === 0) return [];
+    const { data, error } = await this.db
+      .from('medidas_antropometricas')
+      .select('*')
+      .in('crianca_id', criancaIds)
+      .order('data')
+      .order('criado_em');
+    if (error) throw tabelasAvaliacaoFaltando(error) ?? error;
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      criancaId: r.crianca_id,
+      data: r.data,
+      pesoKg: Number(r.peso_kg),
+      alturaCm: Number(r.altura_cm),
+      forma: r.forma,
+      observacoes: r.observacoes ?? undefined,
+      criadoEm: r.criado_em,
+    }));
+  }
+
+  async salvarMedida(m: MedidaAntropometrica): Promise<void> {
+    const { error } = await this.db.from('medidas_antropometricas').upsert({
+      id: m.id,
+      crianca_id: m.criancaId,
+      data: m.data,
+      peso_kg: m.pesoKg,
+      altura_cm: m.alturaCm,
+      forma: m.forma,
+      observacoes: m.observacoes || null,
+      criado_em: m.criadoEm,
+    });
+    if (error) throw tabelasAvaliacaoFaltando(error) ?? error;
+  }
+
+  async removerMedida(id: string): Promise<void> {
+    const { error } = await this.db.from('medidas_antropometricas').delete().eq('id', id);
+    if (error) throw tabelasAvaliacaoFaltando(error) ?? error;
+  }
+
   async listarFotos(origem: OrigemFoto, donoId: string): Promise<FotoItem[]> {
     const t = TABELA_FOTOS[origem];
     const { data, error } = await this.db
@@ -625,6 +703,18 @@ function tabelaFotosFaltando(error: { message?: string; code?: string }, origem:
   return new Error(
     `As fotos ${t.onde} ainda não podem ser salvas: falta rodar no Supabase o SQL ${t.sql} (cria a tabela ${t.tabela}).`,
   );
+}
+
+/** Tabelas da avaliação nutricional ainda não criadas: explica o que fazer. */
+function tabelasAvaliacaoFaltando(error: { message?: string; code?: string }): Error | null {
+  const msg = error.message ?? '';
+  const falta =
+    error.code === '42P01' ||
+    error.code === 'PGRST205' ||
+    (/criancas|medidas_antropometricas/.test(msg) && /could not find|does not exist|schema cache/i.test(msg));
+  return falta
+    ? new Error('A avaliação nutricional ainda não está ativa: falta rodar no Supabase o SQL 0026_avaliacao_nutricional.')
+    : null;
 }
 
 function colunaFaltando(error: { message?: string; code?: string }, coluna: string): boolean {

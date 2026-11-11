@@ -321,6 +321,34 @@ export interface ItemVisita {
   status: 'conforme' | 'nao_conforme';
 }
 
+/** Criança acompanhada na avaliação nutricional. */
+export interface Crianca {
+  id: string;
+  clienteId: string;
+  turmaId?: string;
+  nome: string;
+  /** yyyy-mm-dd */
+  dataNascimento: string;
+  sexo: 'M' | 'F';
+  observacoes?: string;
+  ativo: boolean;
+  criadoEm: string;
+}
+
+/** Uma aferição de peso e altura. */
+export interface MedidaAntropometrica {
+  id: string;
+  criancaId: string;
+  /** yyyy-mm-dd */
+  data: string;
+  pesoKg: number;
+  alturaCm: number;
+  /** Deitada (comprimento, até 2 anos) ou em pé. */
+  forma: 'deitado' | 'em_pe';
+  observacoes?: string;
+  criadoEm: string;
+}
+
 /** De onde é a foto: item de uma visita técnica ou do checklist de boas práticas. */
 export type OrigemFoto = 'visita' | 'relatorio';
 

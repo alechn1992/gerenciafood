@@ -12,6 +12,7 @@ export const TELAS_DISPONIVEIS = [
   { id: 'importar',      label: 'Importar Excel' },
   { id: 'relatorio',     label: 'Checklist de Boas Práticas' },
   { id: 'visitas',       label: 'Visitas' },
+  { id: 'avaliacao',     label: 'Avaliação nutricional' },
 ] as const;
 
 export const TELAS_PADRAO = TELAS_DISPONIVEIS.map((t) => t.id);
@@ -49,7 +50,12 @@ export function PermissoesProvider({ children }: { children: ReactNode }) {
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
-          setPerm({ telas: data.telas ?? TELAS_PADRAO, admin: data.admin ?? false, carregando: false });
+          // Administrador vê todas as telas, inclusive as criadas depois do perfil.
+          setPerm({
+            telas: data.admin ? TELAS_PADRAO : (data.telas ?? TELAS_PADRAO),
+            admin: data.admin ?? false,
+            carregando: false,
+          });
         } else {
           // Sem perfil: nega em vez de liberar. O perfil é criado pelo convite
           // (função convidar-usuario) ou pelo trigger on_auth_user_created —
