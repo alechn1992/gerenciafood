@@ -321,10 +321,14 @@ export interface ItemVisita {
   status: 'conforme' | 'nao_conforme';
 }
 
-/** Foto de um item da visita (guardada à parte, ver visita_fotos). */
-export interface FotoVisita {
+/** De onde é a foto: item de uma visita técnica ou do checklist de boas práticas. */
+export type OrigemFoto = 'visita' | 'relatorio';
+
+/** Foto de um item (guardada à parte: visita_fotos / relatorio_fotos). */
+export interface FotoItem {
   id: string;
-  visitaId: string;
+  /** Id da visita ou do checklist (relatório) dono da foto. */
+  donoId: string;
   itemId: string;
   /** JPEG reduzido, em data URL. */
   imagem: string;
