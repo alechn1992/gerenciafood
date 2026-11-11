@@ -47,6 +47,10 @@ const SECOES: SecaoMenu[] = [
     ],
   },
   {
+    titulo: 'Nutrição',
+    itens: [{ tela: 'avaliacao', label: 'Avaliação nutricional', to: '/avaliacao-nutricional', icone: 'avaliacao' }],
+  },
+  {
     titulo: 'Cadastros',
     itens: [
       { tela: 'clientes', label: 'Clientes', to: '/clientes', icone: 'clientes' },
