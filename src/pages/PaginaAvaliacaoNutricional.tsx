@@ -1,6 +1,8 @@
-// Avaliação nutricional: a nutricionista cadastra as crianças da escola,
-// registra peso e altura, e o sistema calcula IMC e escores-z pelas curvas da
-// OMS, classifica (critérios do Ministério da Saúde) e mostra a curva.
+// Avaliação nutricional: a nutricionista cadastra as crianças da escola por
+// turma (Berçário a Infantil 5), registra peso e altura quantas vezes quiser
+// (uma a uma ou a turma inteira), e o sistema calcula IMC e escores-z pelas
+// curvas da OMS, classifica (Ministério da Saúde), mostra a curva e monta os
+// relatórios da turma e individuais em PDF.
 
 import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../state/DataContext';
@@ -16,37 +18,48 @@ import {
   idadePorExtenso,
   type Classificacao,
   type Indicador,
-  type Resultado,
   type TabelasOms,
 } from '../domain/antropometria';
+import {
+  agendaDaCrianca,
+  avaliarTodas,
+  GRUPOS_CRIANCA,
+  ordemGrupo,
+  PERIODICIDADES,
+  SEM_GRUPO,
+  sugerirGrupo,
+  type Avaliada,
+} from '../domain/relatorioNutricional';
 import { GraficoCrescimento, type PontoCrianca } from '../components/GraficoCrescimento';
+import { AvaliarTurma } from '../components/avaliacao/AvaliarTurma';
+import { RelatorioNutricional, type PedidoRelatorio } from '../components/avaliacao/RelatorioNutricional';
+import { dataBr, hoje, lerDecimal, num, problemasDaMedida, Selo, ultimoDe } from '../components/avaliacao/comum';
 
-const hoje = () => new Date().toISOString().slice(0, 10);
-const dataBr = (iso: string) => iso.split('-').reverse().join('/');
-const num = (n: number, casas = 1) => n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
 const CHAVE_CLIENTE = 'gf:avaliacao-cliente';
-const ultimoDe = <T,>(lista: T[] | undefined, deTras = 1): T | undefined => (lista ? lista[lista.length - deTras] : undefined);
+const chavePeriodicidade = (clienteId: string) => `gf:avaliacao-periodicidade:${clienteId}`;
 
-function Selo({ c }: { c?: Classificacao }) {
-  if (!c) return <span className="subtitulo">—</span>;
-  return <span className={`selo-nutri ${c.situacao}`}>{c.rotulo}</span>;
-}
+type Aba = 'criancas' | 'turma' | 'relatorios';
 
-interface Avaliada {
-  medida: MedidaAntropometrica;
-  r: Resultado;
-}
+const ler = (chave: string) => {
+  try {
+    return localStorage.getItem(chave);
+  } catch {
+    return null;
+  }
+};
+const gravar = (chave: string, valor: string) => {
+  try {
+    localStorage.setItem(chave, valor);
+  } catch {
+    // sem armazenamento: só não lembra a escolha
+  }
+};
 
 export function PaginaAvaliacaoNutricional() {
-  const { clientes, turmas, repo } = useData();
-  const [clienteId, setClienteId] = useState<string>(() => {
-    try {
-      return localStorage.getItem(CHAVE_CLIENTE) ?? '';
-    } catch {
-      return '';
-    }
-  });
-  const [turmaFiltro, setTurmaFiltro] = useState('');
+  const { clientes, repo } = useData();
+  const [clienteId, setClienteId] = useState<string>(() => ler(CHAVE_CLIENTE) ?? '');
+  const [aba, setAba] = useState<Aba>('criancas');
+  const [grupoFiltro, setGrupoFiltro] = useState('');
   const [busca, setBusca] = useState('');
   const [criancas, setCriancas] = useState<Crianca[]>([]);
   const [medidas, setMedidas] = useState<MedidaAntropometrica[]>([]);
@@ -55,19 +68,18 @@ export function PaginaAvaliacaoNutricional() {
   const [carregando, setCarregando] = useState(false);
   const [abertaId, setAbertaId] = useState<string | null>(null);
   const [editando, setEditando] = useState<Crianca | null>(null);
+  const [pedido, setPedido] = useState<PedidoRelatorio | undefined>();
+  const [periodicidade, setPeriodicidade] = useState(3);
 
   const cliente = clientes.find((c) => c.id === clienteId) ?? clientes[0];
-  const turmasDoCliente = useMemo(
-    () => turmas.filter((t) => t.clienteId === cliente?.id).sort((a, b) => a.ordem - b.ordem),
-    [turmas, cliente?.id],
-  );
-  const nomeTurma = (id?: string) => turmasDoCliente.find((t) => t.id === id)?.nome ?? '';
 
   useEffect(() => {
     carregarTabelasOms()
       .then(setTabelas)
       .catch(() => setErro('Não foi possível carregar as curvas da OMS. Recarregue a página.'));
   }, []);
+
+  const recarregarMedidas = async (lista = criancas) => setMedidas(await repo.listarMedidas(lista.map((c) => c.id)));
 
   const carregar = async () => {
     if (!cliente) return;
@@ -76,7 +88,7 @@ export function PaginaAvaliacaoNutricional() {
     try {
       const lista = await repo.listarCriancas(cliente.id);
       setCriancas(lista);
-      setMedidas(await repo.listarMedidas(lista.map((c) => c.id)));
+      await recarregarMedidas(lista);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e));
     } finally {
@@ -88,41 +100,33 @@ export function PaginaAvaliacaoNutricional() {
     setAbertaId(null);
     setEditando(null);
     carregar();
-    if (cliente)
-      try {
-        localStorage.setItem(CHAVE_CLIENTE, cliente.id);
-      } catch {
-        // sem armazenamento: só não lembra o cliente
-      }
+    if (cliente) {
+      gravar(CHAVE_CLIENTE, cliente.id);
+      setPeriodicidade(Number(ler(chavePeriodicidade(cliente.id))) || 3);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cliente?.id]);
 
-  /** Medidas avaliadas por criança, em ordem de data. */
-  const avaliadas = useMemo(() => {
-    const mapa = new Map<string, Avaliada[]>();
-    if (!tabelas) return mapa;
-    for (const c of criancas) {
-      mapa.set(
-        c.id,
-        medidas
-          .filter((m) => m.criancaId === c.id)
-          .map((m) => ({ medida: m, r: avaliarMedida(tabelas, c.sexo, c.dataNascimento, m) })),
-      );
-    }
-    return mapa;
-  }, [tabelas, criancas, medidas]);
-
-  const lista = criancas.filter(
-    (c) =>
-      (!turmaFiltro || c.turmaId === turmaFiltro) &&
-      (!busca.trim() || c.nome.toLowerCase().includes(busca.trim().toLowerCase())),
+  const avaliadas = useMemo(
+    () => (tabelas ? avaliarTodas(tabelas, criancas, medidas) : new Map<string, Avaliada[]>()),
+    [tabelas, criancas, medidas],
   );
+
+  const lista = criancas
+    .filter(
+      (c) =>
+        (grupoFiltro === '' || (grupoFiltro === SEM_GRUPO ? !c.grupo : c.grupo === grupoFiltro)) &&
+        (!busca.trim() || c.nome.toLowerCase().includes(busca.trim().toLowerCase())),
+    )
+    .sort((a, b) => ordemGrupo(a.grupo) - ordemGrupo(b.grupo) || a.nome.localeCompare(b.nome, 'pt-BR'));
 
   const resumo = useMemo(() => {
     const cont = new Map<string, { c: Classificacao; n: number }>();
     let semMedida = 0;
+    let atrasadas = 0;
     for (const c of lista) {
       const ult = ultimoDe(avaliadas.get(c.id));
+      if (agendaDaCrianca(ult?.medida.data, periodicidade, hoje()).situacao === 'atrasada') atrasadas++;
       if (!ult || ult.r.zImc === undefined) {
         semMedida++;
         continue;
@@ -131,8 +135,10 @@ export function PaginaAvaliacaoNutricional() {
       const atual = cont.get(cl.rotulo);
       cont.set(cl.rotulo, { c: cl, n: (atual?.n ?? 0) + 1 });
     }
-    return { itens: [...cont.values()], semMedida };
-  }, [lista, avaliadas]);
+    return { itens: [...cont.values()], semMedida, atrasadas };
+  }, [lista, avaliadas, periodicidade]);
+
+  const semTurma = criancas.filter((c) => !c.grupo).length;
 
   const salvarCrianca = async (c: Crianca) => {
     try {
@@ -146,7 +152,7 @@ export function PaginaAvaliacaoNutricional() {
   };
 
   const excluirCrianca = async (c: Crianca) => {
-    if (!confirm(`Excluir ${c.nome} e todas as aferições? Esta ação não pode ser desfeita.`)) return;
+    if (!confirm(`Excluir ${c.nome} e todas as avaliações? Esta ação não pode ser desfeita.`)) return;
     try {
       await repo.removerCrianca(c.id);
       setAbertaId(null);
@@ -159,13 +165,23 @@ export function PaginaAvaliacaoNutricional() {
   const novaCrianca = (): Crianca => ({
     id: crypto.randomUUID(),
     clienteId: cliente!.id,
-    turmaId: turmaFiltro || undefined,
+    grupo: grupoFiltro && grupoFiltro !== SEM_GRUPO ? grupoFiltro : undefined,
     nome: '',
     dataNascimento: '',
     sexo: 'F',
     ativo: true,
     criadoEm: new Date().toISOString(),
   });
+
+  const mudarPeriodicidade = (meses: number) => {
+    setPeriodicidade(meses);
+    if (cliente) gravar(chavePeriodicidade(cliente.id), String(meses));
+  };
+
+  const abrirRelatorio = (p: PedidoRelatorio) => {
+    setPedido({ ...p });
+    setAba('relatorios');
+  };
 
   const aberta = criancas.find((c) => c.id === abertaId);
 
@@ -200,120 +216,202 @@ export function PaginaAvaliacaoNutricional() {
             ))}
           </select>
         </div>
-        {turmasDoCliente.length > 0 && (
-          <div>
-            <label htmlFor="av-turma">Turma</label>
-            <select id="av-turma" value={turmaFiltro} onChange={(e) => setTurmaFiltro(e.target.value)}>
-              <option value="">Todas</option>
-              {turmasDoCliente.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        <div className="filtros-avaliacao-busca">
-          <label htmlFor="av-busca">Buscar criança</label>
-          <input id="av-busca" type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome" />
-        </div>
-        <div style={{ alignSelf: 'flex-end' }}>
-          <button className="btn" onClick={() => { setAbertaId(null); setEditando(novaCrianca()); }}>
-            + Nova criança
-          </button>
+        <div className="abas-avaliacao" role="tablist" aria-label="Seção">
+          {(
+            [
+              ['criancas', '👧 Crianças'],
+              ['turma', '📋 Avaliar turma'],
+              ['relatorios', '📄 Relatórios'],
+            ] as [Aba, string][]
+          ).map(([id, nome]) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={aba === id}
+              className={`chip${aba === id ? ' on' : ''}`}
+              onClick={() => {
+                setAba(id);
+                if (id === 'relatorios') setPedido(undefined);
+              }}
+            >
+              {nome}
+            </button>
+          ))}
         </div>
       </div>
 
       {erro && <div className="aviso">{erro}</div>}
 
-      {editando && (
-        <FormCrianca
-          crianca={editando}
-          turmas={turmasDoCliente}
-          onSalvar={salvarCrianca}
-          onCancelar={() => setEditando(null)}
-        />
-      )}
-
-      {aberta && tabelas ? (
-        <DetalheCrianca
-          crianca={aberta}
-          turma={nomeTurma(aberta.turmaId)}
-          clienteNome={cliente?.nome ?? ''}
-          avaliadas={avaliadas.get(aberta.id) ?? []}
+      {carregando || !tabelas ? (
+        <div className="card">
+          <p className="subtitulo">Carregando…</p>
+        </div>
+      ) : aba === 'turma' ? (
+        <AvaliarTurma
+          criancas={criancas}
+          avaliadas={avaliadas}
           tabelas={tabelas}
-          onVoltar={() => setAbertaId(null)}
-          onEditar={() => setEditando(aberta)}
-          onExcluir={() => excluirCrianca(aberta)}
-          onSalvarMedida={async (m) => {
-            await repo.salvarMedida(m);
-            setMedidas(await repo.listarMedidas(criancas.map((c) => c.id)));
+          grupoInicial={grupoFiltro}
+          onSalvar={async (novas) => {
+            for (const m of novas) await repo.salvarMedida(m);
+            await recarregarMedidas();
           }}
-          onRemoverMedida={async (id) => {
-            await repo.removerMedida(id);
-            setMedidas((atual) => atual.filter((m) => m.id !== id));
-          }}
+        />
+      ) : aba === 'relatorios' ? (
+        <RelatorioNutricional
+          key={`${cliente?.id}-${pedido?.criancaId ?? ''}-${pedido?.tipo ?? ''}`}
+          clienteNome={cliente?.nome ?? ''}
+          criancas={criancas}
+          avaliadas={avaliadas}
+          tabelas={tabelas}
+          grupoInicial={pedido?.criancaId ? '' : grupoFiltro}
+          pedido={pedido}
         />
       ) : (
-        <div className="card no-print">
-          {resumo.itens.length > 0 && (
-            <div className="resumo-nutri" aria-label="Resumo do IMC-para-idade na última aferição">
-              {resumo.itens.map(({ c, n }) => (
-                <span key={c.rotulo} className={`selo-nutri ${c.situacao}`}>
-                  {c.rotulo}: {n}
-                </span>
-              ))}
-              {resumo.semMedida > 0 && <span className="subtitulo">Sem aferição: {resumo.semMedida}</span>}
-            </div>
+        <>
+          {editando && (
+            <FormCrianca crianca={editando} onSalvar={salvarCrianca} onCancelar={() => setEditando(null)} />
           )}
-          {carregando || !tabelas ? (
-            <p className="subtitulo">Carregando…</p>
-          ) : lista.length === 0 ? (
-            <p className="vazio">
-              {criancas.length === 0 ? 'Nenhuma criança cadastrada neste cliente. Clique em "+ Nova criança".' : 'Nenhuma criança com esses filtros.'}
-            </p>
+
+          {aberta ? (
+            <DetalheCrianca
+              crianca={aberta}
+              avaliadas={avaliadas.get(aberta.id) ?? []}
+              tabelas={tabelas}
+              periodicidade={periodicidade}
+              onVoltar={() => setAbertaId(null)}
+              onEditar={() => setEditando(aberta)}
+              onExcluir={() => excluirCrianca(aberta)}
+              onRelatorio={() => abrirRelatorio({ tipo: 'individual', criancaId: aberta.id })}
+              onSalvarMedida={async (m) => {
+                await repo.salvarMedida(m);
+                await recarregarMedidas();
+              }}
+              onRemoverMedida={async (id) => {
+                await repo.removerMedida(id);
+                setMedidas((atual) => atual.filter((m) => m.id !== id));
+              }}
+            />
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Criança</th>
-                    <th>Turma</th>
-                    <th>Idade</th>
-                    <th>Última aferição</th>
-                    <th>IMC</th>
-                    <th>IMC para a idade</th>
-                    <th>Estatura</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lista.map((c) => {
-                    const ult = ultimoDe(avaliadas.get(c.id));
-                    return (
-                      <tr key={c.id} className="linha-clicavel" onClick={() => { setEditando(null); setAbertaId(c.id); }}>
-                        <td>
-                          <button type="button" className="btn-link" onClick={(e) => { e.stopPropagation(); setEditando(null); setAbertaId(c.id); }}>
-                            {c.nome}
-                          </button>
-                        </td>
-                        <td>{nomeTurma(c.turmaId) || '—'}</td>
-                        <td>{idadePorExtenso(c.dataNascimento, hoje())}</td>
-                        <td>{ult ? dataBr(ult.medida.data) : '—'}</td>
-                        <td>{ult ? num(ult.r.imc) : '—'}</td>
-                        <td>
-                          <Selo c={ult?.r.zImc !== undefined ? classificarImc(ult.r.zImc, ult.r.meses) : undefined} />
-                        </td>
-                        <td>
-                          <Selo c={ult?.r.zEstatura !== undefined ? classificarEstatura(ult.r.zEstatura) : undefined} />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="card no-print filtros-avaliacao">
+                <div>
+                  <label htmlFor="av-turma">Turma</label>
+                  <select id="av-turma" value={grupoFiltro} onChange={(e) => setGrupoFiltro(e.target.value)}>
+                    <option value="">Todas</option>
+                    {GRUPOS_CRIANCA.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                    <option value={SEM_GRUPO}>Sem turma</option>
+                  </select>
+                </div>
+                <div className="filtros-avaliacao-busca">
+                  <label htmlFor="av-busca">Buscar criança</label>
+                  <input id="av-busca" type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome" />
+                </div>
+                <div>
+                  <label htmlFor="av-periodicidade">Reavaliar a cada</label>
+                  <select id="av-periodicidade" value={periodicidade} onChange={(e) => mudarPeriodicidade(Number(e.target.value))}>
+                    {PERIODICIDADES.map((p) => (
+                      <option key={p.meses} value={p.meses}>
+                        {p.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ alignSelf: 'flex-end' }}>
+                  <button className="btn" onClick={() => setEditando(novaCrianca())}>
+                    + Nova criança
+                  </button>
+                </div>
+              </div>
+
+              {semTurma > 0 && (
+                <div className="aviso no-print">
+                  {semTurma} criança(s) sem turma. Abra a criança, clique em ✏️ Editar e escolha a turma (Berçário a
+                  Infantil 5).
+                </div>
+              )}
+
+              <div className="card no-print">
+                {(resumo.itens.length > 0 || resumo.atrasadas > 0) && (
+                  <div className="resumo-nutri" aria-label="Resumo do IMC-para-idade na última avaliação">
+                    {resumo.itens.map(({ c, n }) => (
+                      <span key={c.rotulo} className={`selo-nutri ${c.situacao}`}>
+                        {c.rotulo}: {n}
+                      </span>
+                    ))}
+                    {resumo.semMedida > 0 && <span className="resumo-nutri-texto">Sem avaliação: {resumo.semMedida}</span>}
+                    {resumo.atrasadas > 0 && <span className="agenda-nutri atrasada">Reavaliação atrasada: {resumo.atrasadas}</span>}
+                  </div>
+                )}
+                {lista.length === 0 ? (
+                  <p className="vazio">
+                    {criancas.length === 0
+                      ? 'Nenhuma criança cadastrada neste cliente. Clique em "+ Nova criança".'
+                      : 'Nenhuma criança com esses filtros.'}
+                  </p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Criança</th>
+                          <th>Turma</th>
+                          <th>Idade</th>
+                          <th>Última avaliação</th>
+                          <th>IMC</th>
+                          <th>IMC para a idade</th>
+                          <th>Estatura</th>
+                          <th>Próxima avaliação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lista.map((c) => {
+                          const doCrianca = avaliadas.get(c.id);
+                          const ult = ultimoDe(doCrianca);
+                          const agenda = agendaDaCrianca(ult?.medida.data, periodicidade, hoje());
+                          return (
+                            <tr key={c.id} className="linha-clicavel" onClick={() => { setEditando(null); setAbertaId(c.id); }}>
+                              <td>
+                                <button type="button" className="btn-link" onClick={(e) => { e.stopPropagation(); setEditando(null); setAbertaId(c.id); }}>
+                                  {c.nome}
+                                </button>
+                              </td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{c.grupo ?? '—'}</td>
+                              <td>{idadePorExtenso(c.dataNascimento, hoje())}</td>
+                              <td>
+                                {ult ? dataBr(ult.medida.data) : '—'}
+                                {(doCrianca?.length ?? 0) > 1 && <small className="subtitulo"> · {doCrianca!.length} no total</small>}
+                              </td>
+                              <td>{ult ? num(ult.r.imc) : '—'}</td>
+                              <td>
+                                <Selo c={ult?.r.zImc !== undefined ? classificarImc(ult.r.zImc, ult.r.meses) : undefined} />
+                              </td>
+                              <td>
+                                <Selo c={ult?.r.zEstatura !== undefined ? classificarEstatura(ult.r.zEstatura) : undefined} curto />
+                              </td>
+                              <td>
+                                <span className={`agenda-nutri ${agenda.situacao}`}>
+                                  {agenda.situacao === 'nunca' ? 'Avaliar' : dataBr(agenda.proxima)}
+                                </span>
+                                {agenda.situacao !== 'em-dia' && agenda.situacao !== 'nunca' && (
+                                  <small className="subtitulo"> {agenda.rotulo}</small>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
           )}
-        </div>
+        </>
       )}
 
       <p className="subtitulo no-print" style={{ fontSize: 12, marginTop: 8 }}>
@@ -326,12 +424,10 @@ export function PaginaAvaliacaoNutricional() {
 
 function FormCrianca({
   crianca,
-  turmas,
   onSalvar,
   onCancelar,
 }: {
   crianca: Crianca;
-  turmas: { id: string; nome: string }[];
   onSalvar: (c: Crianca) => void;
   onCancelar: () => void;
 }) {
@@ -339,6 +435,7 @@ function FormCrianca({
   const atualizar = (campos: Partial<Crianca>) => setC((x) => ({ ...x, ...campos }));
   const futuro = !!c.dataNascimento && c.dataNascimento > hoje();
   const valido = c.nome.trim() !== '' && !!c.dataNascimento && !futuro;
+  const sugestao = !futuro ? sugerirGrupo(c.dataNascimento, hoje()) : undefined;
   return (
     <div className="card no-print">
       <h3 style={{ marginTop: 0 }}>{crianca.nome ? `Editar ${crianca.nome}` : 'Nova criança'}</h3>
@@ -363,19 +460,25 @@ function FormCrianca({
             ))}
           </div>
         </div>
-        {turmas.length > 0 && (
-          <div>
-            <label htmlFor="cr-turma">Turma</label>
-            <select id="cr-turma" value={c.turmaId ?? ''} onChange={(e) => atualizar({ turmaId: e.target.value || undefined })}>
-              <option value="">Sem turma</option>
-              {turmas.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div>
+          <label htmlFor="cr-turma">Turma</label>
+          <select id="cr-turma" value={c.grupo ?? ''} onChange={(e) => atualizar({ grupo: e.target.value || undefined })}>
+            <option value="">Sem turma</option>
+            {GRUPOS_CRIANCA.map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
+          </select>
+          {sugestao && c.grupo !== sugestao && (
+            <small className="subtitulo">
+              Pela idade: {sugestao}.{' '}
+              <button type="button" className="btn-link" onClick={() => atualizar({ grupo: sugestao })}>
+                Usar
+              </button>
+            </small>
+          )}
+        </div>
         <div className="largura-toda">
           <label htmlFor="cr-obs">Observações (opcional)</label>
           <input id="cr-obs" value={c.observacoes ?? ''} onChange={(e) => atualizar({ observacoes: e.target.value })} placeholder="Ex.: APLV, prematuro" />
@@ -393,24 +496,24 @@ function FormCrianca({
 
 function DetalheCrianca({
   crianca,
-  turma,
-  clienteNome,
   avaliadas,
   tabelas,
+  periodicidade,
   onVoltar,
   onEditar,
   onExcluir,
+  onRelatorio,
   onSalvarMedida,
   onRemoverMedida,
 }: {
   crianca: Crianca;
-  turma: string;
-  clienteNome: string;
   avaliadas: Avaliada[];
   tabelas: TabelasOms;
+  periodicidade: number;
   onVoltar: () => void;
   onEditar: () => void;
   onExcluir: () => void;
+  onRelatorio: () => void;
   onSalvarMedida: (m: MedidaAntropometrica) => Promise<void>;
   onRemoverMedida: (id: string) => Promise<void>;
 }) {
@@ -419,6 +522,8 @@ function DetalheCrianca({
   const anterior = ultimoDe(avaliadas, 2);
   const idadeHoje = idadeEmDias(crianca.dataNascimento, hoje());
   const mostraPeso = idadeHoje / 30.4375 < 121 || avaliadas.some((a) => a.r.zPeso !== undefined);
+  const agenda = agendaDaCrianca(ultima?.medida.data, periodicidade, hoje());
+  const nomePeriodicidade = PERIODICIDADES.find((p) => p.meses === periodicidade)?.nome.toLowerCase() ?? '';
 
   const pontos = (ind: Indicador): PontoCrianca[] =>
     avaliadas.map(({ medida, r }) => ({
@@ -434,25 +539,33 @@ function DetalheCrianca({
         <button className="btn secundario" onClick={onVoltar}>← Voltar à lista</button>
         <div className="acoes">
           <button className="btn secundario" onClick={onEditar}>✏️ Editar</button>
-          <button className="btn secundario" onClick={() => window.print()}>🖨️ Imprimir</button>
+          <button className="btn secundario" onClick={onRelatorio}>📄 Relatório / PDF</button>
           <button className="btn perigo" onClick={onExcluir}>Excluir</button>
         </div>
       </div>
 
       <div className="card">
-        <div className="somente-print" style={{ fontSize: 12, color: '#6b7d74', marginBottom: 4 }}>
-          Avaliação nutricional · {clienteNome}
-        </div>
         <h2 style={{ margin: '0 0 4px' }}>{crianca.nome}</h2>
         <p className="subtitulo" style={{ margin: 0 }}>
           {crianca.sexo === 'F' ? 'Menina' : 'Menino'} · nascida(o) em {dataBr(crianca.dataNascimento)} ·{' '}
           {idadePorExtenso(crianca.dataNascimento, hoje())}
-          {turma && ` · ${turma}`}
+          {crianca.grupo ? ` · ${crianca.grupo}` : ' · sem turma'}
           {crianca.observacoes && ` · ${crianca.observacoes}`}
+        </p>
+        <p className="subtitulo" style={{ margin: '6px 0 0' }}>
+          {avaliadas.length === 0 ? (
+            'Nenhuma avaliação ainda.'
+          ) : (
+            <>
+              {avaliadas.length} avaliação(ões) · próxima ({nomePeriodicidade}):{' '}
+              <span className={`agenda-nutri ${agenda.situacao}`}>{dataBr(agenda.proxima)}</span>
+              {agenda.situacao !== 'em-dia' && ` · ${agenda.rotulo}`}
+            </>
+          )}
         </p>
       </div>
 
-      <NovaMedida key={crianca.id} crianca={crianca} tabelas={tabelas} onSalvar={onSalvarMedida} />
+      <NovaMedida key={crianca.id} crianca={crianca} tabelas={tabelas} quantas={avaliadas.length} onSalvar={onSalvarMedida} />
 
       {ultima ? (
         <>
@@ -488,7 +601,7 @@ function DetalheCrianca({
           </div>
 
           <div className="card">
-            <h3 style={{ marginTop: 0 }}>Histórico de aferições</h3>
+            <h3 style={{ marginTop: 0 }}>Histórico de avaliações ({avaliadas.length})</h3>
             <div style={{ overflowX: 'auto' }}>
               <table>
                 <thead>
@@ -526,8 +639,8 @@ function DetalheCrianca({
                       <td className="no-print">
                         <button
                           className="btn pequeno perigo"
-                          title="Excluir aferição"
-                          onClick={() => confirm(`Excluir a aferição de ${dataBr(medida.data)}?`) && onRemoverMedida(medida.id)}
+                          title="Excluir avaliação"
+                          onClick={() => confirm(`Excluir a avaliação de ${dataBr(medida.data)}?`) && onRemoverMedida(medida.id)}
                         >
                           ✕
                         </button>
@@ -539,9 +652,7 @@ function DetalheCrianca({
             </div>
           </div>
         </>
-      ) : (
-        <div className="card vazio">Nenhuma aferição ainda. Registre peso e altura acima.</div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -549,10 +660,12 @@ function DetalheCrianca({
 function NovaMedida({
   crianca,
   tabelas,
+  quantas,
   onSalvar,
 }: {
   crianca: Crianca;
   tabelas: TabelasOms;
+  quantas: number;
   onSalvar: (m: MedidaAntropometrica) => Promise<void>;
 }) {
   const [data, setData] = useState(hoje());
@@ -563,16 +676,14 @@ function NovaMedida({
   const [formaEscolhida, setForma] = useState<'deitado' | 'em_pe' | null>(null);
   const forma = formaEscolhida ?? (dias < 731 ? 'deitado' : 'em_pe');
   const [salvando, setSalvando] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
 
-  const pesoKg = Number(peso.replace(',', '.'));
-  const alturaCm = Number(altura.replace(',', '.'));
-  const problemas: string[] = [];
+  const pesoKg = lerDecimal(peso);
+  const alturaCm = lerDecimal(altura);
+  const problemas = problemasDaMedida(pesoKg, alturaCm);
   if (dias < 0) problemas.push('A data é anterior ao nascimento.');
   if (data > hoje()) problemas.push('A data não pode ser no futuro.');
-  if (peso && !(pesoKg >= 1 && pesoKg <= 150)) problemas.push('Peso fora do esperado (1 a 150 kg).');
-  if (altura && !(alturaCm >= 40 && alturaCm <= 200)) problemas.push('Altura fora do esperado (40 a 200 cm).');
-  const completa = peso !== '' && altura !== '' && problemas.length === 0;
+  const completa = !Number.isNaN(pesoKg) && !Number.isNaN(alturaCm) && problemas.length === 0;
   const previa = completa ? avaliarMedida(tabelas, crianca.sexo, crianca.dataNascimento, { data, pesoKg, alturaCm, forma }) : null;
 
   const salvar = async () => {
@@ -592,10 +703,10 @@ function NovaMedida({
       setPeso('');
       setAltura('');
       setForma(null);
-      setMsg('Aferição salva.');
-      setTimeout(() => setMsg(null), 3000);
+      setMsg({ ok: true, texto: `Avaliação de ${dataBr(data)} salva no histórico.` });
+      setTimeout(() => setMsg(null), 4000);
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : 'Não foi possível salvar.');
+      setMsg({ ok: false, texto: e instanceof Error ? e.message : 'Não foi possível salvar.' });
     } finally {
       setSalvando(false);
     }
@@ -603,7 +714,12 @@ function NovaMedida({
 
   return (
     <div className="card no-print">
-      <h3 style={{ marginTop: 0 }}>Nova aferição</h3>
+      <h3 style={{ marginTop: 0 }}>{quantas === 0 ? 'Primeira avaliação' : 'Nova avaliação (reavaliação)'}</h3>
+      <p className="subtitulo" style={{ marginTop: 0 }}>
+        Cada avaliação salva entra no histórico e na curva, sem apagar as anteriores. Para reavaliar (todo mês,
+        trimestre ou semestre), é só lançar aqui a nova data com o peso e a altura do dia. Para a turma inteira, use
+        a aba "Avaliar turma".
+      </p>
       <div className="form-medida">
         <div>
           <label htmlFor="md-data">Data</label>
@@ -651,9 +767,9 @@ function NovaMedida({
       )}
       <div className="acoes" style={{ marginTop: 8, alignItems: 'center' }}>
         <button className="btn" disabled={!completa || salvando} onClick={salvar}>
-          {salvando ? 'Salvando…' : '💾 Salvar aferição'}
+          {salvando ? 'Salvando…' : '💾 Salvar avaliação'}
         </button>
-        {msg && <span className={msg === 'Aferição salva.' ? 'login-aviso sucesso' : 'login-aviso erro'} style={{ margin: 0 }}>{msg}</span>}
+        {msg && <span className={msg.ok ? 'login-aviso sucesso' : 'login-aviso erro'} style={{ margin: 0 }}>{msg.texto}</span>}
       </div>
     </div>
   );

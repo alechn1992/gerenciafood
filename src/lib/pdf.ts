@@ -44,7 +44,39 @@ export interface ArquivoPdf {
   base64: string;
 }
 
-export async function gerarPdf(elemento: HTMLElement, nome: string): Promise<ArquivoPdf> {
+/** Propriedades de desenho que o SVG perde ao virar imagem (o CSS da página não vai junto). */
+const PROPRIEDADES_SVG = [
+  'fill',
+  'fill-opacity',
+  'stroke',
+  'stroke-width',
+  'stroke-dasharray',
+  'stroke-opacity',
+  'opacity',
+  'font-size',
+  'font-weight',
+  'font-family',
+] as const;
+
+/** Copia para cada elemento dos gráficos SVG o estilo calculado, para sair igual no PDF. */
+function fixarEstiloDosSvg(doc: Document) {
+  const janela = doc.defaultView;
+  if (!janela) return;
+  doc.querySelectorAll<SVGElement>('svg, svg *').forEach((el) => {
+    const calc = janela.getComputedStyle(el);
+    for (const p of PROPRIEDADES_SVG) {
+      const v = calc.getPropertyValue(p);
+      if (v) el.style.setProperty(p, v);
+    }
+  });
+}
+
+export interface OpcoesPdf {
+  /** Seletores que não podem ser cortados na quebra de página. */
+  evitarQuebra?: string[];
+}
+
+export async function gerarPdf(elemento: HTMLElement, nome: string, extra: OpcoesPdf = {}): Promise<ArquivoPdf> {
   const { default: html2pdf } = await import('html2pdf.js');
   garantirEstilo();
   const opcoes = {
@@ -58,6 +90,7 @@ export async function gerarPdf(elemento: HTMLElement, nome: string): Promise<Arq
       onclone: (doc: Document) => {
         // Na cópia que vira imagem, o tema também é o claro.
         doc.documentElement.dataset.tema = 'claro';
+        fixarEstiloDosSvg(doc);
       },
     },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
@@ -72,6 +105,7 @@ export async function gerarPdf(elemento: HTMLElement, nome: string): Promise<Arq
         '.relatorio-visita-proxima',
         '.assinatura-bloco',
         '.relatorio-visita-rodape',
+        ...(extra.evitarQuebra ?? []),
       ],
     },
   };

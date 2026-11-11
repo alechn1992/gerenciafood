@@ -1409,3 +1409,94 @@ i.painel-cor { width: 10px; height: 10px; border-radius: 2px; vertical-align: -1
   .grafico-crescimento { break-inside: avoid; }
   .gc-zona, .gc-amostra, .selo-nutri { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Avaliação nutricional: abas, turma, agenda e relatórios */
+.abas-avaliacao { display: flex; gap: 8px; flex-wrap: wrap; align-self: flex-end; }
+.abas-avaliacao .chip { font: inherit; font-size: 0.9rem; padding: 8px 14px; }
+.abas-avaliacao .chip:not(.on) { color: inherit; }
+.campo-curto { width: 90px; min-width: 70px; }
+.tabela-avaliar-turma td { vertical-align: middle; }
+.tabela-avaliar-turma select { width: auto; }
+.resultado-linha { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; white-space: nowrap; }
+
+.agenda-nutri { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.agenda-nutri.em-dia { background: var(--tom-verde-bg, #e3f4ea); color: var(--tom-verde-texto, #1e6b3f); }
+.agenda-nutri.vence { background: var(--tom-amarelo-bg, #fff1c2); color: var(--tom-amarelo-texto, #6b4a00); }
+.agenda-nutri.atrasada { background: var(--tom-vermelho-bg, #fde8e4); color: var(--tom-vermelho-texto, #9a2f1c); }
+.agenda-nutri.nunca { background: var(--tom-azul-bg, #e6effc); color: var(--tom-azul-texto, #1d4f9a); }
+
+.filtros-relatorio { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; }
+.filtros-relatorio > div { min-width: 160px; }
+
+.folha-relatorio {
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  padding: 24px 28px;
+  box-shadow: var(--sombra);
+}
+.rel-nutri { color: var(--texto); font-size: 0.92rem; }
+.rel-nutri h2 { margin: 2px 0 4px; font-size: 1.3rem; }
+.rel-nutri h3 { margin: 18px 0 8px; font-size: 1rem; }
+.rel-nutri h4 { margin: 0 0 8px; font-size: 0.9rem; }
+.rel-nutri-cabecalho {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 2px solid var(--verde);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+.rel-nutri-sobretitulo { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--verde-texto); font-weight: 700; }
+.rel-nutri-linha { color: var(--cinza); font-size: 0.85rem; }
+.rel-nutri-emissao { color: var(--cinza); font-size: 0.8rem; white-space: nowrap; }
+.rel-nutri-indicadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.rel-nutri-indicadores > div { border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; }
+.rel-nutri-indicadores strong { font-size: 1.5rem; line-height: 1.1; }
+.rel-nutri-indicadores span { color: var(--cinza); font-size: 0.8rem; }
+.rel-nutri-graficos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.rel-nutri-dist ul { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.rel-nutri-dist li { display: grid; grid-template-columns: minmax(90px, 1.2fr) 2fr auto; gap: 8px; align-items: center; font-size: 0.82rem; }
+.rel-nutri-dist-barra { height: 10px; background: var(--fundo); border-radius: 4px; overflow: hidden; display: block; }
+.rel-nutri-dist-preench { display: block; height: 100%; border-radius: 4px; background: #2e8b57; }
+.rel-nutri-dist-preench.risco { background: #c98a00; }
+.rel-nutri-dist-preench.alerta, .rel-nutri-dist-preench.excesso { background: #b3261e; }
+.rel-nutri-dist-preench.grave { background: #7a1712; }
+.rel-nutri-dist-valor { font-weight: 700; white-space: nowrap; }
+.rel-nutri-dist-valor small { font-weight: normal; color: var(--cinza); }
+.rel-nutri-evolucao li { grid-template-columns: 1fr auto; }
+.evolucao { font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+.evolucao.melhorou { color: var(--tom-verde-texto, #1e6b3f); }
+.evolucao.piorou { color: var(--tom-vermelho-texto, #9a2f1c); }
+.evolucao.estavel { color: var(--cinza); }
+.rel-nutri-tabela { width: 100%; font-size: 0.82rem; }
+.rel-nutri-tabela th, .rel-nutri-tabela td { padding: 6px 8px; }
+.rel-nutri-medidas { margin: 0 0 8px; }
+.rel-nutri-curvas { display: flex; flex-direction: column; gap: 18px; margin-top: 14px; }
+.rel-nutri-nao-avaliadas p { margin: 0; color: var(--cinza); }
+.rel-nutri-rodape { margin-top: 22px; font-size: 0.75rem; color: var(--cinza); }
+.rel-nutri-assinatura { margin: 34px 0 0 auto; width: 280px; text-align: center; color: var(--texto); font-size: 0.82rem; }
+.rel-nutri-assinatura-linha { border-bottom: 1.5px solid var(--texto); margin-bottom: 4px; height: 1px; }
+
+@media (max-width: 640px) {
+  .folha-relatorio { padding: 14px; }
+  .rel-nutri-cabecalho { flex-direction: column; gap: 4px; }
+  .rel-nutri-bloco-tabela { overflow-x: auto; }
+}
+@media print {
+  .folha-relatorio { border: none; box-shadow: none; padding: 0; border-radius: 0; }
+  .rel-nutri-bloco, .rel-nutri-tabela tr { break-inside: avoid; }
+  .rel-nutri-dist-preench, .agenda-nutri, .evolucao { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+/* No PDF a folha não tem moldura. */
+.html2pdf__container .folha-relatorio { border: none; box-shadow: none; padding: 0; }
+.rel-nutri-tabela td { white-space: nowrap; }
+.rel-nutri-tabela td.quebra { white-space: normal; min-width: 110px; }
+.rel-nutri-tabela .selo-nutri { font-size: 11px; padding: 1px 7px; }
+.evolucao-delta { font-weight: normal; color: var(--cinza); margin-left: 2px; }
+.html2pdf__container .rel-nutri { font-size: 0.82rem; }
+.html2pdf__container .rel-nutri-tabela { font-size: 0.72rem; }
+.html2pdf__container .rel-nutri-tabela th, .html2pdf__container .rel-nutri-tabela td { padding: 4px 5px; }
+.html2pdf__container .rel-nutri-tabela th { font-size: 0.62rem; }
+.html2pdf__container .rel-nutri { background: #fff; }
+.resumo-nutri-texto { color: var(--cinza); font-size: 0.85rem; }

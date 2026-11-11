@@ -325,7 +325,10 @@ export interface ItemVisita {
 export interface Crianca {
   id: string;
   clienteId: string;
+  /** Turma de cardápio (antigo; as crianças usam `grupo`). */
   turmaId?: string;
+  /** Turma real da criança: Berçário, Infantil 1 ... Infantil 5. */
+  grupo?: string;
   nome: string;
   /** yyyy-mm-dd */
   dataNascimento: string;
