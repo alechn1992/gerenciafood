@@ -1,23 +1,53 @@
-// Fotos de um item (visita técnica): miniaturas, botão para tirar/escolher e
+// Fotos de um item (visita técnica ou checklist): miniaturas, botão para tirar/escolher e
 // remover. Na impressão saem só as fotos, em tamanho legível.
 
 import { useState } from 'react';
-import type { FotoVisita } from '../domain/types';
-import { MAX_FOTOS_POR_ITEM } from '../state/useFotosVisita';
+import type { FotoItem } from '../domain/types';
+import { MAX_FOTOS_POR_ITEM } from '../state/useFotosItens';
+
+/** Botão compacto (ícone) para pôr ao lado de outro campo. */
+export function BotaoAdicionarFoto({
+  quantas,
+  onAdicionar,
+}: {
+  quantas: number;
+  onAdicionar: (arquivos: FileList) => void;
+}) {
+  if (quantas >= MAX_FOTOS_POR_ITEM) return null;
+  return (
+    <label className="foto-btn no-print" title={quantas === 0 ? 'Adicionar foto' : 'Adicionar mais uma foto'}>
+      📷
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          if (e.target.files?.length) onAdicionar(e.target.files);
+          e.target.value = '';
+        }}
+      />
+    </label>
+  );
+}
 
 export function FotosItem({
   fotos,
   onAdicionar,
   onRemover,
   somenteLeitura,
+  semBotaoAdicionar,
 }: {
-  fotos: FotoVisita[];
+  fotos: FotoItem[];
   onAdicionar?: (arquivos: FileList) => void;
   onRemover?: (id: string) => void;
   somenteLeitura?: boolean;
+  /** O botão de adicionar fica em outro lugar (ver BotaoAdicionarFoto). */
+  semBotaoAdicionar?: boolean;
 }) {
   const [ampliada, setAmpliada] = useState<string | null>(null);
-  const podeAdicionar = !somenteLeitura && !!onAdicionar && fotos.length < MAX_FOTOS_POR_ITEM;
+  const podeAdicionar =
+    !somenteLeitura && !semBotaoAdicionar && !!onAdicionar && fotos.length < MAX_FOTOS_POR_ITEM;
   if (fotos.length === 0 && !podeAdicionar) return null;
 
   return (
