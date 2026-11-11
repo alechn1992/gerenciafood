@@ -1500,3 +1500,18 @@ i.painel-cor { width: 10px; height: 10px; border-radius: 2px; vertical-align: -1
 .html2pdf__container .rel-nutri-tabela th { font-size: 0.62rem; }
 .html2pdf__container .rel-nutri { background: #fff; }
 .resumo-nutri-texto { color: var(--cinza); font-size: 0.85rem; }
+
+/* Importação do GerenciaEPS */
+.turmas-eps { list-style: none; padding: 0; margin: 0 0 6px; display: flex; flex-wrap: wrap; gap: 8px; }
+.turmas-eps li { border: 1px solid var(--borda); border-radius: 10px; padding: 6px 10px; display: flex; flex-direction: column; font-size: 0.85rem; min-width: 130px; }
+.turmas-eps li span { color: var(--texto); }
+.tabela-importar select { width: auto; }
+.tabela-importar td { vertical-align: middle; }
+.tabela-importar tr.linha-apagada td { color: var(--cinza); }
+.campo-conferir { background: var(--tom-amarelo-bg, #fff1c2); border-color: var(--tom-amarelo-borda, #e0b84a); }
+.situacao-importar { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.situacao-importar.nova { background: var(--tom-azul-bg, #e6effc); color: var(--tom-azul-texto, #1d4f9a); }
+.situacao-importar.mudou-turma { background: var(--tom-amarelo-bg, #fff1c2); color: var(--tom-amarelo-texto, #6b4a00); }
+.situacao-importar.ja-cadastrada { background: var(--tom-verde-bg, #e3f4ea); color: var(--tom-verde-texto, #1e6b3f); }
+.situacao-importar.sem-nascimento { background: var(--tom-vermelho-bg, #fde8e4); color: var(--tom-vermelho-texto, #9a2f1c); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

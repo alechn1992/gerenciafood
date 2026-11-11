@@ -32,6 +32,8 @@ import {
 } from '../domain/relatorioNutricional';
 import { GraficoCrescimento, type PontoCrianca } from '../components/GraficoCrescimento';
 import { AvaliarTurma } from '../components/avaliacao/AvaliarTurma';
+import { ImportarEps } from '../components/avaliacao/ImportarEps';
+import { buscarAlunosEps } from '../lib/eps';
 import { RelatorioNutricional, type PedidoRelatorio } from '../components/avaliacao/RelatorioNutricional';
 import { dataBr, hoje, lerDecimal, num, problemasDaMedida, Selo, ultimoDe } from '../components/avaliacao/comum';
 
@@ -70,6 +72,7 @@ export function PaginaAvaliacaoNutricional() {
   const [editando, setEditando] = useState<Crianca | null>(null);
   const [pedido, setPedido] = useState<PedidoRelatorio | undefined>();
   const [periodicidade, setPeriodicidade] = useState(3);
+  const [importando, setImportando] = useState(false);
 
   const cliente = clientes.find((c) => c.id === clienteId) ?? clientes[0];
 
@@ -81,9 +84,10 @@ export function PaginaAvaliacaoNutricional() {
 
   const recarregarMedidas = async (lista = criancas) => setMedidas(await repo.listarMedidas(lista.map((c) => c.id)));
 
-  const carregar = async () => {
+  /** Lê crianças e avaliações do cliente; `silencioso` não troca a tela por "Carregando…". */
+  const carregar = async (silencioso = false) => {
     if (!cliente) return;
-    setCarregando(true);
+    if (!silencioso) setCarregando(true);
     setErro(null);
     try {
       const lista = await repo.listarCriancas(cliente.id);
@@ -99,6 +103,7 @@ export function PaginaAvaliacaoNutricional() {
   useEffect(() => {
     setAbertaId(null);
     setEditando(null);
+    setImportando(false);
     carregar();
     if (cliente) {
       gravar(CHAVE_CLIENTE, cliente.id);
@@ -139,6 +144,7 @@ export function PaginaAvaliacaoNutricional() {
   }, [lista, avaliadas, periodicidade]);
 
   const semTurma = criancas.filter((c) => !c.grupo).length;
+  const porGrupo = (g: string) => criancas.filter((c) => c.grupo === g).length;
 
   const salvarCrianca = async (c: Crianca) => {
     try {
@@ -298,13 +304,13 @@ export function PaginaAvaliacaoNutricional() {
                 <div>
                   <label htmlFor="av-turma">Turma</label>
                   <select id="av-turma" value={grupoFiltro} onChange={(e) => setGrupoFiltro(e.target.value)}>
-                    <option value="">Todas</option>
+                    <option value="">Todas ({criancas.length})</option>
                     {GRUPOS_CRIANCA.map((g) => (
                       <option key={g} value={g}>
-                        {g}
+                        {g} ({porGrupo(g)})
                       </option>
                     ))}
-                    <option value={SEM_GRUPO}>Sem turma</option>
+                    <option value={SEM_GRUPO}>Sem turma ({semTurma})</option>
                   </select>
                 </div>
                 <div className="filtros-avaliacao-busca">
@@ -321,12 +327,28 @@ export function PaginaAvaliacaoNutricional() {
                     ))}
                   </select>
                 </div>
-                <div style={{ alignSelf: 'flex-end' }}>
-                  <button className="btn" onClick={() => setEditando(novaCrianca())}>
+                <div className="acoes" style={{ alignSelf: 'flex-end' }}>
+                  <button className="btn" onClick={() => { setImportando(false); setEditando(novaCrianca()); }}>
                     + Nova criança
+                  </button>
+                  <button className="btn secundario" onClick={() => { setEditando(null); setImportando(true); }}>
+                    📥 Importar do GerenciaEPS
                   </button>
                 </div>
               </div>
+
+              {importando && cliente && (
+                <ImportarEps
+                  clienteId={cliente.id}
+                  criancas={criancas}
+                  buscar={buscarAlunosEps}
+                  onFechar={() => setImportando(false)}
+                  onImportar={async (lista) => {
+                    for (const c of lista) await repo.salvarCrianca(c);
+                    await carregar(true);
+                  }}
+                />
+              )}
 
               {semTurma > 0 && (
                 <div className="aviso no-print">
