@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { baixarPdf, gerarPdf, nomeArquivo } from '../lib/pdf';
 import { Link, useParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import type { Profissional, Visita } from '../domain/types';
@@ -25,6 +26,8 @@ export function PaginaVisitaDetalhe() {
   const [profissional, setProfissional] = useState<Profissional | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [modalEmail, setModalEmail] = useState(false);
+  const relatorioRef = useRef<HTMLDivElement>(null);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
   const [emailDest, setEmailDest] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [msgEmail, setMsgEmail] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
@@ -104,10 +107,15 @@ export function PaginaVisitaDetalhe() {
       return;
     }
     setEnviando(true);
-    setMsgEmail(null);
+    setMsgEmail({ tipo: 'ok', texto: 'Gerando o PDF…' });
     try {
+      // O relatório vai como anexo em PDF, igual ao impresso.
+      const pdf = await gerarPdfDaVisita();
+      setMsgEmail({ tipo: 'ok', texto: 'Enviando…' });
       const { data, error } = await supabase.functions.invoke('enviar-relatorio-visita', {
         body: {
+          pdfBase64: pdf.base64,
+          nomeArquivo: pdf.nome,
           destinatario: emailDest.trim(),
           clienteNome: cliente?.nome ?? '',
           consultor: visita.consultor,
@@ -147,6 +155,22 @@ export function PaginaVisitaDetalhe() {
     }
   }
 
+  async function gerarPdfDaVisita() {
+    if (!relatorioRef.current || !visita) throw new Error('Relatório não encontrado na tela.');
+    return gerarPdf(relatorioRef.current, nomeArquivo('Relatorio-visita', cliente?.nome ?? '', visita.data));
+  }
+
+  async function handleBaixarPdf() {
+    setGerandoPdf(true);
+    try {
+      baixarPdf(await gerarPdfDaVisita());
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Não foi possível gerar o PDF.');
+    } finally {
+      setGerandoPdf(false);
+    }
+  }
+
   const totalConformes = visita.secoes.reduce(
     (acc, s) => acc + s.itens.filter((i) => i.status === 'conforme').length, 0,
   );
@@ -164,14 +188,17 @@ export function PaginaVisitaDetalhe() {
           <button className="btn secundario" onClick={() => { setEmailDest(cliente?.email ?? ''); setModalEmail(true); setMsgEmail(null); }}>
             ✉️ Enviar por e-mail
           </button>
+          <button className="btn secundario" onClick={handleBaixarPdf} disabled={gerandoPdf}>
+            {gerandoPdf ? 'Gerando PDF…' : '📄 Baixar PDF'}
+          </button>
           <button className="btn secundario" onClick={() => window.print()}>
-            🖨️ Imprimir / PDF
+            🖨️ Imprimir
           </button>
         </div>
       </div>
 
       {/* RELATÓRIO */}
-      <div className="relatorio-visita-wrapper">
+      <div className="relatorio-visita-wrapper" ref={relatorioRef}>
         {/* Logos no cabeçalho: terceirizada (esquerda) e cliente (direita) */}
         {(profissional?.logoEmpresa || cliente?.logo) && (
           <div style={{
@@ -439,6 +466,9 @@ export function PaginaVisitaDetalhe() {
               onChange={(e) => setEmailDest(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleEnviarEmail()}
             />
+            <p className="subtitulo" style={{ margin: 0, fontSize: 13 }}>
+              O relatório vai como anexo em PDF, igual ao impresso.
+            </p>
             {msgEmail && (
               <span
                 className={msgEmail.tipo === 'ok' ? 'login-aviso sucesso' : 'login-aviso erro'}

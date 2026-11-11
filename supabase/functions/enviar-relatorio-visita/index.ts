@@ -46,6 +46,8 @@ Deno.serve(async (req) => {
     observacoes,
     secoes,
     proximaVisita,
+    pdfBase64,
+    nomeArquivo,
   } = body as {
     destinatario: string
     clienteNome: string
@@ -57,11 +59,22 @@ Deno.serve(async (req) => {
     observacoes?: string
     secoes: SecaoVisita[]
     proximaVisita?: string
+    /** Relatório já em PDF (gerado no navegador): vai como anexo. */
+    pdfBase64?: string
+    nomeArquivo?: string
   }
 
   if (!destinatario) return respJSON({ error: 'E-mail destinatário obrigatório' }, 400)
 
-  const html = gerarHTML({ clienteNome, consultor, emailConsultor, data, hora, tipo, observacoes, secoes, proximaVisita })
+  // Com o PDF, o e-mail leva só uma mensagem curta e o relatório em anexo
+  // (fica fácil de imprimir e de guardar). Sem ele, o relatório vai no corpo.
+  const comPdf = typeof pdfBase64 === 'string' && pdfBase64.length > 0
+  const html = comPdf
+    ? gerarMensagemComAnexo({ clienteNome, consultor, data })
+    : gerarHTML({ clienteNome, consultor, emailConsultor, data, hora, tipo, observacoes, secoes, proximaVisita })
+  const anexos = comPdf
+    ? [{ filename: limparNomeArquivo(nomeArquivo) ?? 'Relatorio-visita.pdf', content: pdfBase64 }]
+    : undefined
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -74,6 +87,9 @@ Deno.serve(async (req) => {
       to: [destinatario],
       subject: `Relatório de Visita — ${clienteNome} (${data})`,
       html,
+      ...(anexos ? { attachments: anexos } : {}),
+      // Respostas ao e-mail vão para quem fez a visita.
+      ...(emailConsultor && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailConsultor) ? { reply_to: emailConsultor } : {}),
     }),
   })
 
@@ -81,6 +97,26 @@ Deno.serve(async (req) => {
   if (!res.ok) return respJSON({ error: (resData as { message?: string }).message ?? 'Erro ao enviar' }, 400)
   return respJSON({ ok: true })
 })
+
+function limparNomeArquivo(nome?: string): string | undefined {
+  if (!nome) return undefined
+  const limpo = nome.replace(/[^A-Za-z0-9._-]+/g, '-').slice(0, 120)
+  return limpo.toLowerCase().endsWith('.pdf') ? limpo : `${limpo}.pdf`
+}
+
+function escapar(t: string): string {
+  return t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
+}
+
+function gerarMensagemComAnexo(p: { clienteNome: string; consultor: string; data: string }): string {
+  return `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1c2b24;line-height:1.5;">
+  <p>Olá,</p>
+  <p>Segue em anexo, em PDF, o <strong>relatório da visita técnica</strong> realizada em
+  <strong>${escapar(p.data)}</strong> na <strong>${escapar(p.clienteNome)}</strong>.</p>
+  ${p.consultor ? `<p>Atenciosamente,<br>${escapar(p.consultor)}</p>` : ''}
+  <p style="color:#6b7d74;font-size:12px;">Enviado pelo GerenciaFood.</p>
+</div>`
+}
 
 function respJSON(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
