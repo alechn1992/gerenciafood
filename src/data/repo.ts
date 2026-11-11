@@ -5,7 +5,7 @@
 // Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY), os dados passam a ser
 // persistidos no Postgres do Supabase.
 
-import type { Cardapio, CategoriaCadastrada, FotoVisita, Cliente, ConfiguracaoSync, Insumo, PeriodoSemFuncionamento, PlanoAcao, Prato, PreferenciaAlimentar, Profissional, Relatorio, TipoRefeicao, Turma, Visita, SecaoVisita } from '../domain/types';
+import type { Cardapio, CategoriaCadastrada, FotoItem, OrigemFoto, Cliente, ConfiguracaoSync, Insumo, PeriodoSemFuncionamento, PlanoAcao, Prato, PreferenciaAlimentar, Profissional, Relatorio, TipoRefeicao, Turma, Visita, SecaoVisita } from '../domain/types';
 import { INSUMOS_PADRAO, PRATOS_PADRAO, TIPOS_REFEICAO_PADRAO } from './seed';
 import { supabase } from '../lib/supabase';
 import { SupabaseRepository } from './supabaseRepo';
@@ -39,9 +39,9 @@ export interface Repository {
   carregarVisita(id: string): Promise<Visita | null>;
   salvarVisita(v: Visita): Promise<void>;
   removerVisita(id: string): Promise<void>;
-  listarFotosVisita(visitaId: string): Promise<FotoVisita[]>;
-  salvarFotoVisita(f: FotoVisita): Promise<void>;
-  removerFotoVisita(id: string): Promise<void>;
+  listarFotos(origem: OrigemFoto, donoId: string): Promise<FotoItem[]>;
+  salvarFoto(origem: OrigemFoto, f: FotoItem): Promise<void>;
+  removerFoto(origem: OrigemFoto, id: string): Promise<void>;
   listarProfissionais(): Promise<Profissional[]>;
   salvarProfissional(p: Profissional): Promise<void>;
   removerProfissional(id: string): Promise<void>;
@@ -73,6 +73,7 @@ const KEYS = {
   categorias: 'gf.categorias',
   calendario: 'gf.calendario',
   visitaFotos: 'gf.visitaFotos',
+  relatorioFotos: 'gf.relatorioFotos',
   syncConfig: 'gf.syncconfig',
 };
 
@@ -84,6 +85,8 @@ function ler<T>(key: string, fallback: T): T {
     return fallback;
   }
 }
+
+const chaveFotos = (origem: OrigemFoto) => (origem === 'visita' ? KEYS.visitaFotos : KEYS.relatorioFotos);
 
 function escrever<T>(key: string, valor: T): void {
   localStorage.setItem(key, JSON.stringify(valor));
@@ -322,19 +325,21 @@ export class LocalRepository implements Repository {
     escrever(KEYS.categorias, ler<CategoriaCadastrada[]>(KEYS.categorias, []).filter((c) => c.valor !== valor));
   }
 
-  async listarFotosVisita(visitaId: string): Promise<FotoVisita[]> {
-    return ler<FotoVisita[]>(KEYS.visitaFotos, [])
-      .filter((f) => f.visitaId === visitaId)
+  async listarFotos(origem: OrigemFoto, donoId: string): Promise<FotoItem[]> {
+    // Fotos de visita gravadas antes guardavam o dono em `visitaId`.
+    return ler<(FotoItem & { visitaId?: string })[]>(chaveFotos(origem), [])
+      .map((f) => ({ ...f, donoId: f.donoId ?? f.visitaId ?? '' }))
+      .filter((f) => f.donoId === donoId)
       .sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
   }
 
-  async salvarFotoVisita(f: FotoVisita): Promise<void> {
-    const todas = ler<FotoVisita[]>(KEYS.visitaFotos, []).filter((x) => x.id !== f.id);
-    escrever(KEYS.visitaFotos, [...todas, f]);
+  async salvarFoto(origem: OrigemFoto, f: FotoItem): Promise<void> {
+    const todas = ler<FotoItem[]>(chaveFotos(origem), []).filter((x) => x.id !== f.id);
+    escrever(chaveFotos(origem), [...todas, f]);
   }
 
-  async removerFotoVisita(id: string): Promise<void> {
-    escrever(KEYS.visitaFotos, ler<FotoVisita[]>(KEYS.visitaFotos, []).filter((f) => f.id !== id));
+  async removerFoto(origem: OrigemFoto, id: string): Promise<void> {
+    escrever(chaveFotos(origem), ler<FotoItem[]>(chaveFotos(origem), []).filter((f) => f.id !== id));
   }
 
   async listarCalendario(clienteId: string): Promise<PeriodoSemFuncionamento[]> {

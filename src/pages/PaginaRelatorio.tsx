@@ -15,6 +15,8 @@ import { supabase } from '../lib/supabase';
 import { chaveChecklist, resumoAcoes } from '../domain/planoAcao';
 import { hojeISO, usePlanoAcao } from '../state/usePlanoAcao';
 import { AcaoInline } from './AcaoInline';
+import { BotaoAdicionarFoto, FotosItem } from '../components/FotosItem';
+import { useFotosItens } from '../state/useFotosItens';
 
 type Situacao = 'conforme' | 'nao_conforme' | 'na' | '';
 
@@ -31,7 +33,6 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
   const plano = usePlanoAcao(cliente.id);
   const [respostas, setRespostas] = useState<Record<string, Situacao>>({});
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
-  const [fotos, setFotos] = useState<Record<string, string>>({});
   const [avaliador, setAvaliador] = useState(cliente.responsavel ?? '');
   const [dataAval, setDataAval] = useState(new Date().toISOString().slice(0, 10));
   const [ehCei, setEhCei] = useState(false);
@@ -42,6 +43,12 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
   const [cabecalho, setCabecalho] = useState<CabecalhoChecklist>({ tipo: 'auditoria' });
   const atualizarCabecalho = (campos: Partial<CabecalhoChecklist>) => setCabecalho((c) => ({ ...c, ...campos }));
   const relatorioIdRef = useRef<string>(crypto.randomUUID());
+  // Mesmo id do ref, em estado, para as fotos acompanharem o checklist aberto.
+  const [idAberto, setIdAberto] = useState(relatorioIdRef.current);
+  const definirIdAberto = (id: string) => {
+    relatorioIdRef.current = id;
+    setIdAberto(id);
+  };
 
   // estado de UI
   const [salvando, setSalvando] = useState(false);
@@ -55,6 +62,8 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
   // aberto é sempre um deles (ou um novo, ainda não salvo).
   const [salvos, setSalvos] = useState<Relatorio[]>([]);
   const [abertoSalvo, setAbertoSalvo] = useState(false);
+  // Checklist já salvo grava cada foto na hora; um novo guarda até salvar.
+  const fotos = useFotosItens('relatorio', idAberto, abertoSalvo);
   /** Estado como foi aberto/salvo, para avisar antes de descartar alterações. */
   const [instantaneo, setInstantaneo] = useState('');
 
@@ -63,7 +72,7 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
   const temAlteracoes = instantaneo !== '' && estadoAtual() !== instantaneo;
 
   const abrir = useCallback((rel: Relatorio) => {
-    relatorioIdRef.current = rel.id;
+    definirIdAberto(rel.id);
     setAvaliador(rel.avaliador);
     setRegistroCRN(rel.registroCRN);
     setEhCei(rel.ehCei);
@@ -73,7 +82,6 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
     const cab = { tipo: 'auditoria' as const, ...(rel.cabecalho ?? {}) };
     setCabecalho(cab);
     setProfissionalId(rel.profissionalId ?? '');
-    setFotos({});
     setAbertoSalvo(true);
     setInstantaneo(
       JSON.stringify({
@@ -104,13 +112,13 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
 
   function novoChecklist(copiarRespostas: boolean) {
     if (!confirmarDescarte()) return;
-    relatorioIdRef.current = crypto.randomUUID();
+    // Fotos são da avaliação: o checklist novo começa sem elas.
+    definirIdAberto(crypto.randomUUID());
     const hoje = new Date().toISOString().slice(0, 10);
     const respostasNovas = copiarRespostas ? respostas : {};
     const observacoesNovas = copiarRespostas ? observacoes : {};
     setRespostas(respostasNovas);
     setObservacoes(observacoesNovas);
-    setFotos({});
     setDataAval(hoje);
     // Novo checklist: mantém tipo e e-mail; hora, objetivo e assinaturas são da avaliação.
     const cab: CabecalhoChecklist = { tipo: cabecalho.tipo ?? 'auditoria', emailConsultor: cabecalho.emailConsultor };
@@ -170,15 +178,6 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
     e.target.value = '';
   }
 
-  async function handleFotoUpload(e: React.ChangeEvent<HTMLInputElement>, itemId: string) {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = await lerImagemComoDataURL(file);
-      setFotos((p) => ({ ...p, [itemId]: url }));
-    }
-    e.target.value = '';
-  }
-
   async function handleSalvar() {
     setSalvando(true);
     setMsgSalvar(null);
@@ -199,6 +198,12 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
       };
       const jaExistia = salvos.find((x) => x.id === rel.id);
       await repo.salvarRelatorio(jaExistia ? { ...rel, geradoEm: jaExistia.geradoEm } : rel);
+      // Fotos tiradas antes de o checklist existir no banco são gravadas agora.
+      try {
+        await fotos.gravarPendentes(new Set(fotos.fotos.map((f) => f.itemId)));
+      } catch (e) {
+        throw new Error(`Checklist salvo, mas as fotos não: ${e instanceof Error ? e.message : String(e)}`);
+      }
       const lista = await repo.listarRelatorios(cliente.id);
       setSalvos(lista);
       // O plano acompanha o checklist: não conformidades novas viram ações e as
@@ -287,9 +292,17 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
               {msgSalvar.texto}
             </span>
           )}
+          {(fotos.erro || fotos.enviando > 0) && (
+            <span
+              className={fotos.erro ? 'login-aviso erro' : 'subtitulo'}
+              style={{ display: 'inline-block', margin: msgSalvar ? '6px 0 0' : 0, padding: '6px 14px' }}
+            >
+              {fotos.erro ?? `Preparando ${fotos.enviando} foto(s)…`}
+            </span>
+          )}
         </div>
         <div className="acoes">
-          <button className="btn secundario" onClick={handleSalvar} disabled={salvando}>
+          <button className="btn secundario" onClick={handleSalvar} disabled={salvando || fotos.enviando > 0}>
             {salvando ? 'Salvando…' : '💾 Salvar checklist'}
           </button>
           <button className="btn secundario" onClick={() => { setModalEmail(true); setMsgEmail(null); }}>
@@ -658,40 +671,17 @@ export function RelatorioCliente({ cliente }: { cliente: Cliente }) {
                         }
                         style={{ flex: 1 }}
                       />
-                      <label className="foto-btn" title="Adicionar foto">
-                        📷
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          onChange={(e) => handleFotoUpload(e, item.id)}
-                        />
-                      </label>
-                      {fotos[item.id] && (
-                        <button
-                          className="btn perigo pequeno"
-                          style={{ padding: '4px 8px' }}
-                          onClick={() => setFotos((p) => { const n = { ...p }; delete n[item.id]; return n; })}
-                          title="Remover foto"
-                        >
-                          ✕
-                        </button>
-                      )}
+                      <BotaoAdicionarFoto
+                        quantas={fotos.doItem(item.id).length}
+                        onAdicionar={(arquivos) => fotos.adicionar(item.id, arquivos)}
+                      />
                     </div>
                     {observacoes[item.id] && (
                       <div className="somente-print" style={{ fontSize: '0.82rem', marginTop: 4 }}>
                         Obs.: {observacoes[item.id]}
                       </div>
                     )}
-                    {fotos[item.id] && (
-                      <div style={{ marginTop: 6 }}>
-                        <img
-                          src={fotos[item.id]}
-                          className="relatorio-foto-item"
-                          alt="Foto evidência"
-                        />
-                      </div>
-                    )}
+                    <FotosItem fotos={fotos.doItem(item.id)} onRemover={fotos.remover} semBotaoAdicionar />
                     {respostas[item.id] === 'nao_conforme' && (
                       <AcaoInline
                         acao={plano.acaoPorChave(chaveChecklist(item.id))}

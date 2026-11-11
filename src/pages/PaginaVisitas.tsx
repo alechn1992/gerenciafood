@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FotosItem } from '../components/FotosItem';
-import { useFotosVisita } from '../state/useFotosVisita';
+import { useFotosItens } from '../state/useFotosItens';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useData } from '../state/DataContext';
 import type { ItemVisita, SecaoVisita, TipoVisita, Visita } from '../domain/types';
@@ -54,7 +54,7 @@ export function PaginaVisitas() {
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   // Visita já existente grava cada foto na hora; nova guarda até salvar.
   const visitaJaSalva = !!form && visitas.some((v) => v.id === form.id);
-  const fotos = useFotosVisita(form?.id, visitaJaSalva);
+  const fotos = useFotosItens('visita', form?.id, visitaJaSalva);
 
   const carregar = async (cId?: string) => {
     setCarregando(true);

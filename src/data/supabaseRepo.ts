@@ -3,7 +3,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
-  FotoVisita,
+  FotoItem,
+  OrigemFoto,
   Cardapio,
   CategoriaCadastrada,
   CategoriaInsumo,
@@ -350,36 +351,38 @@ export class SupabaseRepository implements Repository {
     if (error) throw error;
   }
 
-  async listarFotosVisita(visitaId: string): Promise<FotoVisita[]> {
+  async listarFotos(origem: OrigemFoto, donoId: string): Promise<FotoItem[]> {
+    const t = TABELA_FOTOS[origem];
     const { data, error } = await this.db
-      .from('visita_fotos')
+      .from(t.tabela)
       .select('*')
-      .eq('visita_id', visitaId)
+      .eq(t.dono, donoId)
       .order('criado_em');
-    if (error) throw tabelaFotosFaltando(error) ?? error;
+    if (error) throw tabelaFotosFaltando(error, origem) ?? error;
     return (data ?? []).map((r) => ({
       id: r.id,
-      visitaId: r.visita_id,
+      donoId: r[t.dono],
       itemId: r.item_id,
       imagem: r.imagem,
       criadoEm: r.criado_em,
     }));
   }
 
-  async salvarFotoVisita(f: FotoVisita): Promise<void> {
-    const { error } = await this.db.from('visita_fotos').upsert({
+  async salvarFoto(origem: OrigemFoto, f: FotoItem): Promise<void> {
+    const t = TABELA_FOTOS[origem];
+    const { error } = await this.db.from(t.tabela).upsert({
       id: f.id,
-      visita_id: f.visitaId,
+      [t.dono]: f.donoId,
       item_id: f.itemId,
       imagem: f.imagem,
       criado_em: f.criadoEm,
     });
-    if (error) throw tabelaFotosFaltando(error) ?? error;
+    if (error) throw tabelaFotosFaltando(error, origem) ?? error;
   }
 
-  async removerFotoVisita(id: string): Promise<void> {
-    const { error } = await this.db.from('visita_fotos').delete().eq('id', id);
-    if (error) throw tabelaFotosFaltando(error) ?? error;
+  async removerFoto(origem: OrigemFoto, id: string): Promise<void> {
+    const { error } = await this.db.from(TABELA_FOTOS[origem].tabela).delete().eq('id', id);
+    if (error) throw tabelaFotosFaltando(error, origem) ?? error;
   }
 
   async listarCalendario(clienteId: string): Promise<PeriodoSemFuncionamento[]> {
@@ -605,16 +608,23 @@ function mapProfissionalFromRow(r: any): Profissional {
 }
 
 /** Erro do PostgREST por coluna que ainda não existe (migração pendente). */
+const TABELA_FOTOS: Record<OrigemFoto, { tabela: string; dono: string; sql: string; onde: string }> = {
+  visita: { tabela: 'visita_fotos', dono: 'visita_id', sql: '0024_visita_fotos', onde: 'da visita' },
+  relatorio: { tabela: 'relatorio_fotos', dono: 'relatorio_id', sql: '0025_relatorio_fotos', onde: 'do checklist' },
+};
+
 /** Tabela de fotos ainda não criada no banco: explica o que fazer. */
-function tabelaFotosFaltando(error: { message?: string; code?: string }): Error | null {
+function tabelaFotosFaltando(error: { message?: string; code?: string }, origem: OrigemFoto): Error | null {
+  const t = TABELA_FOTOS[origem];
   const msg = error.message ?? '';
-  if (error.code === '42P01' || error.code === 'PGRST205' || (/visita_fotos/.test(msg) && /could not find|does not exist|schema cache/i.test(msg))) {
-    return new Error(
-      'As fotos da visita ainda não podem ser salvas: falta rodar no Supabase o SQL ' +
-        '0024_visita_fotos (cria a tabela visita_fotos).',
-    );
-  }
-  return null;
+  const faltaTabela =
+    error.code === '42P01' ||
+    error.code === 'PGRST205' ||
+    (msg.includes(t.tabela) && /could not find|does not exist|schema cache/i.test(msg));
+  if (!faltaTabela) return null;
+  return new Error(
+    `As fotos ${t.onde} ainda não podem ser salvas: falta rodar no Supabase o SQL ${t.sql} (cria a tabela ${t.tabela}).`,
+  );
 }
 
 function colunaFaltando(error: { message?: string; code?: string }, coluna: string): boolean {

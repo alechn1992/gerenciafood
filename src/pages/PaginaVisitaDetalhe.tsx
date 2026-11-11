@@ -9,7 +9,7 @@ import { chaveVisita } from '../domain/planoAcao';
 import { hojeISO, usePlanoAcao } from '../state/usePlanoAcao';
 import { AcaoInline } from './AcaoInline';
 import { FotosItem } from '../components/FotosItem';
-import { useFotosVisita } from '../state/useFotosVisita';
+import { useFotosItens } from '../state/useFotosItens';
 import { BlocoAssinaturas, modoAssinatura } from '../components/BlocoAssinaturas';
 import type { AssinaturasRelatorio } from '../domain/types';
 
@@ -32,7 +32,7 @@ export function PaginaVisitaDetalhe() {
   const [enviando, setEnviando] = useState(false);
   const [msgEmail, setMsgEmail] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   const plano = usePlanoAcao(visita?.clienteId);
-  const fotos = useFotosVisita(visita?.id, true);
+  const fotos = useFotosItens('visita', visita?.id, true);
   const [msgPlano, setMsgPlano] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   const [assinaturas, setAssinaturas] = useState<AssinaturasRelatorio | undefined>(undefined);
   const [assinaturasAlteradas, setAssinaturasAlteradas] = useState(false);
