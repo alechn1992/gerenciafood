@@ -2,7 +2,7 @@
 // Lê abas "SEMANA N" no formato padrão Ponte do Saber e cria turmas,
 // pratos e cardápios no repositório ativo (localStorage ou Supabase).
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { Link } from 'react-router-dom';
 import { useData } from '../state/DataContext';
@@ -42,6 +42,44 @@ export function PaginaImportarCardapio() {
   const [erroImport, setErroImport] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [nomeArquivo, setNomeArquivo] = useState('');
+  /** Turmas da planilha que serão importadas (dá para importar só uma, ex.: a APLV). */
+  const [escolhidas, setEscolhidas] = useState<Set<string>>(new Set());
+  /** Semanas já salvas no cliente que a importação vai substituir, por turma. */
+  const [substituidas, setSubstituidas] = useState<{ turma: string; semanas: number }[]>([]);
+
+  useEffect(() => {
+    setSubstituidas([]);
+    if (!dados || !clienteId) return;
+    let vivo = true;
+    (async () => {
+      const [turmasCli, salvos] = await Promise.all([repo.listarTurmas(clienteId), repo.listarCardapios(clienteId)]);
+      const out: { turma: string; semanas: number }[] = [];
+      for (const nome of dados.turmasEncontradas) {
+        if (!escolhidas.has(nome)) continue;
+        const t = turmasCli.find((x) => x.nome === nome);
+        if (!t) continue;
+        const semanasPlanilha = new Set(
+          dados.semanas.filter((s) => s.turmas.some((x) => x.nome === nome)).map((s) => s.semanaInicio),
+        );
+        const n = new Set(
+          salvos.filter((c) => c.turmaId === t.id && semanasPlanilha.has(c.semanaInicio)).map((c) => c.semanaInicio),
+        ).size;
+        if (n > 0) out.push({ turma: nome, semanas: n });
+      }
+      if (vivo) setSubstituidas(out);
+    })().catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [dados, clienteId, escolhidas, repo]);
+
+  const alternarTurma = (nome: string) =>
+    setEscolhidas((atual) => {
+      const nova = new Set(atual);
+      if (nova.has(nome)) nova.delete(nome);
+      else nova.add(nome);
+      return nova;
+    });
 
   const processarArquivo = useCallback(async (file: File) => {
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
@@ -53,6 +91,7 @@ export function PaginaImportarCardapio() {
     try {
       const parsed = await parsearArquivo(file);
       setDados(parsed);
+      setEscolhidas(new Set(parsed.turmasEncontradas));
       setEtapa('preview');
     } catch (e) {
       setErroArquivo(e instanceof Error ? e.message : 'Erro ao processar o arquivo.');
@@ -96,6 +135,7 @@ export function PaginaImportarCardapio() {
 
       for (let i = 0; i < dados.turmasEncontradas.length; i++) {
         const nome = dados.turmasEncontradas[i];
+        if (!escolhidas.has(nome)) continue;
         const existing = existingTurmas.find((t) => t.nome === nome);
         if (existing) {
           turmaIds.set(nome, existing.id);
@@ -119,6 +159,7 @@ export function PaginaImportarCardapio() {
       const novosNeeded = new Map<string, { nome: string; categoria: CategoriaPrato }>();
       for (const semana of dados.semanas) {
         for (const turma of semana.turmas) {
+          if (!escolhidas.has(turma.nome)) continue;
           for (const ref of turma.refeicoes) {
             for (const dia of ref.dias) {
               for (const item of dia.pratos) {
@@ -271,10 +312,16 @@ export function PaginaImportarCardapio() {
           </div>
 
           <div className="imp-turmas">
-            <p className="imp-secao-titulo">Turmas encontradas</p>
+            <p className="imp-secao-titulo">Turmas encontradas — marque as que quer importar</p>
             {dados.turmasEncontradas.map((t) => (
-              <span key={t} className="imp-turma-chip">{t}</span>
+              <label key={t} className={`imp-turma-chip imp-turma-opcao${escolhidas.has(t) ? ' on' : ''}`}>
+                <input type="checkbox" checked={escolhidas.has(t)} onChange={() => alternarTurma(t)} />
+                {t}
+              </label>
             ))}
+            <p className="imp-turmas-dica">
+              Para trazer só uma turma (ex.: a APLV) sem mexer nas outras, deixe marcada apenas ela.
+            </p>
           </div>
 
           <div className="imp-nota">
@@ -310,6 +357,21 @@ export function PaginaImportarCardapio() {
             )}
           </div>
 
+          {substituidas.length > 0 && (
+            <div className="imp-aviso-substituir">
+              <strong>Atenção:</strong> estas turmas já têm cardápio salvo nas mesmas semanas, e ele será
+              substituído pelo da planilha (inclusive o que foi montado no sistema):
+              <ul>
+                {substituidas.map((x) => (
+                  <li key={x.turma}>
+                    {x.turma}: {x.semanas} semana(s)
+                  </li>
+                ))}
+              </ul>
+              Desmarque as turmas que não quer substituir.
+            </div>
+          )}
+
           {erroImport && <p className="imp-erro">{erroImport}</p>}
 
           <div className="imp-acoes">
@@ -321,10 +383,10 @@ export function PaginaImportarCardapio() {
             </button>
             <button
               className="btn primario"
-              disabled={!clienteId}
+              disabled={!clienteId || escolhidas.size === 0}
               onClick={handleImportar}
             >
-              Importar cardápio
+              Importar {escolhidas.size < dados.turmasEncontradas.length ? `${escolhidas.size} turma(s)` : 'cardápio'}
             </button>
           </div>
         </div>
@@ -372,6 +434,20 @@ export function PaginaImportarCardapio() {
         .imp-pagina {
           max-width: 740px;
         }
+        .imp-turma-chip.imp-turma-opcao { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; opacity: 0.6; }
+        .imp-turma-opcao.on { opacity: 1; }
+        .imp-turma-opcao input { width: auto; margin: 0; }
+        .imp-turmas-dica { font-size: 0.82rem; color: var(--cinza); margin: 8px 0 0; }
+        .imp-aviso-substituir {
+          background: var(--tom-amarelo-bg, #fff6db);
+          border: 1px solid var(--tom-amarelo-borda, #e0b84a);
+          color: var(--tom-amarelo-texto, #6b4a00);
+          border-radius: 8px;
+          padding: 10px 14px;
+          margin: 12px 0;
+          font-size: 0.88rem;
+        }
+        .imp-aviso-substituir ul { margin: 6px 0; padding-left: 18px; }
         .imp-pagina h1 {
           margin-bottom: 6px;
         }
