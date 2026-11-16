@@ -46,7 +46,28 @@ function novaTurma(ordem: number): Turma {
   };
 }
 
+/**
+ * Só abre o formulário de edição depois que o cliente carregou: o formulário
+ * lê os dados uma vez ao abrir e, aberto antes (ex.: ao recarregar a página),
+ * vinha em branco, e salvar apagava a configuração do cliente.
+ */
 export function PaginaClienteForm() {
+  const { id } = useParams();
+  const { clientes, carregando } = useData();
+  if (id && !clientes.some((c) => c.id === id)) {
+    return (
+      <div>
+        <h1>Editar cliente</h1>
+        <div className="card">
+          <p className="subtitulo">{carregando ? 'Carregando…' : 'Cliente não encontrado.'}</p>
+        </div>
+      </div>
+    );
+  }
+  return <FormCliente key={id ?? 'novo'} />;
+}
+
+function FormCliente() {
   const { id } = useParams();
   const navigate = useNavigate();
   const {
@@ -60,6 +81,7 @@ export function PaginaClienteForm() {
     profissionais,
     restricoesDisponiveis,
     carregando,
+    listarCardapios,
   } = useData();
 
   const existente = useMemo(
@@ -126,8 +148,48 @@ export function PaginaClienteForm() {
   const adicionarTurma = () => setTurmasEdit((prev) => [...prev, novaTurma(prev.length)]);
   const atualizarTurma = (idx: number, patch: Partial<Turma>) =>
     setTurmasEdit((prev) => prev.map((t, i) => (i === idx ? { ...t, ...patch } : t)));
-  const removerTurmaEdit = (idx: number) =>
+  // Quantos cardápios salvos cada turma tem: remover a turma apaga todos eles.
+  const [cardapiosPorTurma, setCardapiosPorTurma] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!existente) return;
+    let vivo = true;
+    listarCardapios(existente.id)
+      .then((lista) => {
+        if (!vivo) return;
+        const cont: Record<string, number> = {};
+        for (const c of lista) if (c.turmaId) cont[c.turmaId] = (cont[c.turmaId] ?? 0) + 1;
+        setCardapiosPorTurma(cont);
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [existente, listarCardapios]);
+
+  const avisoRemocao = (t: Turma) => {
+    const n = cardapiosPorTurma[t.id] ?? 0;
+    return n > 0
+      ? `"${t.nome || 'Sem nome'}" tem ${n} cardápio(s) salvo(s). Ao salvar o cliente, a turma e TODOS esses cardápios serão apagados.`
+      : `Remover a turma "${t.nome || 'Sem nome'}"?`;
+  };
+
+  const removerTurmaEdit = (idx: number) => {
+    const t = turmasEdit[idx];
+    if (t && idsOriginais.current.has(t.id) && !confirm(`${avisoRemocao(t)}\n\nDeseja continuar?`)) return;
     setTurmasEdit((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const alternarUsaTurmas = () => {
+    if (usaTurmas && turmasEdit.some((t) => idsOriginais.current.has(t.id))) {
+      const total = turmasEdit.reduce((s, t) => s + (cardapiosPorTurma[t.id] ?? 0), 0);
+      const msg =
+        total > 0
+          ? `Desligar "Usa turmas" apaga, ao salvar, todas as ${turmasEdit.length} turma(s) e ${total} cardápio(s) salvo(s) delas.\n\nDeseja continuar?`
+          : `Desligar "Usa turmas" apaga, ao salvar, as ${turmasEdit.length} turma(s) deste cliente.\n\nDeseja continuar?`;
+      if (!confirm(msg)) return;
+    }
+    setUsaTurmas((v) => !v);
+  };
   const toggleRestricaoTurma = (idx: number, r: string) =>
     setTurmasEdit((prev) =>
       prev.map((t, i) =>
@@ -187,14 +249,29 @@ export function PaginaClienteForm() {
       criadoEm: existente?.criadoEm ?? new Date().toISOString(),
     };
 
+    // Turmas que saíram do formulário: apagar a turma apaga os cardápios dela.
+    const idsFinais = new Set(usaTurmas ? turmasEdit.map((t) => t.id) : []);
+    const paraRemover = [...idsOriginais.current].filter((tid) => !idsFinais.has(tid));
+    if (paraRemover.length > 0) {
+      const linhas = paraRemover.map((tid) => {
+        const t = turmas.find((x) => x.id === tid);
+        const n = cardapiosPorTurma[tid] ?? 0;
+        return `• ${t?.nome ?? 'Turma'}${n > 0 ? ` (${n} cardápio(s) salvo(s))` : ''}`;
+      });
+      if (
+        !confirm(
+          `Estas turmas serão apagadas junto com todos os cardápios delas:\n${linhas.join('\n')}\n\nEsta ação não pode ser desfeita. Salvar mesmo assim?`,
+        )
+      ) {
+        return;
+      }
+    }
     try {
       await salvarCliente(cliente);
 
       // Gravações sequenciais: o repositório local faz leitura-modificação-escrita
       // sobre um único array no localStorage, então chamadas concorrentes (Promise.all)
       // fariam uma sobrescrever o resultado da outra.
-      const idsFinais = new Set(usaTurmas ? turmasEdit.map((t) => t.id) : []);
-      const paraRemover = [...idsOriginais.current].filter((tid) => !idsFinais.has(tid));
       for (const tid of paraRemover) {
         await removerTurma(tid);
       }
@@ -360,7 +437,7 @@ export function PaginaClienteForm() {
           <span
             className={`chip ${usaTurmas ? 'on' : ''}`}
             style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
-            onClick={() => setUsaTurmas((v) => !v)}
+            onClick={alternarUsaTurmas}
           >
             {usaTurmas ? '✓ ' : ''}Usa turmas
           </span>
