@@ -28,6 +28,15 @@ const LETRA_MIN = 6;
 
 const ddmm = (isoData: string) => `${isoData.slice(8, 10)}/${isoData.slice(5, 7)}`;
 
+const CHAVE_SEMANAS_COMPLETAS = 'gf:cozinha-semanas-completas';
+const lerPreferencia = () => {
+  try {
+    return localStorage.getItem(CHAVE_SEMANAS_COMPLETAS) !== 'nao';
+  } catch {
+    return true;
+  }
+};
+
 export function VisualizacaoCozinha({
   cliente,
   opcoes,
@@ -50,6 +59,17 @@ export function VisualizacaoCozinha({
 }) {
   const [mes, setMes] = useState(mesInicial);
   const [opcaoId, setOpcaoId] = useState(opcaoInicial);
+  // Semanas que cruzam a virada do mês saem inteiras (ex.: 30/11 a 04/12), para
+  // a cozinha planejar as compras sem juntar duas folhas.
+  const [completas, setCompletas] = useState(lerPreferencia);
+  const alternarCompletas = (v: boolean) => {
+    setCompletas(v);
+    try {
+      localStorage.setItem(CHAVE_SEMANAS_COMPLETAS, v ? 'sim' : 'nao');
+    } catch {
+      // sem armazenamento: só não lembra a escolha
+    }
+  };
   const opcao = opcoes.find((o) => o.id === opcaoId) ?? opcoes[0];
 
   const dias = DIAS_SEMANA.filter((d) => cliente.diasOperacao.includes(d.valor));
@@ -95,6 +115,10 @@ export function VisualizacaoCozinha({
             </select>
           </div>
         )}
+        <label className="opcao-inline cz-opcao-completas">
+          <input type="checkbox" checked={completas} onChange={(e) => alternarCompletas(e.target.checked)} />
+          Semanas completas na virada do mês (inclui os dias do mês anterior/seguinte)
+        </label>
         {(faltando > 0 || rascunhos > 0) && (
           <p className="aviso" style={{ margin: 0, flexBasis: '100%' }}>
             {faltando > 0 && `${faltando} semana(s) do mês ainda sem cardápio salvo para esta turma. `}
@@ -109,6 +133,7 @@ export function VisualizacaoCozinha({
           titulo={opcao.id ? opcao.nome : undefined}
           refeicoes={opcao.refeicoes}
           mes={mes}
+          completas={completas}
           dias={dias.map((d) => ({ valor: d.valor, curto: d.curto }))}
           semanas={semanas}
           tiposRefeicao={tiposRefeicao}
@@ -130,6 +155,7 @@ function FolhaCozinha({
   titulo,
   refeicoes,
   mes,
+  completas,
   dias,
   semanas,
   tiposRefeicao,
@@ -138,6 +164,8 @@ function FolhaCozinha({
   titulo?: string;
   refeicoes: RefeicaoConfig[];
   mes: string;
+  /** Mostra também os dias da semana que caem no mês vizinho. */
+  completas: boolean;
   dias: { valor: DiaSemana; curto: string }[];
   semanas: { semanaInicio: string; cardapio?: Cardapio }[];
   tiposRefeicao: TipoRefeicao[];
@@ -173,6 +201,16 @@ function FolhaCozinha({
 
   const responsavel = [cliente.responsavel, cliente.registroProfissional].filter(Boolean).join(' — ');
 
+  // Dias que entram na folha de cada semana: só os do mês, ou a semana inteira.
+  const diasDaFolha = (semanaInicio: string) =>
+    completas ? dias : dias.filter((d) => noMes(dataNaSemana(semanaInicio, d.valor), mes));
+  const datasDaFolha = semanas.flatMap(({ semanaInicio }) =>
+    diasDaFolha(semanaInicio).map((d) => dataNaSemana(semanaInicio, d.valor)),
+  );
+  const inicioFolha = datasDaFolha[0];
+  const fimFolha = datasDaFolha[datasDaFolha.length - 1];
+  const passaDoMes = completas && datasDaFolha.some((d) => !noMes(d, mes));
+
   return (
     <>
       {naoCoube && (
@@ -193,17 +231,26 @@ function FolhaCozinha({
                   {titulo && <span className="cz-turma"> · {titulo}</span>}
                 </div>
               </div>
-              <div className="cz-mes">{rotuloMes(mes)}</div>
+              <div className="cz-mes">
+                {rotuloMes(mes)}
+                {passaDoMes && inicioFolha && fimFolha && (
+                  <span className="cz-periodo">
+                    {ddmm(inicioFolha)} a {ddmm(fimFolha)}
+                  </span>
+                )}
+              </div>
             </header>
 
             {semanas.map(({ semanaInicio, cardapio }, si) => {
-              const doMes = dias.filter((d) => noMes(dataNaSemana(semanaInicio, d.valor), mes));
+              const doMes = diasDaFolha(semanaInicio);
               const primeiro = doMes[0] ? dataNaSemana(semanaInicio, doMes[0].valor) : semanaInicio;
               const ultimo = doMes.length ? dataNaSemana(semanaInicio, doMes[doMes.length - 1].valor) : semanaInicio;
               const aviso = (dia: DiaSemana) => cardapio?.avisos?.find((a) => a.dia === dia)?.texto;
               const soAviso = (dia: DiaSemana) =>
                 !!aviso(dia) && !cardapio?.itens.some((i) => i.dia === dia);
-              const foraDoMes = (dia: DiaSemana) => !noMes(dataNaSemana(semanaInicio, dia), mes);
+              const outroMes = (dia: DiaSemana) => !noMes(dataNaSemana(semanaInicio, dia), mes);
+              // Dia hachurado (sem cardápio na folha): só quando a semana não sai inteira.
+              const foraDoMes = (dia: DiaSemana) => !completas && outroMes(dia);
               return (
                 <table key={semanaInicio} className="cz-semana">
                   <colgroup>
@@ -220,7 +267,10 @@ function FolhaCozinha({
                       {dias.map((d) => {
                         const data = dataNaSemana(semanaInicio, d.valor);
                         return (
-                          <th key={d.valor} className={foraDoMes(d.valor) ? 'cz-fora' : undefined}>
+                          <th
+                            key={d.valor}
+                            className={foraDoMes(d.valor) ? 'cz-fora' : outroMes(d.valor) ? 'cz-outro-mes' : undefined}
+                          >
                             {d.curto} <span>{ddmm(data)}</span>
                           </th>
                         );
@@ -269,7 +319,10 @@ function FolhaCozinha({
             })}
 
             <footer className="cz-rodape">
-              <span>Sujeito a alterações conforme disponibilidade e qualidade dos alimentos.</span>
+              <span>
+                Sujeito a alterações conforme disponibilidade e qualidade dos alimentos.
+                {passaDoMes && ' Dias com cabeçalho azul são do mês anterior ou seguinte.'}
+              </span>
               {responsavel && <strong>{responsavel}</strong>}
             </footer>
           </div>
@@ -358,6 +411,10 @@ function FolhaCozinha({
         .cz-semana thead th.cz-rotulo-semana { text-align: left; background: #145636; border-color: #145636; }
         .cz-rotulo-semana span { display: block; font-size: 0.85em; }
         .cz-semana thead th.cz-fora { background: #9fb3a8; border-color: #9fb3a8; }
+        /* Dia do mês vizinho numa semana completa: cabeçalho em outro tom. */
+        .cz-semana thead th.cz-outro-mes { background: #2f6f8f; border-color: #2f6f8f; }
+        .cz-periodo { display: block; font-size: 0.6em; font-weight: 600; opacity: 0.9; text-align: center; }
+        .cz-opcao-completas { flex-basis: 100%; }
         .cz-rascunho {
           display: inline-block;
           margin-top: 0.15em;
@@ -411,7 +468,7 @@ function FolhaCozinha({
           .conteudo { padding: 0 !important; margin: 0 !important; }
           html, body { background: #fff !important; }
           .cz-folha { box-shadow: none; outline: none; margin: 0; }
-          .cz-semana thead th, .cz-refeicao, .cz-aviso, .cz-fora, .cz-mes, .cz-rascunho {
+          .cz-semana thead th, .cz-refeicao, .cz-aviso, .cz-fora, .cz-outro-mes, .cz-mes, .cz-rascunho {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
