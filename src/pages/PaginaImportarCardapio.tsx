@@ -152,8 +152,10 @@ export function PaginaImportarCardapio() {
       }
 
       // 2. Pratos — reutiliza por nome, cria os novos
-      const pratoMap = new Map<string, { id: string; nome: string }>(
-        pratos.map((p) => [p.nome.toLowerCase().trim(), { id: p.id, nome: p.nome }]),
+      // A categoria que vale é a do prato no receituário (ex.: "Fruta"); a da
+      // planilha é só um palpite pela posição na célula.
+      const pratoMap = new Map<string, { id: string; nome: string; categoria: CategoriaPrato }>(
+        pratos.map((p) => [p.nome.toLowerCase().trim(), { id: p.id, nome: p.nome, categoria: p.categoria }]),
       );
 
       const novosNeeded = new Map<string, { nome: string; categoria: CategoriaPrato }>();
@@ -180,7 +182,7 @@ export function PaginaImportarCardapio() {
           id, nome, categoria, restricoes: [], tags: [], ativo: true,
         };
         await repo.salvarPrato(prato);
-        pratoMap.set(nome.toLowerCase().trim(), { id, nome });
+        pratoMap.set(nome.toLowerCase().trim(), { id, nome, categoria });
         pratosNovos++;
       }
 
@@ -212,7 +214,7 @@ export function PaginaImportarCardapio() {
                 itens.push({
                   dia: diaData.dia,
                   tipoRefeicaoId: ref.tipoId,
-                  categoria: item.categoria,
+                  categoria: encontrado.categoria,
                   pratoId: encontrado.id,
                   pratoNome: encontrado.nome,
                 });

@@ -26,7 +26,7 @@ import {
   type StatusCardapio,
   type Turma,
 } from '../domain/types';
-import { categoriasDisponiveis } from '../domain/categorias';
+import { categoriaPeloReceituario, linhasDaRefeicao, type LinhaGrade } from '../domain/gradeCardapio';
 import { formatarData, segundaFeiraDaSemana } from '../lib/datas';
 import { UF_PARA_REGIAO } from '../data/sazonalidade';
 import { CardapioImpressao, type SemanaImpressao } from './CardapioImpressao';
@@ -282,13 +282,16 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
     });
   };
 
-  const renderCelula = (c: Cardapio, dia: number, tipoId: string, categoria: string) => {
+  const categoriaDe = categoriaPeloReceituario(pratos);
+  const renderCelula = (c: Cardapio, dia: number, tipoId: string, linha: LinhaGrade) => {
+    const categoria = linha.categoria;
     const com = c.itens
       .map((item, idx) => ({ item, idx }))
       .filter(
         ({ item }) =>
-          item.dia === dia && item.tipoRefeicaoId === tipoId && item.categoria === categoria,
-      );
+          item.dia === dia && item.tipoRefeicaoId === tipoId && categoriaDe(item) === categoria,
+      )
+      .slice(linha.inicio, linha.fim);
     if (com.length === 0) return <span style={{ color: 'var(--cinza)' }}>—</span>;
 
     const pratosCategoria = pratos.filter((p) => p.ativo && p.categoria === categoria);
@@ -326,15 +329,18 @@ function CardapioSimples({ cliente }: { cliente: Cliente }) {
         </thead>
         <tbody>
           {cliente.refeicoes.map((ref) =>
-            ref.composicao.map((comp, ci) => (
-              <tr key={`${ref.tipoRefeicaoId}-${comp.categoria}-${ci}`}>
+            linhasDaRefeicao(
+              ref.composicao,
+              c.itens.filter((i) => i.tipoRefeicaoId === ref.tipoRefeicaoId).map(categoriaDe),
+            ).map((linha, ci) => (
+              <tr key={`${ref.tipoRefeicaoId}-${linha.categoria}-${ci}`}>
                 <td>
                   {ci === 0 && <strong>{nomeTipo(ref.tipoRefeicaoId)}</strong>}
-                  <div className="cat">{rotuloCategoria(comp.categoria)}</div>
+                  <div className="cat">{rotuloCategoria(linha.categoria)}</div>
                 </td>
                 {diasVisiveis.map((d) => (
                   <td key={d.valor}>
-                    {renderCelula(c, d.valor, ref.tipoRefeicaoId, comp.categoria)}
+                    {renderCelula(c, d.valor, ref.tipoRefeicaoId, linha)}
                   </td>
                 ))}
               </tr>
@@ -1232,16 +1238,21 @@ function GradeTurma({
   /** Muda só o nome exibido de itens (ex.: consistência da fruta), mantendo o prato. */
   onRenomear?: (mudancas: { idx: number; nome: string }[]) => void;
 }) {
+  const categoriaDe = categoriaPeloReceituario(pratos);
+  // A consistência (amassada/raspada) vale para a fruta pela categoria atual do receituário.
+  const ehFrutaServivel = (item: ItemCardapio) => aceitaConsistencia({ ...item, categoria: categoriaDe(item) });
   const frutas = cardapio.itens
     .map((item, idx) => ({ item, idx }))
-    .filter(({ item }) => aceitaConsistencia(item));
+    .filter(({ item }) => ehFrutaServivel(item));
   const marcarConsistencia = (idx: number, nome: string, c: Consistencia, marcado: boolean) =>
     onRenomear?.([{ idx, nome: aplicarConsistencia(nome, marcado ? c : null) }]);
 
-  const renderCelula = (dia: number, tipoId: string, categoria: string) => {
+  const renderCelula = (dia: number, tipoId: string, linha: LinhaGrade) => {
+    const categoria = linha.categoria;
     const com = cardapio.itens
       .map((item, idx) => ({ item, idx }))
-      .filter(({ item }) => item.dia === dia && item.tipoRefeicaoId === tipoId && item.categoria === categoria);
+      .filter(({ item }) => item.dia === dia && item.tipoRefeicaoId === tipoId && categoriaDe(item) === categoria)
+      .slice(linha.inicio, linha.fim);
     if (com.length === 0) return <span style={{ color: 'var(--cinza)' }}>—</span>;
     const pratosCategoria = pratos.filter((p) => p.ativo && p.categoria === categoria);
     return (
@@ -1255,7 +1266,7 @@ function GradeTurma({
               pratosCategoria={pratosCategoria}
               onTrocar={onTrocar}
             />
-            {onRenomear && aceitaConsistencia(item) && (
+            {onRenomear && ehFrutaServivel(item) && (
               <span className="consistencia no-print">
                 {(['amassada', 'raspada'] as const).map((c) => (
                   <label key={c} title={`Servir ${c}`}>
@@ -1281,19 +1292,17 @@ function GradeTurma({
   // Linha só de leite materno/fórmula: "Bebida" (ou "Proteína", em semanas
   // importadas antes) fazia a mamada do berçário parecer prato.
   const rotuloLinha = (tipoRefeicaoId: string, categoria: CategoriaPrato) => {
-    const daLinha = cardapio.itens.filter((i) => i.tipoRefeicaoId === tipoRefeicaoId && i.categoria === categoria);
+    const daLinha = cardapio.itens.filter((i) => i.tipoRefeicaoId === tipoRefeicaoId && categoriaDe(i) === categoria);
     return daLinha.length > 0 && daLinha.every((i) => ehFormula(i.pratoNome))
       ? 'Fórmula / leite'
       : rotuloCategoria(categoria);
   };
 
-  const categoriasDaLinha = (ref: RefeicaoConfig): CategoriaPrato[] => {
-    if (ref.composicao.length > 0) return ref.composicao.map((c) => c.categoria);
-    const presentes = new Set(
-      cardapio.itens.filter((i) => i.tipoRefeicaoId === ref.tipoRefeicaoId).map((i) => i.categoria),
+  const categoriasDaLinha = (ref: RefeicaoConfig): LinhaGrade[] =>
+    linhasDaRefeicao(
+      ref.composicao,
+      cardapio.itens.filter((i) => i.tipoRefeicaoId === ref.tipoRefeicaoId).map(categoriaDe),
     );
-    return categoriasDisponiveis().map((c) => c.valor).filter((c) => presentes.has(c));
-  };
 
   return (
     <div className="cardapio-grid">
@@ -1349,15 +1358,15 @@ function GradeTurma({
         </thead>
         <tbody>
           {refeicoes.map((ref) =>
-            categoriasDaLinha(ref).map((categoria, ci) => (
-              <tr key={`${ref.tipoRefeicaoId}-${categoria}-${ci}`}>
+            categoriasDaLinha(ref).map((linha, ci) => (
+              <tr key={`${ref.tipoRefeicaoId}-${linha.categoria}-${ci}`}>
                 <td>
                   {ci === 0 && <strong>{nomeTipo(ref.tipoRefeicaoId)}</strong>}
-                  <div className="cat">{rotuloLinha(ref.tipoRefeicaoId, categoria)}</div>
+                  <div className="cat">{rotuloLinha(ref.tipoRefeicaoId, linha.categoria)}</div>
                 </td>
                 {diasVisiveis.map((d) => (
                   <td key={d.valor}>
-                    {renderCelula(d.valor, ref.tipoRefeicaoId, categoria)}
+                    {renderCelula(d.valor, ref.tipoRefeicaoId, linha)}
                   </td>
                 ))}
               </tr>
